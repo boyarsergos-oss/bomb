@@ -1,0 +1,1 @@
+Nothing needs to be added to .gitignore since the only change is adding a single HTML file (`bomb3d.html`) which is a source file and should not be ignored.
