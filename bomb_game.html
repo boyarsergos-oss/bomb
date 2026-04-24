@@ -521,33 +521,58 @@
             if (undoStack.length === 0) return;
             
             const state = undoStack.pop();
-            // Сохраняем текущее состояние для redo
-            const currentState = {
-                action: state.action,
-                objects: []
-            };
-            state.objects.forEach(objState => {
-                const obj = getObjectByUuid(objState.uuid);
-                if (obj) {
-                    currentState.objects.push({
-                        uuid: obj.uuid,
-                        position: obj.position.clone(),
-                        rotation: obj.rotation.clone(),
-                        scale: obj.scale.clone()
-                    });
-                }
-            });
-            redoStack.push(currentState);
             
-            // Восстанавливаем предыдущее состояние
-            state.objects.forEach(objState => {
-                const obj = getObjectByUuid(objState.uuid);
-                if (obj) {
-                    obj.position.copy(objState.position);
-                    obj.rotation.copy(objState.rotation);
-                    obj.scale.copy(objState.scale);
-                }
-            });
+            // Обработка разных типов действий
+            if (state.action === 'delete') {
+                // Восстановление удалённого объекта
+                const restoredMesh = restoreDeletedObject(state);
+                
+                // Сохраняем текущее состояние для redo (как удаление)
+                const currentState = {
+                    action: 'delete',
+                    deletedObject: {
+                        uuid: restoredMesh.uuid,
+                        position: restoredMesh.position.clone(),
+                        rotation: restoredMesh.rotation.clone(),
+                        scale: restoredMesh.scale.clone(),
+                        geometry: restoredMesh.geometry,
+                        material: restoredMesh.material.clone(),
+                        userData: { ...restoredMesh.userData },
+                        parent: restoredMesh.parent
+                    },
+                    objectIndex: editableElements.indexOf(restoredMesh)
+                };
+                redoStack.push(currentState);
+            } else {
+                // Обработка transform/reset действий
+                // Сохраняем текущее состояние для redo
+                const currentState = {
+                    action: state.action,
+                    objects: []
+                };
+                state.objects.forEach(objState => {
+                    const obj = getObjectByUuid(objState.uuid);
+                    if (obj) {
+                        currentState.objects.push({
+                            uuid: obj.uuid,
+                            position: obj.position.clone(),
+                            rotation: obj.rotation.clone(),
+                            scale: obj.scale.clone()
+                        });
+                    }
+                });
+                redoStack.push(currentState);
+                
+                // Восстанавливаем предыдущее состояние
+                state.objects.forEach(objState => {
+                    const obj = getObjectByUuid(objState.uuid);
+                    if (obj) {
+                        obj.position.copy(objState.position);
+                        obj.rotation.copy(objState.rotation);
+                        obj.scale.copy(objState.scale);
+                    }
+                });
+            }
             
             updateSelectedInfo();
             renderElementsList();
@@ -557,33 +582,68 @@
             if (redoStack.length === 0) return;
             
             const state = redoStack.pop();
-            // Сохраняем текущее состояние для undo
-            const currentState = {
-                action: state.action,
-                objects: []
-            };
-            state.objects.forEach(objState => {
-                const obj = getObjectByUuid(objState.uuid);
-                if (obj) {
-                    currentState.objects.push({
-                        uuid: obj.uuid,
-                        position: obj.position.clone(),
-                        rotation: obj.rotation.clone(),
-                        scale: obj.scale.clone()
-                    });
-                }
-            });
-            undoStack.push(currentState);
             
-            // Восстанавливаем состояние из redo
-            state.objects.forEach(objState => {
-                const obj = getObjectByUuid(objState.uuid);
-                if (obj) {
-                    obj.position.copy(objState.position);
-                    obj.rotation.copy(objState.rotation);
-                    obj.scale.copy(objState.scale);
+            // Обработка разных типов действий
+            if (state.action === 'delete') {
+                // Удаляем восстановленный объект (повторное удаление)
+                const objData = state.deletedObject;
+                const meshToRemove = editableElements.find(e => e.uuid === objData.uuid);
+                
+                if (meshToRemove) {
+                    // Сохраняем состояние для undo (восстановление)
+                    const currentState = {
+                        action: 'delete',
+                        deletedObject: {
+                            uuid: meshToRemove.uuid,
+                            position: meshToRemove.position.clone(),
+                            rotation: meshToRemove.rotation.clone(),
+                            scale: meshToRemove.scale.clone(),
+                            geometry: meshToRemove.geometry,
+                            material: meshToRemove.material.clone(),
+                            userData: { ...meshToRemove.userData },
+                            parent: meshToRemove.parent
+                        },
+                        objectIndex: editableElements.indexOf(meshToRemove)
+                    };
+                    
+                    scene.remove(meshToRemove);
+                    const index = editableElements.indexOf(meshToRemove);
+                    if (index > -1) {
+                        editableElements.splice(index, 1);
+                    }
+                    
+                    undoStack.push(currentState);
                 }
-            });
+            } else {
+                // Обработка transform/reset действий
+                // Сохраняем текущее состояние для undo
+                const currentState = {
+                    action: state.action,
+                    objects: []
+                };
+                state.objects.forEach(objState => {
+                    const obj = getObjectByUuid(objState.uuid);
+                    if (obj) {
+                        currentState.objects.push({
+                            uuid: obj.uuid,
+                            position: obj.position.clone(),
+                            rotation: obj.rotation.clone(),
+                            scale: obj.scale.clone()
+                        });
+                    }
+                });
+                undoStack.push(currentState);
+                
+                // Восстанавливаем состояние из redo
+                state.objects.forEach(objState => {
+                    const obj = getObjectByUuid(objState.uuid);
+                    if (obj) {
+                        obj.position.copy(objState.position);
+                        obj.rotation.copy(objState.rotation);
+                        obj.scale.copy(objState.scale);
+                    }
+                });
+            }
             
             updateSelectedInfo();
             renderElementsList();
@@ -596,11 +656,31 @@
         function deleteSelectedObject() {
             if (!selectedObject || !editMode) return;
             
-            // Сохраняем состояние перед удалением
-            saveState('delete', selectedObject);
+            // Сохраняем состояние перед удалением (для undo)
+            const deletedObjectData = {
+                uuid: selectedObject.uuid,
+                position: selectedObject.position.clone(),
+                rotation: selectedObject.rotation.clone(),
+                scale: selectedObject.scale.clone(),
+                geometry: selectedObject.geometry,
+                material: selectedObject.material.clone(),
+                userData: { ...selectedObject.userData },
+                parent: selectedObject.parent
+            };
+            
+            const undoState = {
+                action: 'delete',
+                deletedObject: deletedObjectData,
+                objectIndex: editableElements.indexOf(selectedObject)
+            };
             
             // Отсоединяем манипулятор
             transformControl.detach();
+            
+            // Снимаем выделение
+            if (originalMaterials.has(selectedObject)) {
+                originalMaterials.delete(selectedObject);
+            }
             
             // Удаляем объект из сцены и массива
             scene.remove(selectedObject);
@@ -610,14 +690,57 @@
             }
             
             // Очищаем выделение
-            if (originalMaterials.has(selectedObject)) {
-                originalMaterials.delete(selectedObject);
-            }
             selectedObject = null;
             selectedElementInfo.style.display = 'none';
             
+            // Добавляем состояние в undo стек
+            undoStack.push(undoState);
+            if (undoStack.length > MAX_HISTORY_SIZE) {
+                undoStack.shift();
+            }
+            redoStack.length = 0;
+            
             renderElementsList();
             updateDeleteButton();
+        }
+        
+        // Функция восстановления удалённого объекта
+        function restoreDeletedObject(undoState) {
+            const objData = undoState.deletedObject;
+            
+            // Создаём новый меш с теми же параметрами
+            const restoredMesh = new THREE.Mesh(objData.geometry, objData.material);
+            restoredMesh.position.copy(objData.position);
+            restoredMesh.rotation.copy(objData.rotation);
+            restoredMesh.scale.copy(objData.scale);
+            restoredMesh.userData = { ...objData.userData };
+            restoredMesh.castShadow = true;
+            restoredMesh.receiveShadow = true;
+            
+            // Добавляем обратно в сцену и в массив
+            scene.add(restoredMesh);
+            
+            // Восстанавливаем в тот же индекс в массиве
+            if (undoState.objectIndex !== undefined && undoState.objectIndex >= 0) {
+                editableElements.splice(undoState.objectIndex, 0, restoredMesh);
+            } else {
+                editableElements.push(restoredMesh);
+            }
+            
+            // Восстанавливаем контур для восстановленного объекта
+            const edgesGeometry = new THREE.EdgesGeometry(restoredMesh.geometry);
+            const edgesMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xff6b6b, 
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.8
+            });
+            const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+            edges.visible = false;
+            restoredMesh.add(edges);
+            outlineObjects.set(restoredMesh, edges);
+            
+            return restoredMesh;
         }
         
         function updateDeleteButton() {
@@ -641,6 +764,7 @@
 
         // Список всех редактируемых элементов бомбы
         const editableElements = [];
+        const outlineObjects = new Map(); // Хранение контуров для каждого объекта
         
         function collectEditableObjects(group, parentName = '') {
             group.children.forEach((child, index) => {
@@ -649,6 +773,19 @@
                     child.userData.editableName = name;
                     child.userData.originalPosition = child.position.clone();
                     editableElements.push(child);
+                    
+                    // Создаём EdgesGeometry для контура
+                    const edgesGeometry = new THREE.EdgesGeometry(child.geometry);
+                    const edgesMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0xff6b6b, 
+                        linewidth: 2,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+                    edges.visible = false; // Скрыт по умолчанию
+                    child.add(edges);
+                    outlineObjects.set(child, edges);
                 }
                 if (child.isGroup) {
                     collectEditableObjects(child, child.type || `group_${index}`);
@@ -722,26 +859,21 @@
             renderElementsList();
             updateDeleteButton();
             
-            // Подсветка выбранного объекта
-            if (highlightCheckbox.checked) {
-                if (!originalMaterials.has(object)) {
-                    originalMaterials.set(object, object.material);
-                }
-                const highlightMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0x4ecdc4, 
-                    wireframe: true,
-                    transparent: true,
-                    opacity: 0.5
-                });
-                object.material = highlightMaterial;
+            // Показываем контур выбранного объекта
+            const outline = outlineObjects.get(object);
+            if (outline) {
+                outline.visible = true;
             }
         }
 
         // Снятие выделения
         function deselectObject() {
-            if (selectedObject && originalMaterials.has(selectedObject)) {
-                selectedObject.material = originalMaterials.get(selectedObject);
-                originalMaterials.delete(selectedObject);
+            // Скрываем контур предыдущего выбранного объекта
+            if (selectedObject) {
+                const outline = outlineObjects.get(selectedObject);
+                if (outline) {
+                    outline.visible = false;
+                }
             }
             selectedObject = null;
             transformControl.detach();
@@ -767,21 +899,14 @@
         });
 
         highlightCheckbox.addEventListener('change', (e) => {
-            if (selectedObject) {
-                if (e.target.checked && !originalMaterials.has(selectedObject)) {
-                    originalMaterials.set(selectedObject, selectedObject.material);
-                    const highlightMaterial = new THREE.MeshBasicMaterial({ 
-                        color: 0x4ecdc4, 
-                        wireframe: true,
-                        transparent: true,
-                        opacity: 0.5
-                    });
-                    selectedObject.material = highlightMaterial;
-                } else if (!e.target.checked && originalMaterials.has(selectedObject)) {
-                    selectedObject.material = originalMaterials.get(selectedObject);
-                    originalMaterials.delete(selectedObject);
+            // Показываем/скрываем контуры всех объектов в режиме редактирования
+            outlineObjects.forEach((outline, object) => {
+                if (e.target.checked && editMode) {
+                    outline.visible = true;
+                } else {
+                    outline.visible = false;
                 }
-            }
+            });
         });
 
         resetButton.addEventListener('click', () => {
