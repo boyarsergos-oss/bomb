@@ -182,27 +182,90 @@
         
         // LED индикаторы на экране
         const ledGeometry = new THREE.BoxGeometry(0.03, 0.05, 0.02);
+        // LED индикаторы на дисплее
         for (let i = 0; i < 4; i++) {
             const led = new THREE.Mesh(ledGeometry, ledMaterial);
             led.position.set(-0.15 + i * 0.1, 0.28, 0.38);
             bombGroup.add(led);
         }
         
-        // Кнопки
-        const buttonGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.03, 16);
-        const buttonPositions = [
+        // Дисплей с цифрами
+        const displayFrameGeometry = new THREE.BoxGeometry(0.5, 0.15, 0.02);
+        const displayFrameMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1a,
+            metalness: 0.6,
+            roughness: 0.3
+        });
+        const displayFrame = new THREE.Mesh(displayFrameGeometry, displayFrameMaterial);
+        displayFrame.position.set(-0.25, 0.28, 0.39);
+        bombGroup.add(displayFrame);
+        
+        // Экран дисплея (черный)
+        const screenGeometry = new THREE.PlaneGeometry(0.45, 0.1);
+        const screenMaterial = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
+        const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+        screen.position.set(-0.25, 0.28, 0.4);
+        bombGroup.add(screen);
+        
+        // Цифры на дисплее (LED сегменты)
+        const digitMaterial = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+        const segmentPositions = [
+            // Первая цифра "8"
+            [-0.42, 0.30, 0.401], [-0.40, 0.30, 0.401], [-0.38, 0.30, 0.401],
+            [-0.42, 0.28, 0.401], [-0.38, 0.28, 0.401],
+            [-0.42, 0.26, 0.401], [-0.40, 0.26, 0.401], [-0.38, 0.26, 0.401],
+            // Вторая цифра "8"
+            [-0.34, 0.30, 0.401], [-0.32, 0.30, 0.401], [-0.30, 0.30, 0.401],
+            [-0.34, 0.28, 0.401], [-0.30, 0.28, 0.401],
+            [-0.34, 0.26, 0.401], [-0.32, 0.26, 0.401], [-0.30, 0.26, 0.401],
+            // Двоеточие
+            [-0.26, 0.29, 0.401], [-0.26, 0.27, 0.401],
+            // Третья цифра "8"
+            [-0.20, 0.30, 0.401], [-0.18, 0.30, 0.401], [-0.16, 0.30, 0.401],
+            [-0.20, 0.28, 0.401], [-0.16, 0.28, 0.401],
+            [-0.20, 0.26, 0.401], [-0.18, 0.26, 0.401], [-0.16, 0.26, 0.401],
+            // Четвертая цифра "8"
+            [-0.12, 0.30, 0.401], [-0.10, 0.30, 0.401], [-0.08, 0.30, 0.401],
+            [-0.12, 0.28, 0.401], [-0.08, 0.28, 0.401],
+            [-0.12, 0.26, 0.401], [-0.10, 0.26, 0.401], [-0.08, 0.26, 0.401]
+        ];
+        
+        segmentPositions.forEach(pos => {
+            const segmentGeom = new THREE.BoxGeometry(0.006, 0.012, 0.002);
+            const segment = new THREE.Mesh(segmentGeom, digitMaterial);
+            segment.position.set(...pos);
+            bombGroup.add(segment);
+        });
+        
+        // Кнопки управления (большие цветные кнопки)
+        const bigButtonGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.025, 16);
+        const bigButtonColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+        const bigButtonPositions = [
             { x: 0.35, z: 0.2 },
             { x: 0.45, z: 0.2 },
             { x: 0.35, z: 0.1 },
             { x: 0.45, z: 0.1 }
         ];
         
-        buttonPositions.forEach(pos => {
-            const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
-            button.position.set(pos.x, 0.165, pos.z);
-            button.rotation.x = Math.PI / 2;
-            button.castShadow = true;
-            bombGroup.add(button);
+        bigButtonPositions.forEach((pos, index) => {
+            const bigButtonMat = new THREE.MeshStandardMaterial({ 
+                color: bigButtonColors[index],
+                metalness: 0.3,
+                roughness: 0.4
+            });
+            const bigButton = new THREE.Mesh(bigButtonGeometry, bigButtonMat);
+            bigButton.position.set(pos.x, 0.165, pos.z);
+            bigButton.rotation.x = Math.PI / 2;
+            bigButton.castShadow = true;
+            bombGroup.add(bigButton);
+            
+            // Белые метки на кнопках
+            const labelGeom = new THREE.CylinderGeometry(0.015, 0.015, 0.003, 8);
+            const labelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const label = new THREE.Mesh(labelGeom, labelMat);
+            label.position.set(pos.x, 0.178, pos.z);
+            label.rotation.x = Math.PI / 2;
+            bombGroup.add(label);
         });
         
         // Цифровая клавиатура
@@ -226,28 +289,31 @@
             }
         }
         
-        // Провода
-        const wireColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
-        const wireStartPositions = [
-            { x: -0.5, y: 0.15, z: -0.3 },
-            { x: -0.45, y: 0.15, z: -0.3 },
-            { x: -0.4, y: 0.15, z: -0.3 },
-            { x: -0.35, y: 0.15, z: -0.3 }
+        // Провода - идут от верхней части к нижней и входят обратно в корпус
+        const wireColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xffa500];
+        const wirePaths = [
+            { startX: -0.5, startY: 0.15, startZ: -0.3, endX: -0.5, endY: -0.15, endZ: -0.3 },
+            { startX: -0.45, startY: 0.15, startZ: -0.3, endX: -0.45, endY: -0.15, endZ: -0.3 },
+            { startX: -0.4, startY: 0.15, startZ: -0.3, endX: -0.4, endY: -0.15, endZ: -0.3 },
+            { startX: -0.35, startY: 0.15, startZ: -0.3, endX: -0.35, endY: -0.15, endZ: -0.3 },
+            { startX: -0.3, startY: 0.15, startZ: -0.3, endX: -0.3, endY: -0.15, endZ: -0.3 }
         ];
         
-        wireStartPositions.forEach((pos, index) => {
+        wirePaths.forEach((path, index) => {
+            // Создаем изогнутые провода с петлей
             const wireCurve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(pos.x, pos.y, pos.z),
-                new THREE.Vector3(pos.x - 0.1, pos.y + 0.2, pos.z - 0.1),
-                new THREE.Vector3(pos.x - 0.15, pos.y + 0.1, pos.z - 0.15),
-                new THREE.Vector3(pos.x - 0.2, pos.y + 0.15, pos.z - 0.2)
+                new THREE.Vector3(path.startX, path.startY, path.startZ),
+                new THREE.Vector3(path.startX - 0.08, path.startY + 0.12, path.startZ - 0.08),
+                new THREE.Vector3(path.startX - 0.1, path.startY + 0.08, path.startZ - 0.1),
+                new THREE.Vector3(path.startX - 0.08, path.endY - 0.08, path.startZ - 0.08),
+                new THREE.Vector3(path.endX, path.endY, path.endZ)
             ]);
             
-            const wireGeometry = new THREE.TubeGeometry(wireCurve, 20, 0.015, 8, false);
+            const wireGeometry = new THREE.TubeGeometry(wireCurve, 30, 0.018, 12, false);
             const wireMaterialColored = new THREE.MeshStandardMaterial({ 
                 color: wireColors[index],
-                metalness: 0.3,
-                roughness: 0.5
+                metalness: 0.2,
+                roughness: 0.4
             });
             const wire = new THREE.Mesh(wireGeometry, wireMaterialColored);
             wire.castShadow = true;
