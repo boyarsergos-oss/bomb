@@ -88,6 +88,8 @@
         <div class="control-hint"><span class="key">🖱️</span> Колесо мыши - Зум</div>
         <div class="control-hint"><span class="key">🖱️</span> Правая кнопка мыши - Панорамирование</div>
         <div class="control-hint" style="margin-top: 10px;"><span class="key">E</span> - Режим редактирования</div>
+        <div class="control-hint"><span class="key">Del</span> - Удалить элемент</div>
+        <div class="control-hint"><span class="key">Ctrl+Z</span> - Отменить | <span class="key">Ctrl+Y</span> - Вернуть</div>
     </div>
 
     <!-- Панель редактирования -->
@@ -119,6 +121,7 @@
         </div>
         <div id="elements-list" style="max-height: 300px; overflow-y: auto;"></div>
         <button id="reset-positions" style="background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px;">Сбросить позиции</button>
+        <button id="delete-selected" style="background: #c0392b; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px;" disabled>🗑️ Удалить выбранный (Del)</button>
     </div>
 
     <!-- Индикатор режима редактирования -->
@@ -474,6 +477,158 @@
         let selectedObject = null;
         let originalMaterials = new Map();
         
+        // История для отмены/возврата действий (Undo/Redo)
+        const undoStack = [];
+        const redoStack = [];
+        const MAX_HISTORY_SIZE = 50;
+        
+        function saveState(actionType, object = null) {
+            if (!editMode) return;
+            
+            const state = {
+                action: actionType,
+                objects: []
+            };
+            
+            if (object) {
+                state.objects.push({
+                    uuid: object.uuid,
+                    position: object.position.clone(),
+                    rotation: object.rotation.clone(),
+                    scale: object.scale.clone()
+                });
+            } else {
+                // Сохраняем состояние всех объектов
+                editableElements.forEach(elem => {
+                    state.objects.push({
+                        uuid: elem.uuid,
+                        position: elem.position.clone(),
+                        rotation: elem.rotation.clone(),
+                        scale: elem.scale.clone()
+                    });
+                });
+            }
+            
+            undoStack.push(state);
+            if (undoStack.length > MAX_HISTORY_SIZE) {
+                undoStack.shift();
+            }
+            // Очищаем redo стек при новом действии
+            redoStack.length = 0;
+        }
+        
+        function undo() {
+            if (undoStack.length === 0) return;
+            
+            const state = undoStack.pop();
+            // Сохраняем текущее состояние для redo
+            const currentState = {
+                action: state.action,
+                objects: []
+            };
+            state.objects.forEach(objState => {
+                const obj = getObjectByUuid(objState.uuid);
+                if (obj) {
+                    currentState.objects.push({
+                        uuid: obj.uuid,
+                        position: obj.position.clone(),
+                        rotation: obj.rotation.clone(),
+                        scale: obj.scale.clone()
+                    });
+                }
+            });
+            redoStack.push(currentState);
+            
+            // Восстанавливаем предыдущее состояние
+            state.objects.forEach(objState => {
+                const obj = getObjectByUuid(objState.uuid);
+                if (obj) {
+                    obj.position.copy(objState.position);
+                    obj.rotation.copy(objState.rotation);
+                    obj.scale.copy(objState.scale);
+                }
+            });
+            
+            updateSelectedInfo();
+            renderElementsList();
+        }
+        
+        function redo() {
+            if (redoStack.length === 0) return;
+            
+            const state = redoStack.pop();
+            // Сохраняем текущее состояние для undo
+            const currentState = {
+                action: state.action,
+                objects: []
+            };
+            state.objects.forEach(objState => {
+                const obj = getObjectByUuid(objState.uuid);
+                if (obj) {
+                    currentState.objects.push({
+                        uuid: obj.uuid,
+                        position: obj.position.clone(),
+                        rotation: obj.rotation.clone(),
+                        scale: obj.scale.clone()
+                    });
+                }
+            });
+            undoStack.push(currentState);
+            
+            // Восстанавливаем состояние из redo
+            state.objects.forEach(objState => {
+                const obj = getObjectByUuid(objState.uuid);
+                if (obj) {
+                    obj.position.copy(objState.position);
+                    obj.rotation.copy(objState.rotation);
+                    obj.scale.copy(objState.scale);
+                }
+            });
+            
+            updateSelectedInfo();
+            renderElementsList();
+        }
+        
+        function getObjectByUuid(uuid) {
+            return editableElements.find(elem => elem.uuid === uuid);
+        }
+        
+        function deleteSelectedObject() {
+            if (!selectedObject || !editMode) return;
+            
+            // Сохраняем состояние перед удалением
+            saveState('delete', selectedObject);
+            
+            // Отсоединяем манипулятор
+            transformControl.detach();
+            
+            // Удаляем объект из сцены и массива
+            scene.remove(selectedObject);
+            const index = editableElements.indexOf(selectedObject);
+            if (index > -1) {
+                editableElements.splice(index, 1);
+            }
+            
+            // Очищаем выделение
+            if (originalMaterials.has(selectedObject)) {
+                originalMaterials.delete(selectedObject);
+            }
+            selectedObject = null;
+            selectedElementInfo.style.display = 'none';
+            
+            renderElementsList();
+            updateDeleteButton();
+        }
+        
+        function updateDeleteButton() {
+            const deleteBtn = document.getElementById('delete-selected');
+            if (deleteBtn) {
+                deleteBtn.disabled = !selectedObject || !editMode;
+                deleteBtn.style.opacity = deleteBtn.disabled ? '0.5' : '1';
+                deleteBtn.style.cursor = deleteBtn.disabled ? 'not-allowed' : 'pointer';
+            }
+        }
+        
         // TransformControls для перемещения объектов
         const transformControl = new TransformControls(camera, renderer.domElement);
         transformControl.addEventListener('dragging-changed', (event) => {
@@ -526,6 +681,7 @@
                 transformControl.enabled = true;
                 renderElementsList();
                 document.body.style.cursor = 'crosshair';
+                updateDeleteButton();
             } else {
                 transformControl.enabled = false;
                 transformControl.detach();
@@ -533,6 +689,7 @@
                     deselectObject();
                 }
                 document.body.style.cursor = 'default';
+                updateDeleteButton();
             }
         }
 
@@ -563,6 +720,7 @@
             selectedNameEl.textContent = object.userData.editableName || 'Unknown';
             updateSelectedInfo();
             renderElementsList();
+            updateDeleteButton();
             
             // Подсветка выбранного объекта
             if (highlightCheckbox.checked) {
@@ -589,6 +747,7 @@
             transformControl.detach();
             selectedElementInfo.style.display = 'none';
             renderElementsList();
+            updateDeleteButton();
         }
 
         // Обновление информации о позиции
@@ -626,6 +785,7 @@
         });
 
         resetButton.addEventListener('click', () => {
+            saveState('reset');
             editableElements.forEach(elem => {
                 if (elem.userData.originalPosition) {
                     elem.position.copy(elem.userData.originalPosition);
@@ -634,6 +794,12 @@
             if (selectedObject) {
                 updateSelectedInfo();
             }
+        });
+        
+        // Кнопка удаления выбранного элемента
+        const deleteButton = document.getElementById('delete-selected');
+        deleteButton.addEventListener('click', () => {
+            deleteSelectedObject();
         });
 
         // Raycaster для выбора объектов кликом
@@ -668,6 +834,28 @@
                 if (event.code === 'KeyT') transformControl.setMode('translate');
                 if (event.code === 'KeyR') transformControl.setMode('rotate');
                 if (event.code === 'KeyS') transformControl.setMode('scale');
+            }
+            // Удаление выбранного элемента (Delete)
+            if (event.code === 'Delete' && editMode && selectedObject) {
+                deleteSelectedObject();
+            }
+            // Отмена/возврат действий (Ctrl+Z / Ctrl+Y или Ctrl+Shift+Z)
+            if (editMode) {
+                if ((event.ctrlKey || event.metaKey) && event.code === 'KeyZ' && !event.shiftKey) {
+                    event.preventDefault();
+                    undo();
+                }
+                if ((event.ctrlKey || event.metaKey) && (event.code === 'KeyY' || (event.code === 'KeyZ' && event.shiftKey))) {
+                    event.preventDefault();
+                    redo();
+                }
+            }
+        });
+        
+        // Сохранение состояния при изменении трансформации
+        transformControl.addEventListener('mouseUp', () => {
+            if (selectedObject && editMode) {
+                saveState('transform', selectedObject);
             }
         });
 
