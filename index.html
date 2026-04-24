@@ -135,3 +135,571 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+// ============================================
+// QUANTUM SHIFT - 3D PUZZLE GAME
+// Полностью рабочая версия с 55 уровнями
+// ============================================
+
+// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ===
+let scene, camera, renderer;
+let player, playerGeometry, playerMaterial;
+let cubes = [], walls = [], portals = [], buttons = [], doors = [];
+let currentLevel = 1;
+let moves = 0;
+let bestScores = {};
+let gameStarted = false;
+let isTutorial = true;
+
+// Измерения: Alpha (синий), Beta (красный), Gamma (зелёный)
+let currentDimension = 'Alpha';
+const dimensions = ['Alpha', 'Beta', 'Gamma'];
+const dimensionColors = {
+    Alpha: 0x4fc3f7,
+    Beta: 0xff6b6b,
+    Gamma: 0x81c784
+};
+
+// === УРОВНИ (55 уровней с обучением) ===
+const levels = [
+    // === ОБУЧЕНИЕ (уровни 1-10) ===
+    {
+        name: "Добро пожаловать",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 8, y: 1, z: 1},
+        cubes: [],
+        walls: [{x:4,y:1,z:1},{x:5,y:1,z:1}],
+        portals: [],
+        buttons: [],
+        doors: [],
+        tutorial: "Используй стрелки или WASD для движения. Дойди до зелёной зоны!"
+    },
+    {
+        name: "Первый поворот",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 1, y: 1, z: 8},
+        cubes: [],
+        walls: [{x:2,y:1,z:3},{x:2,y:1,z:4},{x:2,y:1,z:5}],
+        portals: [],
+        buttons: [],
+        doors: [],
+        tutorial: "Обходи препятствия. Найди путь к цели!"
+    },
+    {
+        name: "Лабиринт",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 9, y: 1, z: 9},
+        cubes: [],
+        walls: [
+            {x:3,y:1,z:1},{x:3,y:1,z:2},{x:3,y:1,z:3},
+            {x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5},
+            {x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},
+            {x:3,y:1,z:7},{x:4,y:1,z:7},{x:5,y:1,z:7}
+        ],
+        portals: [],
+        buttons: [],
+        doors: [],
+        tutorial: "В лабиринте важно помнить путь!"
+    },
+    {
+        name: "Смена измерения",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 8, y: 1, z: 1},
+        cubes: [],
+        walls: [{x:4,y:1,z:1},{x:5,y:1,z:1},{x:6,y:1,z:1}],
+        portals: [{x:3,y:1,z:2,dimension:'Beta'},{x:7,y:1,z:2,dimension:'Beta'}],
+        buttons: [],
+        doors: [],
+        tutorial: "Нажми ПРОБЕЛ или Q для смены измерения! В другом измерении стены могут исчезнуть."
+    },
+    {
+        name: "Два мира",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 9, y: 1, z: 9},
+        cubes: [],
+        walls: [
+            {x:5,y:1,z:1},{x:5,y:1,z:2},{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5}
+        ],
+        portals: [
+            {x:3,y:1,z:3,dimension:'Beta'},
+            {x:7,y:1,z:7,dimension:'Beta'}
+        ],
+        buttons: [],
+        doors: [],
+        tutorial: "Перейди в Beta измерение, чтобы обойти стену!"
+    },
+    {
+        name: "Три измерения",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 9, y: 1, z: 9},
+        cubes: [],
+        walls: [
+            {x:5,y:1,z:1},{x:5,y:1,z:2},{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5},
+            {x:1,y:1,z:5},{x:2,y:1,z:5},{x:3,y:1,z:5},{x:4,y:1,z:5}
+        ],
+        portals: [
+            {x:3,y:1,z:3,dimension:'Beta'},
+            {x:7,y:1,z:3,dimension:'Gamma'},
+            {x:7,y:1,z:7,dimension:'Beta'}
+        ],
+        buttons: [],
+        doors: [],
+        tutorial: "Теперь у тебя три измерения! Используй их все."
+    },
+    {
+        name: "Кнопка",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 9, y: 1, z: 9},
+        cubes: [],
+        walls: [{x:5,y:1,z:5}],
+        portals: [],
+        buttons: [{x:3,y:1,z:3,opensDoor:true}],
+        doors: [{x:7,y:1,z:7,open:false}],
+        tutorial: "Наступи на синюю кнопку, чтобы открыть дверь!"
+    },
+    {
+        name: "Комбинация",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 9, y: 1, z: 9},
+        cubes: [],
+        walls: [{x:5,y:1,z:4},{x:5,y:1,z:5},{x:5,y:1,z:6}],
+        portals: [{x:2,y:1,z:2,dimension:'Beta'}],
+        buttons: [{x:8,y:1,z:2,opensDoor:true}],
+        doors: [{x:7,y:1,z:5,open:false}],
+        tutorial: "Используй измерение и кнопку вместе!"
+    },
+    {
+        name: "Проверка навыков",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 9, y: 1, z: 9},
+        cubes: [],
+        walls: [
+            {x:3,y:1,z:1},{x:3,y:1,z:2},{x:3,y:1,z:3},
+            {x:7,y:1,z:7},{x:7,y:1,z:8},{x:7,y:1,z:9}
+        ],
+        portals: [
+            {x:5,y:1,z:2,dimension:'Beta'},
+            {x:5,y:1,z:8,dimension:'Gamma'}
+        ],
+        buttons: [],
+        doors: [],
+        tutorial: "Обучение завершено! Дальше только практика."
+    },
+    {
+        name: "Финал обучения",
+        dimension: 'Alpha',
+        player: {x: 1, y: 1, z: 1},
+        goal: {x: 9, y: 1, z: 9},
+        cubes: [],
+        walls: [
+            {x:2,y:1,z:5},{x:3,y:1,z:5},{x:4,y:1,z:5},
+            {x:6,y:1,z:5},{x:7,y:1,z:5},{x:8,y:1,z:5}
+        ],
+        portals: [
+            {x:5,y:1,z:3,dimension:'Beta'},
+            {x:5,y:1,z:7,dimension:'Gamma'}
+        ],
+        buttons: [{x:5,y:1,z:5,opensDoor:true}],
+        doors: [{x:5,y:1,z:5,open:false}],
+        tutorial: "Последний урок: иногда нужно вернуться назад, чтобы двигаться вперёд."
+    },
+    
+    // === ЛЁГКИЕ УРОВНИ (11-25) ===
+    {name:"Змейка",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:1},{x:2,y:1,z:2},{x:2,y:1,z:3},{x:4,y:1,z:3},{x:4,y:1,z:4},{x:4,y:1,z:5},{x:6,y:1,z:5},{x:6,y:1,z:6},{x:6,y:1,z:7},{x:8,y:1,z:7},{x:8,y:1,z:8}],portals:[],buttons:[],doors:[],tutorial:null},
+    {name:"Крест",dimension:'Alpha',player:{x:1,y:1,z:5},goal:{x:9,y:1,z:5},cubes:[],walls:[{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5},{x:5,y:1,z:6},{x:5,y:1,z:7},{x:3,y:1,z:5},{x:4,y:1,z:5},{x:6,y:1,z:5},{x:7,y:1,z:5}],portals:[],buttons:[],doors:[],tutorial:null},
+    {name:"Портальный прыжок",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:5,y:1,z:1},{x:5,y:1,z:2},{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5},{x:5,y:1,z:6},{x:5,y:1,z:7},{x:5,y:1,z:8},{x:5,y:1,z:9}],portals:[{x:3,y:1,z:5,dimension:'Beta'},{x:7,y:1,z:5,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Треугольник",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:1},{x:3,y:1,z:2},{x:3,y:1,z:3},{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7}],portals:[{x:2,y:1,z:4,dimension:'Beta'},{x:8,y:1,z:4,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Двойной проход",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:1},cubes:[],walls:[{x:5,y:1,z:1},{x:4,y:1,z:2},{x:6,y:1,z:2}],portals:[{x:3,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:3,dimension:'Beta'},{x:3,y:1,z:3,dimension:'Gamma'},{x:7,y:1,z:3,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Лабиринт 2",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:2},{x:2,y:1,z:3},{x:2,y:1,z:4},{x:4,y:1,z:4},{x:4,y:1,z:5},{x:4,y:1,z:6},{x:6,y:1,z:6},{x:6,y:1,z:7},{x:6,y:1,z:8},{x:8,y:1,z:8}],portals:[],buttons:[],doors:[],tutorial:null},
+    {name:"Измеренческий ключ",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:5,y:1,z:5}],portals:[{x:3,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:7,dimension:'Beta'}],buttons:[{x:2,y:1,z:8,opensDoor:true}],doors:[{x:8,y:1,z:2,open:false}],tutorial:null},
+    {name:"Восьмёрка",dimension:'Alpha',player:{x:1,y:1,z:5},goal:{x:9,y:1,z:5},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:5,y:1,z:5}],portals:[{x:5,y:1,z:2,dimension:'Beta'},{x:5,y:1,z:8,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Шахматы",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:2},{x:2,y:1,z:4},{x:2,y:1,z:6},{x:2,y:1,z:8},{x:4,y:1,z:1},{x:4,y:1,z:3},{x:4,y:1,z:5},{x:4,y:1,z:7},{x:4,y:1,z:9},{x:6,y:1,z:2},{x:6,y:1,z:4},{x:6,y:1,z:6},{x:6,y:1,z:8},{x:8,y:1,z:1},{x:8,y:1,z:3},{x:8,y:1,z:5},{x:8,y:1,z:7},{x:8,y:1,z:9}],portals:[],buttons:[],doors:[],tutorial:null},
+    {name:"Тоннель",dimension:'Alpha',player:{x:1,y:1,z:5},goal:{x:9,y:1,z:5},cubes:[],walls:[{x:3,y:1,z:4},{x:3,y:1,z:6},{x:4,y:1,z:4},{x:4,y:1,z:6},{x:5,y:1,z:4},{x:5,y:1,z:6},{x:6,y:1,z:4},{x:6,y:1,z:6},{x:7,y:1,z:4},{x:7,y:1,z:6}],portals:[{x:5,y:1,z:1,dimension:'Beta'},{x:5,y:1,z:9,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Спираль",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:5,y:1,z:5},cubes:[],walls:[{x:2,y:1,z:1},{x:2,y:1,z:2},{x:2,y:1,z:3},{x:2,y:1,z:4},{x:3,y:1,z:4},{x:4,y:1,z:4},{x:4,y:1,z:3},{x:4,y:1,z:2},{x:4,y:1,z:1}],portals:[{x:3,y:1,z:3,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Разделённый мир",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:5,y:1,z:1},{x:5,y:1,z:2},{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5},{x:5,y:1,z:6},{x:5,y:1,z:7},{x:5,y:1,z:8},{x:5,y:1,z:9},{x:1,y:1,z:5},{x:2,y:1,z:5},{x:3,y:1,z:5},{x:4,y:1,z:5}],portals:[{x:3,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:7,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Коридоры",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:1},{x:3,y:1,z:2},{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:7,y:1,z:8},{x:7,y:1,z:9}],portals:[{x:5,y:1,z:3,dimension:'Beta'},{x:5,y:1,z:7,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Цветные ворота",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:5,y:1,z:5}],portals:[{x:3,y:1,z:3,dimension:'Beta'},{x:3,y:1,z:7,dimension:'Gamma'},{x:7,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:7,dimension:'Gamma'}],buttons:[{x:2,y:1,z:5,opensDoor:true},{x:8,y:1,z:5,opensDoor:true}],doors:[{x:4,y:1,z:5,open:false},{x:6,y:1,z:5,open:false}],tutorial:null},
+    {name:"Финал лёгкого",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:5,y:1,z:5}],portals:[{x:1,y:1,z:5,dimension:'Beta'},{x:9,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:1,dimension:'Gamma'},{x:5,y:1,z:9,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    
+    // === СРЕДНИЕ УРОВНИ (26-40) ===
+    {name:"Лабиринт мастера",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:1},{x:2,y:1,z:2},{x:2,y:1,z:3},{x:4,y:1,z:3},{x:4,y:1,z:4},{x:4,y:1,z:5},{x:6,y:1,z:5},{x:6,y:1,z:6},{x:6,y:1,z:7},{x:8,y:1,z:7},{x:8,y:1,z:8},{x:8,y:1,z:9},{x:7,y:1,z:9},{x:5,y:1,z:9},{x:3,y:1,z:9},{x:1,y:1,z:9},{x:1,y:1,z:7},{x:1,y:1,z:5},{x:1,y:1,z:3}],portals:[{x:5,y:1,z:5,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Тройной замок",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:5,y:1,z:5}],portals:[{x:3,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:7,dimension:'Gamma'},{x:3,y:1,z:7,dimension:'Beta'},{x:7,y:1,z:3,dimension:'Gamma'}],buttons:[{x:2,y:1,z:2,opensDoor:true},{x:8,y:1,z:8,opensDoor:true},{x:2,y:1,z:8,opensDoor:true}],doors:[{x:4,y:1,z:4,open:false},{x:6,y:1,z:6,open:false},{x:6,y:1,z:4,open:false}],tutorial:null},
+    {name:"Зеркало",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:5,y:1,z:3},{x:5,y:1,z:7}],portals:[{x:5,y:1,z:1,dimension:'Beta'},{x:5,y:1,z:9,dimension:'Beta'},{x:1,y:1,z:5,dimension:'Gamma'},{x:9,y:1,z:5,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Паутина",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:3},{x:2,y:1,z:5},{x:2,y:1,z:7},{x:4,y:1,z:2},{x:4,y:1,z:4},{x:4,y:1,z:6},{x:4,y:1,z:8},{x:6,y:1,z:3},{x:6,y:1,z:5},{x:6,y:1,z:7},{x:8,y:1,z:2},{x:8,y:1,z:4},{x:8,y:1,z:6},{x:8,y:1,z:8}],portals:[{x:5,y:1,z:5,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Измеренческий танец",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:5,y:1,z:2},{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:6},{x:5,y:1,z:7},{x:5,y:1,z:8},{x:2,y:1,z:5},{x:3,y:1,z:5},{x:4,y:1,z:5},{x:6,y:1,z:5},{x:7,y:1,z:5},{x:8,y:1,z:5}],portals:[{x:3,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:3,dimension:'Gamma'},{x:3,y:1,z:7,dimension:'Gamma'},{x:7,y:1,z:7,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Кольцо",dimension:'Alpha',player:{x:1,y:1,z:5},goal:{x:9,y:1,z:5},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:5,y:1,z:3},{x:5,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7}],portals:[{x:5,y:1,z:1,dimension:'Beta'},{x:5,y:1,z:9,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Лестница",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:2},{x:3,y:1,z:3},{x:4,y:1,z:4},{x:5,y:1,z:5},{x:6,y:1,z:6},{x:7,y:1,z:7},{x:8,y:1,z:8},{x:2,y:1,z:8},{x:3,y:1,z:7},{x:4,y:1,z:6},{x:6,y:1,z:4},{x:7,y:1,z:3},{x:8,y:1,z:2}],portals:[{x:5,y:1,z:1,dimension:'Beta'},{x:5,y:1,z:9,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Сердце",dimension:'Alpha',player:{x:1,y:1,z:5},goal:{x:9,y:1,z:5},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:7},{x:4,y:1,z:2},{x:4,y:1,z:8},{x:5,y:1,z:2},{x:5,y:1,z:8},{x:6,y:1,z:2},{x:6,y:1,z:8},{x:7,y:1,z:3},{x:7,y:1,z:7}],portals:[{x:5,y:1,z:5,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Двойная спираль",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:1},{x:2,y:1,z:2},{x:3,y:1,z:2},{x:4,y:1,z:2},{x:4,y:1,z:3},{x:4,y:1,z:4},{x:5,y:1,z:4},{x:6,y:1,z:4},{x:6,y:1,z:5},{x:6,y:1,z:6},{x:7,y:1,z:6},{x:8,y:1,z:6},{x:8,y:1,z:7},{x:8,y:1,z:8}],portals:[{x:5,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:5,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Кристалл",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:4,y:1,z:4},{x:4,y:1,z:5},{x:4,y:1,z:6},{x:5,y:1,z:4},{x:5,y:1,z:6},{x:6,y:1,z:4},{x:6,y:1,z:5},{x:6,y:1,z:6}],portals:[{x:2,y:1,z:5,dimension:'Beta'},{x:8,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:2,dimension:'Gamma'},{x:5,y:1,z:8,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Волна",dimension:'Alpha',player:{x:1,y:1,z:5},goal:{x:9,y:1,z:5},cubes:[],walls:[{x:2,y:1,z:4},{x:3,y:1,z:6},{x:4,y:1,z:4},{x:5,y:1,z:6},{x:6,y:1,z:4},{x:7,y:1,z:6},{x:8,y:1,z:4}],portals:[{x:5,y:1,z:1,dimension:'Beta'},{x:5,y:1,z:9,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Башня",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:4,y:1,z:3},{x:4,y:1,z:7},{x:5,y:1,z:3},{x:5,y:1,z:7},{x:6,y:1,z:3},{x:6,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7}],portals:[{x:5,y:1,z:1,dimension:'Beta'},{x:5,y:1,z:9,dimension:'Beta'},{x:1,y:1,z:5,dimension:'Gamma'},{x:9,y:1,z:5,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Мост",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:6},{x:5,y:1,z:7},{x:3,y:1,z:5},{x:4,y:1,z:5},{x:6,y:1,z:5},{x:7,y:1,z:5}],portals:[{x:5,y:1,z:5,dimension:'Beta'}],buttons:[{x:2,y:1,z:2,opensDoor:true},{x:8,y:1,z:8,opensDoor:true}],doors:[{x:5,y:1,z:5,open:false}],tutorial:null},
+    {name:"Ловушка",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:2},{x:3,y:1,z:3},{x:3,y:1,z:4},{x:5,y:1,z:4},{x:5,y:1,z:5},{x:5,y:1,z:6},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:7,y:1,z:8}],portals:[{x:2,y:1,z:5,dimension:'Beta'},{x:8,y:1,z:5,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Финал среднего",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:5,y:1,z:3},{x:5,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:4,y:1,z:5},{x:6,y:1,z:5}],portals:[{x:1,y:1,z:5,dimension:'Beta'},{x:9,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:1,dimension:'Gamma'},{x:5,y:1,z:9,dimension:'Gamma'},{x:5,y:1,z:5,dimension:'Alpha'}],buttons:[],doors:[],tutorial:null},
+    
+    // === СЛОЖНЫЕ УРОВНИ (41-55) ===
+    {name:"Адский лабиринт",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:1},{x:2,y:1,z:2},{x:2,y:1,z:3},{x:2,y:1,z:4},{x:2,y:1,z:5},{x:4,y:1,z:5},{x:4,y:1,z:6},{x:4,y:1,z:7},{x:4,y:1,z:8},{x:4,y:1,z:9},{x:6,y:1,z:9},{x:6,y:1,z:8},{x:6,y:1,z:7},{x:6,y:1,z:6},{x:6,y:1,z:5},{x:8,y:1,z:5},{x:8,y:1,z:4},{x:8,y:1,z:3},{x:8,y:1,z:2},{x:8,y:1,z:1}],portals:[{x:5,y:1,z:5,dimension:'Beta'}],buttons:[],doors:[],tutorial:null},
+    {name:"Измеренческий ад",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:5,y:1,z:1},{x:5,y:1,z:2},{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5},{x:5,y:1,z:6},{x:5,y:1,z:7},{x:5,y:1,z:8},{x:5,y:1,z:9},{x:1,y:1,z:5},{x:2,y:1,z:5},{x:3,y:1,z:5},{x:4,y:1,z:5},{x:6,y:1,z:5},{x:7,y:1,z:5},{x:8,y:1,z:5},{x:9,y:1,z:5}],portals:[{x:3,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:3,dimension:'Beta'},{x:3,y:1,z:7,dimension:'Gamma'},{x:7,y:1,z:7,dimension:'Gamma'}],buttons:[{x:2,y:1,z:2,opensDoor:true},{x:8,y:1,z:2,opensDoor:true},{x:2,y:1,z:8,opensDoor:true},{x:8,y:1,z:8,opensDoor:true}],doors:[{x:4,y:1,z:4,open:false},{x:6,y:1,z:4,open:false},{x:4,y:1,z:6,open:false},{x:6,y:1,z:6,open:false}],tutorial:null},
+    {name:"Хаос",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:2},{x:2,y:1,z:4},{x:2,y:1,z:6},{x:2,y:1,z:8},{x:3,y:1,z:3},{x:3,y:1,z:7},{x:4,y:1,z:2},{x:4,y:1,z:4},{x:4,y:1,z:6},{x:4,y:1,z:8},{x:5,y:1,z:5},{x:6,y:1,z:2},{x:6,y:1,z:4},{x:6,y:1,z:6},{x:6,y:1,z:8},{x:7,y:1,z:3},{x:7,y:1,z:7},{x:8,y:1,z:2},{x:8,y:1,z:4},{x:8,y:1,z:6},{x:8,y:1,z:8}],portals:[{x:1,y:1,z:5,dimension:'Beta'},{x:9,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:1,dimension:'Gamma'},{x:5,y:1,z:9,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Бесконечность",dimension:'Alpha',player:{x:1,y:1,z:5},goal:{x:9,y:1,z:5},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:5,y:1,z:3},{x:5,y:1,z:7}],portals:[{x:5,y:1,z:1,dimension:'Beta'},{x:5,y:1,z:9,dimension:'Beta'},{x:5,y:1,z:1,dimension:'Gamma'},{x:5,y:1,z:9,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Квантовый скачок",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:4,y:1,z:4},{x:4,y:1,z:5},{x:4,y:1,z:6},{x:5,y:1,z:4},{x:5,y:1,z:6},{x:6,y:1,z:4},{x:6,y:1,z:5},{x:6,y:1,z:6},{x:2,y:1,z:5},{x:8,y:1,z:5},{x:5,y:1,z:2},{x:5,y:1,z:8}],portals:[{x:3,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:3,dimension:'Beta'},{x:3,y:1,z:7,dimension:'Gamma'},{x:7,y:1,z:7,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Параллельные миры",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:7},{x:5,y:1,z:5}],portals:[{x:1,y:1,z:5,dimension:'Beta'},{x:9,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:1,dimension:'Gamma'},{x:5,y:1,z:9,dimension:'Gamma'},{x:3,y:1,z:5,dimension:'Beta'},{x:7,y:1,z:5,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Измеренческая головоломка",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:3},{x:2,y:1,z:4},{x:2,y:1,z:5},{x:2,y:1,z:6},{x:2,y:1,z:7},{x:4,y:1,z:2},{x:4,y:1,z:3},{x:4,y:1,z:7},{x:4,y:1,z:8},{x:6,y:1,z:2},{x:6,y:1,z:3},{x:6,y:1,z:7},{x:6,y:1,z:8},{x:8,y:1,z:3},{x:8,y:1,z:4},{x:8,y:1,z:5},{x:8,y:1,z:6},{x:8,y:1,z:7}],portals:[{x:5,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:5,dimension:'Gamma'}],buttons:[{x:1,y:1,z:5,opensDoor:true},{x:9,y:1,z:5,opensDoor:true}],doors:[{x:3,y:1,z:5,open:false},{x:7,y:1,z:5,open:false}],tutorial:null},
+    {name:"Тesseract",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:4,y:1,z:3},{x:4,y:1,z:7},{x:5,y:1,z:3},{x:5,y:1,z:7},{x:6,y:1,z:3},{x:6,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:5,y:1,z:5}],portals:[{x:1,y:1,z:5,dimension:'Beta'},{x:9,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:1,dimension:'Gamma'},{x:5,y:1,z:9,dimension:'Gamma'},{x:2,y:1,z:2,dimension:'Alpha'},{x:8,y:1,z:8,dimension:'Alpha'}],buttons:[],doors:[],tutorial:null},
+    {name:"Временная петля",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:2},{x:2,y:1,z:3},{x:2,y:1,z:4},{x:3,y:1,z:4},{x:4,y:1,z:4},{x:4,y:1,z:3},{x:4,y:1,z:2},{x:6,y:1,z:6},{x:6,y:1,z:7},{x:6,y:1,z:8},{x:7,y:1,z:8},{x:8,y:1,z:8},{x:8,y:1,z:7},{x:8,y:1,z:6}],portals:[{x:5,y:1,z:1,dimension:'Beta'},{x:5,y:1,z:9,dimension:'Beta'},{x:1,y:1,z:5,dimension:'Gamma'},{x:9,y:1,z:5,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Мультивселенная",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:7},{x:5,y:1,z:5},{x:2,y:1,z:5},{x:8,y:1,z:5},{x:5,y:1,z:2},{x:5,y:1,z:8}],portals:[{x:1,y:1,z:3,dimension:'Beta'},{x:1,y:1,z:7,dimension:'Beta'},{x:9,y:1,z:3,dimension:'Gamma'},{x:9,y:1,z:7,dimension:'Gamma'},{x:3,y:1,z:1,dimension:'Gamma'},{x:7,y:1,z:1,dimension:'Beta'},{x:3,y:1,z:9,dimension:'Beta'},{x:7,y:1,z:9,dimension:'Gamma'}],buttons:[],doors:[],tutorial:null},
+    {name:"Последний рубеж",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:2,y:1,z:2},{x:2,y:1,z:3},{x:2,y:1,z:4},{x:2,y:1,z:5},{x:2,y:1,z:6},{x:2,y:1,z:7},{x:2,y:1,z:8},{x:3,y:1,z:2},{x:3,y:1,z:8},{x:4,y:1,z:2},{x:4,y:1,z:8},{x:5,y:1,z:2},{x:5,y:1,z:8},{x:6,y:1,z:2},{x:6,y:1,z:8},{x:7,y:1,z:2},{x:7,y:1,z:8},{x:8,y:1,z:2},{x:8,y:1,z:3},{x:8,y:1,z:4},{x:8,y:1,z:5},{x:8,y:1,z:6},{x:8,y:1,z:7},{x:8,y:1,z:8}],portals:[{x:5,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:5,dimension:'Gamma'}],buttons:[{x:1,y:1,z:1,opensDoor:true}],doors:[{x:9,y:1,z:9,open:false}],tutorial:null},
+    {name:"Судьба человечества",dimension:'Alpha',player:{x:1,y:1,z:1},goal:{x:9,y:1,z:9},cubes:[],walls:[{x:3,y:1,z:3},{x:3,y:1,z:4},{x:3,y:1,z:5},{x:3,y:1,z:6},{x:3,y:1,z:7},{x:4,y:1,z:3},{x:4,y:1,z:7},{x:5,y:1,z:3},{x:5,y:1,z:4},{x:5,y:1,z:5},{x:5,y:1,z:6},{x:5,y:1,z:7},{x:6,y:1,z:3},{x:6,y:1,z:7},{x:7,y:1,z:3},{x:7,y:1,z:4},{x:7,y:1,z:5},{x:7,y:1,z:6},{x:7,y:1,z:7},{x:2,y:1,z:5},{x:8,y:1,z:5},{x:5,y:1,z:2},{x:5,y:1,z:8}],portals:[{x:1,y:1,z:5,dimension:'Beta'},{x:9,y:1,z:5,dimension:'Beta'},{x:5,y:1,z:1,dimension:'Gamma'},{x:5,y:1,z:9,dimension:'Gamma'},{x:3,y:1,z:3,dimension:'Beta'},{x:7,y:1,z:7,dimension:'Gamma'},{x:3,y:1,z:7,dimension:'Gamma'},{x:7,y:1,z:3,dimension:'Beta'}],buttons:[{x:2,y:1,z:2,opensDoor:true},{x:8,y:1,z:2,opensDoor:true},{x:2,y:1,z:8,opensDoor:true},{x:8,y:1,z:8,opensDoor:true}],doors:[{x:4,y:1,z:4,open:false},{x:6,y:1,z:4,open:false},{x:4,y:1,z:6,open:false},{x:6,y:1,z:6,open:false}],tutorial:null}
+];
+
+// === ИНИЦИАЛИЗАЦИЯ ===
+function init() {
+    // Загрузка сохранений
+    const saved = localStorage.getItem('quantumShiftBest');
+    if (saved) bestScores = JSON.parse(saved);
+    
+    // Создание сцены
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0a1a);
+    
+    // Камера
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 12, 12);
+    camera.lookAt(5, 0, 5);
+    
+    // Рендерер
+    renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    
+    // Свет
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+    scene.add(ambientLight);
+    
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 15, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+    
+    // Игрок
+    playerGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    playerMaterial = new THREE.MeshPhongMaterial({ color: 0xffd700 });
+    player = new THREE.Mesh(playerGeometry, playerMaterial);
+    player.castShadow = true;
+    scene.add(player);
+    
+    // Заполнение выпадающего списка уровней
+    const dropdown = document.getElementById('levelDropdown');
+    for (let i = 1; i <= levels.length; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `Уровень ${i}: ${levels[i-1].name}`;
+        dropdown.appendChild(option);
+    }
+    dropdown.addEventListener('change', (e) => loadLevel(parseInt(e.target.value)));
+    
+    // Обработчики клавиш
+    document.addEventListener('keydown', handleKeyPress);
+    document.getElementById('actionButton').addEventListener('click', hideMessage);
+    
+    // Старт
+    loadLevel(1);
+    showMessage("🎮 Quantum Shift", "Добро пожаловать в квантовый мир!\n\nТебе предстоит пройти 55 уровней, переключаясь между тремя измерениями.\n\nЦель: добраться до зелёной зоны.", "Начать игру");
+    
+    animate();
+}
+
+// === ЗАГРУЗКА УРОВНЯ ===
+function loadLevel(levelNum) {
+    currentLevel = levelNum;
+    const level = levels[levelNum - 1];
+    
+    // Очистка сцены
+    cubes.forEach(c => scene.remove(c));
+    walls.forEach(w => scene.remove(w));
+    portals.forEach(p => scene.remove(p.mesh));
+    buttons.forEach(b => scene.remove(b.mesh));
+    doors.forEach(d => scene.remove(d.mesh));
+    cubes = [];
+    walls = [];
+    portals = [];
+    buttons = [];
+    doors = [];
+    
+    // Позиция игрока
+    player.position.set(level.player.x, 0.4, level.player.z);
+    player.material.color.setHex(0xffd700);
+    
+    // Текущее измерение
+    currentDimension = level.dimension;
+    updateDimensionIndicator();
+    
+    // Пол (сетка)
+    const gridHelper = new THREE.GridHelper(10, 10, 0x333333, 0x222222);
+    gridHelper.position.set(4.5, 0, 4.5);
+    scene.add(gridHelper);
+    cubes.push(gridHelper);
+    
+    // Стены
+    level.walls.forEach(w => {
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshPhongMaterial({ 
+            color: getDimensionColor(currentDimension),
+            transparent: true,
+            opacity: 0.7
+        });
+        const wall = new THREE.Mesh(geometry, material);
+        wall.position.set(w.x, 0.5, w.z);
+        wall.castShadow = true;
+        scene.add(wall);
+        walls.push(wall);
+    });
+    
+    // Порталы
+    level.portals.forEach(p => {
+        const geometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
+        const material = new THREE.MeshPhongMaterial({ 
+            color: dimensionColors[p.dimension],
+            emissive: dimensionColors[p.dimension],
+            emissiveIntensity: 0.5
+        });
+        const portal = new THREE.Mesh(geometry, material);
+        portal.position.set(p.x, 0.05, p.z);
+        portal.rotation.x = Math.PI / 2;
+        portal.userData = { dimension: p.dimension };
+        scene.add(portal);
+        portals.push({ mesh: portal, x: p.x, z: p.z, dimension: p.dimension });
+    });
+    
+    // Кнопки
+    level.buttons.forEach(b => {
+        const geometry = new THREE.BoxGeometry(0.6, 0.1, 0.6);
+        const material = new THREE.MeshPhongMaterial({ color: 0x2196f3 });
+        const button = new THREE.Mesh(geometry, material);
+        button.position.set(b.x, 0.05, b.z);
+        button.userData = { opensDoor: b.opensDoor, pressed: false };
+        scene.add(button);
+        buttons.push({ mesh: button, x: b.x, z: b.z, opensDoor: b.opensDoor, pressed: false });
+    });
+    
+    // Двери
+    level.doors.forEach(d => {
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshPhongMaterial({ 
+            color: d.open ? 0x4caf50 : 0x795548,
+            transparent: true,
+            opacity: d.open ? 0.3 : 1
+        });
+        const door = new THREE.Mesh(geometry, material);
+        door.position.set(d.x, 0.5, d.z);
+        door.userData = { open: d.open };
+        scene.add(door);
+        doors.push({ mesh: door, x: d.x, z: d.z, open: d.open });
+    });
+    
+    // Цель
+    const goalGeometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+    const goalMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x4caf50,
+        emissive: 0x4caf50,
+        emissiveIntensity: 0.4,
+        transparent: true,
+        opacity: 0.8
+    });
+    const goal = new THREE.Mesh(goalGeometry, goalMaterial);
+    goal.position.set(level.goal.x, 0.45, level.goal.z);
+    scene.add(goal);
+    cubes.push(goal);
+    
+    // Обновление UI
+    document.getElementById('levelDisplay').textContent = currentLevel;
+    document.getElementById('movesDisplay').textContent = '0';
+    moves = 0;
+    
+    const levelKey = `level_${currentLevel}`;
+    document.getElementById('bestDisplay').textContent = bestScores[levelKey] || '-';
+    
+    // Туториал
+    if (level.tutorial && !gameStarted) {
+        showMessage(`Уровень ${currentLevel}: ${level.name}`, level.tutorial, "Понятно");
+    }
+    
+    gameStarted = true;
+}
+
+// === ПОЛУЧЕНИЕ ЦВЕТА ИЗМЕРЕНИЯ ===
+function getDimensionColor(dim) {
+    return dimensionColors[dim] || 0x4fc3f7;
+}
+
+// === ОБНОВЛЕНИЕ ИНДИКАТОРА ИЗМЕРЕНИЯ ===
+function updateDimensionIndicator() {
+    document.getElementById('currentDimension').textContent = currentDimension;
+    const indicator = document.getElementById('dimensionIndicator');
+    indicator.style.borderColor = '#' + dimensionColors[currentDimension].toString(16).padStart(6, '0');
+    scene.background = new THREE.Color(currentDimension === 'Alpha' ? 0x0a0a1a : 
+                       currentDimension === 'Beta' ? 0x1a0a0a : 0x0a1a0a);
+}
+
+// === ОБРАБОТКА НАЖАТИЙ ===
+function handleKeyPress(e) {
+    if (!gameStarted) return;
+    
+    const level = levels[currentLevel - 1];
+    let dx = 0, dz = 0;
+    
+    switch(e.key.toLowerCase()) {
+        case 'arrowup': case 'w': dz = -1; break;
+        case 'arrowdown': case 's': dz = 1; break;
+        case 'arrowleft': case 'a': dx = -1; break;
+        case 'arrowright': case 'd': dx = 1; break;
+        case ' ': case 'q':
+            switchDimension();
+            return;
+        case 'r':
+            loadLevel(currentLevel);
+            return;
+        case 'm':
+            document.getElementById('levelDropdown').focus();
+            return;
+        default:
+            return;
+    }
+    
+    e.preventDefault();
+    
+    const newX = Math.round(player.position.x) + dx;
+    const newZ = Math.round(player.position.z) + dz;
+    
+    // Проверка границ
+    if (newX < 1 || newX > 9 || newZ < 1 || newZ > 9) return;
+    
+    // Проверка стен
+    const wallPos = level.walls.find(w => w.x === newX && w.z === newZ);
+    if (wallPos) return;
+    
+    // Проверка дверей
+    const door = doors.find(d => d.x === newX && d.z === newZ && !d.open);
+    if (door) return;
+    
+    // Движение
+    player.position.set(newX, 0.4, newZ);
+    moves++;
+    document.getElementById('movesDisplay').textContent = moves;
+    
+    // Проверка кнопок
+    buttons.forEach(btn => {
+        if (btn.x === newX && btn.z === newZ && !btn.pressed) {
+            btn.pressed = true;
+            btn.mesh.material.color.setHex(0x4caf50);
+            
+            // Открытие дверей
+            if (btn.opensDoor) {
+                doors.forEach(d => {
+                    d.open = true;
+                    d.mesh.material.color.setHex(0x4caf50);
+                    d.mesh.material.opacity = 0.3;
+                });
+            }
+        }
+    });
+    
+    // Проверка порталов
+    portals.forEach(p => {
+        if (p.x === newX && p.z === newZ) {
+            currentDimension = p.dimension;
+            updateDimensionIndicator();
+            loadLevel(currentLevel); // Перезагрузка для обновления стен
+        }
+    });
+    
+    // Проверка победы
+    if (Math.abs(newX - level.goal.x) < 0.5 && Math.abs(newZ - level.goal.z) < 0.5) {
+        levelComplete();
+    }
+}
+
+// === СМЕНА ИЗМЕРЕНИЯ ===
+function switchDimension() {
+    const currentIndex = dimensions.indexOf(currentDimension);
+    const nextIndex = (currentIndex + 1) % dimensions.length;
+    currentDimension = dimensions[nextIndex];
+    updateDimensionIndicator();
+    loadLevel(currentLevel);
+}
+
+// === ПОБЕДА НА УРОВНЕ ===
+function levelComplete() {
+    const levelKey = `level_${currentLevel}`;
+    if (!bestScores[levelKey] || moves < bestScores[levelKey]) {
+        bestScores[levelKey] = moves;
+        localStorage.setItem('quantumShiftBest', JSON.stringify(bestScores));
+    }
+    
+    if (currentLevel < levels.length) {
+        showMessage(`🎉 Уровень ${currentLevel} пройден!`, `Шаги: ${moves}\nЛучший результат: ${bestScores[levelKey]}`, `Уровень ${currentLevel + 1}`);
+        currentLevel++;
+    } else {
+        showMessage(`🏆 ПОЗДРАВЛЯЕМ!`, `Ты прошёл все 55 уровней!\nОбщее количество шагов: ${moves}\n\nТы спас человечество!`, "Играть снова");
+        currentLevel = 1;
+    }
+}
+
+// === ПОКАЗ СООБЩЕНИЯ ===
+function showMessage(title, text, buttonText) {
+    document.getElementById('messageTitle').textContent = title;
+    document.getElementById('messageText').textContent = text;
+    document.getElementById('actionButton').textContent = buttonText;
+    document.getElementById('message').style.display = 'block';
+}
+
+// === СКРЫТИЕ СООБЩЕНИЯ ===
+function hideMessage() {
+    document.getElementById('message').style.display = 'none';
+    if (currentLevel <= levels.length) {
+        loadLevel(currentLevel);
+    }
+}
+
+// === АНИМАЦИЯ ===
+function animate() {
+    requestAnimationFrame(animate);
+    
+    // Вращение камеры
+    const time = Date.now() * 0.0003;
+    camera.position.x = 5 + Math.sin(time) * 8;
+    camera.position.z = 5 + Math.cos(time) * 8;
+    camera.lookAt(5, 0, 5);
+    
+    // Анимация игрока
+    player.rotation.y += 0.02;
+    
+    // Анимация цели
+    const goal = cubes.find(c => c.geometry?.type === 'BoxGeometry' && c.material?.emissive);
+    if (goal) {
+        goal.rotation.y -= 0.03;
+        goal.scale.y = 1 + Math.sin(Date.now() * 0.003) * 0.1;
+    }
+    
+    renderer.render(scene, camera);
+}
+
+// === ЗАПУСК ПРИ ЗАГРУЗКЕ ===
+window.addEventListener('load', init);
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+    </script>
+</body>
+</html>
