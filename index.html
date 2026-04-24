@@ -78,6 +78,9 @@
     let currentLevel = 1;
     let isGameOver = false;
     let safePathIndex = 0; // 0 = слева, 1 = справа
+    
+    // Для предотвращения дрожи
+    let fallThreshold = 0.05;
 
     // Элементы UI
     const levelDisplay = document.getElementById('level-display');
@@ -170,19 +173,13 @@
         // Случайно выбираем, какая платформа безопасна (0 - лево, 1 - право)
         safePathIndex = Math.random() < 0.5 ? 0 : 1;
 
-        // Цвета для визуального обмана (они выглядят одинаково опасно или нормально)
-        const colorSafe = 0x4CAF50; // Зеленый (но игрок не знает этого заранее)
-        const colorDeadly = 0xF44336; // Красный
-        
-        // Для сложности сделаем их визуально похожими на стартовую или нейтральными, 
-        // но в этой версии мы сделаем их разными цветами для наглядности механики,
-        // либо можно сделать их одинаковыми серыми для хардкора.
-        // Давайте сделаем их ОДИНАКОВЫМИ серыми, чтобы игрок гадал.
+        // Обе платформы выглядят одинаково (серыми), чтобы игрок не мог угадать по цвету
         const neutralColor = 0x888888;
 
-        // Левая платформа
+        // Левая платформа: безопасна если safePathIndex === 0
         createPlatform(leftX, 0, platformZ, platWidth, 1, platDepth, neutralColor, safePathIndex === 0);
-        // Правая платформа
+        
+        // Правая платформа: безопасна если safePathIndex === 1
         createPlatform(rightX, 0, platformZ, platWidth, 1, platDepth, neutralColor, safePathIndex === 1);
 
         // Финишная зона (если это последний уровень) или переход
@@ -282,8 +279,8 @@
         // Проверка безопасных платформ
         for (let p of platforms) {
             if (playerBox.intersectsBox(p.box)) {
-                // Если мы падаем сверху
-                if (velocity.y <= 0 && player.position.y > p.mesh.position.y + 0.5) {
+                // Если мы падаем сверху или находимся на поверхности
+                if (velocity.y <= 0 && player.position.y >= p.mesh.position.y + 0.5 - fallThreshold) {
                     player.position.y = p.mesh.position.y + 1; // Ставим на поверхность
                     velocity.y = 0;
                     isGrounded = true;
