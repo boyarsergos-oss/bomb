@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Disarm - 50 Уровней Головоломок</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0f;
+            color: #00ff88;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 900px;
+            height: 700px;
+            background: linear-gradient(135deg, #0d0d1a 0%, #1a1a2e 100%);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+            overflow: hidden;
+        }
+        
+        #header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.7);
+            border-bottom: 1px solid #00ff88;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+        }
+        
+        .stat {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        #level-display {
+            color: #00ffff;
+        }
+        
+        #timer-display {
+            color: #ff6b6b;
+        }
+        
+        #moves-display {
+            color: #ffd93d;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 120px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        canvas {
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 5px;
+        }
+        
+        #footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.7);
+            border-top: 1px solid #00ff88;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            z-index: 100;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            background: transparent;
+            color: #00ff88;
+            border: 2px solid #00ff88;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #00ff88;
+            color: #0a0a0f;
+            transform: scale(1.05);
+        }
+        
+        #message-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 200;
+            text-align: center;
+        }
+        
+        #message-title {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px currentColor;
+        }
+        
+        #message-text {
+            font-size: 24px;
+            margin-bottom: 30px;
+            max-width: 600px;
+            line-height: 1.5;
+        }
+        
+        .success {
+            color: #00ff88;
+        }
+        
+        .failure {
+            color: #ff6b6b;
+        }
+        
+        .warning {
+            color: #ffd93d;
+        }
+        
+        #instructions {
+            position: absolute;
+            top: 70px;
+            right: 10px;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff88;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 50;
+        }
+        
+        #instructions h3 {
+            margin-bottom: 10px;
+            color: #00ffff;
+        }
+        
+        #instructions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        #instructions li {
+            margin-bottom: 5px;
+        }
+        
+        .legend-item {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            vertical-align: middle;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="header">
+            <div class="stat" id="level-display">Уровень: 1/50</div>
+            <div class="stat" id="timer-display">Время: 0:00</div>
+            <div class="stat" id="moves-display">Ходы: 0</div>
+        </div>
+        
+        <div id="canvas-container">
+            <canvas id="gameCanvas" width="600" height="520"></canvas>
+        </div>
+        
+        <div id="instructions">
+            <h3>Как играть:</h3>
+            <ul>
+                <li><span class="legend-item" style="background: #00ff88;"></span>Игрок - перемещение</li>
+                <li><span class="legend-item" style="background: #ff6b6b;"></span>Бомба - цель</li>
+                <li><span class="legend-item" style="background: #4ecdc4;"></span>Квантовый портал</li>
+                <li><span class="legend-item" style="background: #ffd93d;"></span>Переключатель</li>
+                <li><span class="legend-item" style="background: #95a5a6;"></span>Стена</li>
+                <li><span class="legend-item" style="background: #00ffff;"></span>Лёд (скольжение)</li>
+                <li><span class="legend-item" style="background: #e74c3c; opacity: 0.5;"></span>Лазер</li>
+            </ul>
+            <p style="margin-top: 10px;"><strong>Цель:</strong> Доберитесь до бомбы чтобы обезвредить её!</p>
+        </div>
+        
+        <div id="footer">
+            <button onclick="game.restartLevel()">Рестарт (R)</button>
+            <button onclick="game.prevLevel()">← Назад</button>
+            <button onclick="game.nextLevel()">Вперёд →</button>
+            <button onclick="game.toggleSound()">Звук: ВКЛ</button>
+        </div>
+        
+        <div id="message-overlay">
+            <div id="message-title"></div>
+            <div id="message-text"></div>
+            <button onclick="game.closeMessage()">Продолжить</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
