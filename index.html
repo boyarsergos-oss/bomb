@@ -2,21 +2,21 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>3D Платформер: Путь Памяти</title>
+    <title>3D Платформер: Выбор пути</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
-        #info {
+        #ui {
             position: absolute;
             top: 20px;
             width: 100%;
             text-align: center;
             color: white;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px #000;
             pointer-events: none;
-            z-index: 10;
+            text-shadow: 2px 2px 4px #000;
+            user-select: none;
         }
+        #level-indicator { font-size: 24px; font-weight: bold; }
+        #message { font-size: 18px; margin-top: 10px; color: #ffeb3b; }
         #restart-btn {
             display: none;
             position: absolute;
@@ -25,335 +25,302 @@
             transform: translate(-50%, -50%);
             padding: 15px 30px;
             font-size: 20px;
-            background: #ff4757;
+            background: #4CAF50;
             color: white;
             border: none;
-            border-radius: 5px;
             cursor: pointer;
-            z-index: 20;
+            pointer-events: auto;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            font-weight: bold;
         }
-        #win-screen {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px 40px;
-            font-size: 30px;
-            background: #2ed573;
-            color: white;
-            border-radius: 10px;
-            z-index: 20;
-            text-align: center;
-        }
+        #restart-btn:hover { background: #45a049; }
     </style>
 </head>
 <body>
 
-<div id="info">Уровень: <span id="level-display">1</span><br>Найди безопасную платформу!</div>
+<div id="ui">
+    <div id="level-indicator">Уровень: 1</div>
+    <div id="message">Найди безопасную платформу!</div>
+</div>
 <button id="restart-btn" onclick="resetGame()">Попробовать снова</button>
-<div id="win-screen">ПОБЕДА!<br><small>Ты прошел все испытания</small><br><button onclick="location.reload()" style="margin-top:10px; padding:10px; cursor:pointer;">Играть заново</button></div>
 
-<!-- Подключаем Three.js -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
-    // --- НАСТРОЙКИ ИГРЫ ---
+    // --- НАСТРОЙКИ ---
     const PLAYER_SPEED = 0.15;
-    const JUMP_FORCE = 0.25;
-    const GRAVITY = 0.012;
-    const TOTAL_LEVELS = 5;
-
+    const JUMP_FORCE = 0.28;
+    const GRAVITY = 0.015;
+    const PLATFORM_WIDTH = 3.5;
+    const PLATFORM_DEPTH = 4;
+    const GAP_SIZE = 2.5; 
+    
     let scene, camera, renderer;
     let player;
     let platforms = [];
-    let obstacles = []; // Смертельные платформы
-    let finishZone;
     
-    // Физика игрока
+    // Физика
     let velocity = new THREE.Vector3(0, 0, 0);
     let isGrounded = false;
-    let keys = { w: false, a: false, s: false, d: false, space: false };
+    let canJump = false;
     
+    // Состояние игры
     let currentLevel = 1;
-    let isGameOver = false;
-    let safePathIndex = 0; // 0 = слева, 1 = справа
-    
-    // Для предотвращения дрожи
-    let fallThreshold = 0.05;
+    const MAX_LEVELS = 5;
+    let gameActive = true;
+    let keys = {};
 
-    // Элементы UI
-    const levelDisplay = document.getElementById('level-display');
     const restartBtn = document.getElementById('restart-btn');
-    const winScreen = document.getElementById('win-screen');
+    const levelText = document.getElementById('level-indicator');
+    const msgText = document.getElementById('message');
 
     function init() {
         // Сцена
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Небо
-        scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 15, 40);
 
         // Камера
-        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 5, 10);
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 6, 12);
         camera.lookAt(0, 0, 0);
 
         // Рендерер
         renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
         // Свет
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(10, 20, 10);
         dirLight.castShadow = true;
-        dirLight.shadow.camera.left = -20;
-        dirLight.shadow.camera.right = 20;
-        dirLight.shadow.camera.top = 20;
-        dirLight.shadow.camera.bottom = -20;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 50;
+        dirLight.shadow.camera.left = -15;
+        dirLight.shadow.camera.right = 15;
+        dirLight.shadow.camera.top = 15;
+        dirLight.shadow.camera.bottom = -15;
         scene.add(dirLight);
 
-        createPlayer();
-        loadLevel(1);
+        // Игрок
+        const playerGeo = new THREE.BoxGeometry(1, 1, 1);
+        const playerMat = new THREE.MeshStandardMaterial({ color: 0xff9800 });
+        player = new THREE.Mesh(playerGeo, playerMat);
+        player.castShadow = true;
+        player.receiveShadow = true;
+        scene.add(player);
 
-        // Обработчики событий
+        // Управление
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
         window.addEventListener('resize', onWindowResize, false);
-        document.addEventListener('keydown', (e) => handleKey(e, true));
-        document.addEventListener('keyup', (e) => handleKey(e, false));
 
+        startLevel(1);
         animate();
     }
 
-    function createPlayer() {
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshStandardMaterial({ color: 0xffaa00 });
-        player = new THREE.Mesh(geometry, material);
-        player.castShadow = true;
-        player.position.y = 2;
-        scene.add(player);
-    }
-
-    function clearLevel() {
-        // Удаляем старые платформы
-        platforms.forEach(p => scene.remove(p.mesh));
-        obstacles.forEach(o => scene.remove(o.mesh));
-        if (finishZone) scene.remove(finishZone);
-        
-        platforms = [];
-        obstacles = [];
-        finishZone = null;
-        
-        // Сброс позиции игрока
-        player.position.set(0, 2, 0);
-        velocity.set(0, 0, 0);
-        isGameOver = false;
-        restartBtn.style.display = 'none';
-    }
-
-    function loadLevel(level) {
-        clearLevel();
-        currentLevel = level;
-        levelDisplay.innerText = currentLevel;
-
-        // Стартовая платформа (безопасная)
-        createPlatform(0, 0, 0, 4, 1, 4, 0xaaaaaa);
-
-        // Генерация выбора пути
-        const gapZ = 6; // Расстояние до развилки
-        const platformZ = -gapZ;
-        const leftX = -3;
-        const rightX = 3;
-        const platWidth = 2.5;
-        const platDepth = 4;
-
-        // Случайно выбираем, какая платформа безопасна (0 - лево, 1 - право)
-        safePathIndex = Math.random() < 0.5 ? 0 : 1;
-
-        // Обе платформы выглядят одинаково (серыми), чтобы игрок не мог угадать по цвету
-        const neutralColor = 0x888888;
-
-        // Левая платформа: безопасна если safePathIndex === 0
-        createPlatform(leftX, 0, platformZ, platWidth, 1, platDepth, neutralColor, safePathIndex === 0);
-        
-        // Правая платформа: безопасна если safePathIndex === 1
-        createPlatform(rightX, 0, platformZ, platWidth, 1, platDepth, neutralColor, safePathIndex === 1);
-
-        // Финишная зона (если это последний уровень) или переход
-        if (currentLevel >= TOTAL_LEVELS) {
-            createFinishZone(0, 0.5, platformZ - 4);
-        } else {
-            // Мостик к следующему уровню (условно)
-            // Для простоты, если выжил на развилке - победа в раунде, рестарт уровня но сложнее?
-            // Или просто бесконечная генерация?
-            // Сделаем так: Выбрал правильно -> Появляется финиш чуть дальше.
-            
-            const finishZ = platformZ - 3;
-            createFinishZone(0, 0.5, finishZ);
-        }
-    }
-
-    function createPlatform(x, y, z, w, h, d, color, isSafe = true) {
-        const geometry = new THREE.BoxGeometry(w, h, d);
-        const material = new THREE.MeshStandardMaterial({ color: color });
+    function createPlatform(x, z, type) {
+        const geometry = new THREE.BoxGeometry(PLATFORM_WIDTH, 1, PLATFORM_DEPTH);
+        // Все платформы серые, чтобы игрок не знал заранее
+        const material = new THREE.MeshStandardMaterial({ color: 0xaaaaaa }); 
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(x, y - 0.5, z); // Корректировка, чтобы верх был на y
+        
+        mesh.position.set(x, 0, z);
         mesh.receiveShadow = true;
         mesh.castShadow = true;
         
-        scene.add(mesh);
-        
-        const data = {
-            mesh: mesh,
-            box: new THREE.Box3().setFromObject(mesh),
-            isSafe: isSafe,
-            type: 'platform'
+        // Данные платформы
+        mesh.userData = {
+            type: type, // 'safe' или 'trap'
+            active: true
         };
 
-        if (isSafe) {
-            platforms.push(data);
-        } else {
-            obstacles.push(data);
-            // Добавим визуальный маркер опасности (например, шипы или красный свет снизу), 
-            // но в задании сказано "игрок должен запоминать/угадывать", значит визуальных подсказок быть не должно.
-            // Оставим его серым.
-        }
+        scene.add(mesh);
+        platforms.push(mesh);
+        return mesh;
     }
 
-    function createFinishZone(x, y, z) {
-        const geometry = new THREE.CylinderGeometry(1.5, 1.5, 0.2, 32);
-        const material = new THREE.MeshStandardMaterial({ 
-            color: 0xFFFF00, 
-            emissive: 0xFFAA00,
-            transparent: true,
-            opacity: 0.8
-        });
-        finishZone = new THREE.Mesh(geometry, material);
-        finishZone.position.set(x, y, z);
-        finishZone.rotation.x = Math.PI / 2;
-        scene.add(finishZone);
+    function startLevel(level) {
+        currentLevel = level;
+        levelText.innerText = `Уровень: ${currentLevel}`;
+        msgText.innerText = "Осторожно! Одна платформа пропадет.";
+        msgText.style.color = "#ffeb3b";
+        gameActive = true;
+        restartBtn.style.display = 'none';
+
+        // Очистка
+        platforms.forEach(p => scene.remove(p));
+        platforms = [];
         
-        // Добавим светящийся столб
-        const light = new THREE.PointLight(0xFFFF00, 1, 10);
-        light.position.set(x, 2, z);
-        scene.add(light);
+        // Сброс игрока
+        player.position.set(0, 2, -10);
+        velocity.set(0, 0, 0);
+        isGrounded = false;
+
+        // 1. Стартовая платформа
+        createPlatform(0, -10, 'safe');
+
+        // 2. Две платформы выбора (случайный выбор безопасной)
+        const isSafeLeft = Math.random() < 0.5;
+        const xPosLeft = - (GAP_SIZE + PLATFORM_WIDTH) / 2;
+        const xPosRight = (GAP_SIZE + PLATFORM_WIDTH) / 2;
+        const zPosChoice = 0;
+
+        if (isSafeLeft) {
+            createPlatform(xPosLeft, zPosChoice, 'safe');
+            createPlatform(xPosRight, zPosChoice, 'trap');
+        } else {
+            createPlatform(xPosLeft, zPosChoice, 'trap');
+            createPlatform(xPosRight, zPosChoice, 'safe');
+        }
+
+        // 3. Финишная платформа
+        createPlatform(0, 10, 'safe');
     }
 
-    function handleKey(e, isPressed) {
-        const key = e.code;
-        if (key === 'KeyW' || key === 'ArrowUp') keys.w = isPressed;
-        if (key === 'KeyA' || key === 'ArrowLeft') keys.a = isPressed;
-        if (key === 'KeyS' || key === 'ArrowDown') keys.s = isPressed;
-        if (key === 'KeyD' || key === 'ArrowRight') keys.d = isPressed;
-        if (key === 'Space') {
-            if (isPressed && !keys.space && isGrounded) {
-                velocity.y = JUMP_FORCE;
-                isGrounded = false;
-            }
-            keys.space = isPressed;
+    function resetGame() {
+        startLevel(1);
+    }
+
+    function gameOver(win) {
+        gameActive = false;
+        restartBtn.style.display = 'block';
+        if (win) {
+            msgText.innerText = "ПОБЕДА! Ты мастер памяти!";
+            msgText.style.color = "#4CAF50";
+        } else {
+            msgText.innerText = "Упс! Это была ловушка.";
+            msgText.style.color = "#F44336";
         }
     }
 
     function updatePhysics() {
-        if (isGameOver) return;
+        if (!gameActive) return;
 
-        // Движение по X и Z
-        if (keys.w) player.position.z -= PLAYER_SPEED;
-        if (keys.s) player.position.z += PLAYER_SPEED;
-        if (keys.a) player.position.x -= PLAYER_SPEED;
-        if (keys.d) player.position.x += PLAYER_SPEED;
+        // --- Движение ---
+        let moveX = 0;
+        let moveZ = 0;
 
-        // Гравитация
+        if (keys['KeyW'] || keys['ArrowUp']) moveZ = -1;
+        if (keys['KeyS'] || keys['ArrowDown']) moveZ = 1;
+        if (keys['KeyA'] || keys['ArrowLeft']) moveX = -1;
+        if (keys['KeyD'] || keys['ArrowRight']) moveX = 1;
+
+        // Нормализация диагонального движения
+        if (moveX !== 0 || moveZ !== 0) {
+            const length = Math.sqrt(moveX*moveX + moveZ*moveZ);
+            moveX /= length;
+            moveZ /= length;
+        }
+
+        player.position.x += moveX * PLAYER_SPEED;
+        player.position.z += moveZ * PLAYER_SPEED;
+
+        // --- Прыжок ---
+        if ((keys['Space'] || keys['ArrowUp'] && moveZ === 0) && isGrounded && !keys['SpaceLocked']) {
+            velocity.y = JUMP_FORCE;
+            isGrounded = false;
+            keys['SpaceLocked'] = true; // Чтобы не прыгать бесконечно при зажатой кнопке
+        }
+        if (!keys['Space']) keys['SpaceLocked'] = false;
+
+        // --- Гравитация ---
         velocity.y -= GRAVITY;
         player.position.y += velocity.y;
 
-        // Проверка коллизий с полом
+        // --- Коллизии ---
         isGrounded = false;
-        const playerBox = new THREE.Box3().setFromObject(player);
-        // Уменьшим хитбокс игрока немного для честности
-        playerBox.expandByScalar(-0.2); 
+        const playerBottom = player.position.y - 0.5; // Низ игрока
+        const playerTop = player.position.y + 0.5;
+        
+        // Простая проверка: если падаем вниз и пересекаем уровень платформы
+        for (let i = 0; i < platforms.length; i++) {
+            const p = platforms[i];
+            
+            if (!p.userData.active) continue; // Пропускаем исчезнувшие
 
-        // Проверка безопасных платформ
-        for (let p of platforms) {
-            if (playerBox.intersectsBox(p.box)) {
-                // Если мы падаем сверху или находимся на поверхности
-                if (velocity.y <= 0 && player.position.y >= p.mesh.position.y + 0.5 - fallThreshold) {
-                    player.position.y = p.mesh.position.y + 1; // Ставим на поверхность
+            const pTop = p.position.y + 0.5;
+            const pHalfW = PLATFORM_WIDTH / 2;
+            const pHalfD = PLATFORM_DEPTH / 2;
+
+            // Проверка по горизонтали (находимся ли мы над платформой)
+            const dx = Math.abs(player.position.x - p.position.x);
+            const dz = Math.abs(player.position.z - p.position.z);
+
+            if (dx <= pHalfW + 0.4 && dz <= pHalfD + 0.4) {
+                // Проверка по вертикали
+                // Если мы падали (velocity.y <= 0) и низ игрока чуть выше или внутри верха платформы
+                if (velocity.y <= 0 && playerBottom >= pTop - 0.2 && playerBottom <= pTop + 0.5) {
+                    
+                    // Приземление
+                    player.position.y = pTop + 0.5;
                     velocity.y = 0;
                     isGrounded = true;
+
+                    // Обработка ловушки
+                    if (p.userData.type === 'trap') {
+                        triggerTrap(p);
+                    }
+                    break; // Нашли землю, выходим из цикла
                 }
             }
         }
 
-        // Проверка смертельных платформ
-        for (let i = obstacles.length - 1; i >= 0; i--) {
-            let obs = obstacles[i];
-            if (playerBox.intersectsBox(obs.box)) {
-                // Если коснулись плохой платформы
-                triggerDeath(obs);
-                break;
+        // --- Смерть от падения ---
+        if (player.position.y < -5) {
+            gameOver(false);
+        }
+
+        // --- Победа (уровень) ---
+        if (player.position.z > 8 && isGrounded) {
+            if (currentLevel >= MAX_LEVELS) {
+                gameOver(true);
+            } else {
+                startLevel(currentLevel + 1);
             }
         }
-
-        // Проверка падения в бездну
-        if (player.position.y < -10) {
-            triggerDeath(null);
-        }
-
-        // Проверка финиша
-        if (finishZone) {
-            const dist = player.position.distanceTo(finishZone.position);
-            if (dist < 1.5) {
-                levelComplete();
-            }
-        }
-
-        // Камера следует за игроком
-        camera.position.x = player.position.x;
-        camera.position.z = player.position.z + 10;
-        camera.lookAt(player.position.x, player.position.y, player.position.z - 5);
     }
 
-    function triggerDeath(obstacleObj) {
-        isGameOver = true;
+    function triggerTrap(platformMesh) {
+        platformMesh.userData.active = false;
         
-        // Эффект смерти
-        if (obstacleObj) {
-            obstacleObj.mesh.material.color.setHex(0xFF0000); // Становится красной
-            // Можно добавить анимацию исчезновения
-            let disappearInterval = setInterval(() => {
-                obstacleObj.mesh.scale.multiplyScalar(0.9);
-                if (obstacleObj.mesh.scale.x < 0.1) {
-                    clearInterval(disappearInterval);
-                    scene.remove(obstacleObj.mesh);
-                }
-            }, 50);
-        }
-
-        setTimeout(() => {
-            restartBtn.style.display = 'block';
-        }, 500);
+        // Визуальный эффект: краснеет и исчезает
+        platformMesh.material.color.setHex(0xff0000);
+        
+        // Удаляем меш из сцены и массива сразу, чтобы игрок начал падать в следующем кадре
+        scene.remove(platformMesh);
+        const idx = platforms.indexOf(platformMesh);
+        if (idx > -1) platforms.splice(idx, 1);
+        
+        isGrounded = false; // Игрок больше не на земле
     }
 
-    function levelComplete() {
-        if (currentLevel >= TOTAL_LEVELS) {
-            winScreen.style.display = 'block';
-            isGameOver = true;
-        } else {
-            // Переход на следующий уровень
-            currentLevel++;
-            // Небольшая задержка перед загрузкой
-            setTimeout(() => {
-                loadLevel(currentLevel);
-            }, 200);
-        }
+    function updateCamera() {
+        // Камера следует за игроком плавно
+        const targetX = player.position.x * 0.5;
+        const targetY = player.position.y + 6;
+        const targetZ = player.position.z + 10;
+
+        camera.position.x += (targetX - camera.position.x) * 0.1;
+        camera.position.y += (targetY - camera.position.y) * 0.1;
+        camera.position.z += (targetZ - camera.position.z) * 0.1;
+
+        camera.lookAt(player.position);
     }
 
-    function resetGame() {
-        loadLevel(1);
+    function animate() {
+        requestAnimationFrame(animate);
+        updatePhysics();
+        updateCamera();
+        renderer.render(scene, camera);
     }
 
     function onWindowResize() {
@@ -362,15 +329,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    function animate() {
-        requestAnimationFrame(animate);
-        updatePhysics();
-        renderer.render(scene, camera);
-    }
-
-    // Запуск
     init();
-
 </script>
 </body>
 </html>
