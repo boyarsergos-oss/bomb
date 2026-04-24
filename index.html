@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Shift - 3D Puzzle Game</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            overflow: hidden; 
+            background: #0a0a1a;
+            color: white;
+        }
+        #gameCanvas { 
+            display: block; 
+            width: 100vw; 
+            height: 100vh;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        .stat { 
+            font-size: 18px; 
+            margin: 5px 0;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            background: rgba(0,0,0,0.9);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            border: 2px solid #4fc3f7;
+            max-width: 500px;
+        }
+        #message h2 { color: #4fc3f7; margin-bottom: 15px; }
+        #message button {
+            background: #4fc3f7;
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+        }
+        #message button:hover { background: #81d4fa; }
+        #levelSelect {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        #levelSelect select {
+            padding: 8px;
+            font-size: 14px;
+            border-radius: 5px;
+            background: #1a1a2e;
+            color: white;
+            border: 1px solid #4fc3f7;
+        }
+        .dimension-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 10px 30px;
+            border-radius: 20px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #4fc3f7;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div class="stat">🎯 Уровень: <span id="levelDisplay">1</span>/55</div>
+        <div class="stat">👣 Шаги: <span id="movesDisplay">0</span></div>
+        <div class="stat">⭐ Лучший результат: <span id="bestDisplay">-</span></div>
+    </div>
+    
+    <div class="dimension-indicator" id="dimensionIndicator">
+        Измерение: <span id="currentDimension">Alpha</span>
+    </div>
+    
+    <div id="controls">
+        <strong>🎮 Управление:</strong><br>
+        ⬆️⬇️⬅️➡️ или WASD - Движение<br>
+        SPACE или Q - Смена измерения<br>
+        R - Рестарт уровня<br>
+        M - Меню уровней
+    </div>
+    
+    <div id="levelSelect">
+        <select id="levelDropdown"></select>
+    </div>
+    
+    <div id="message">
+        <h2 id="messageTitle">Добро пожаловать!</h2>
+        <p id="messageText"></p>
+        <button id="actionButton">Начать</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
