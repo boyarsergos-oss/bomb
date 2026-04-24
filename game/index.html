@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Flow - 50+ Levels Puzzle Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #0a0a1a;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffff;
+            z-index: 100;
+            text-shadow: 0 0 10px #00ffff;
+        }
+        #level-indicator {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        #moves-counter {
+            font-size: 18px;
+            color: #ff00ff;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #00ffff, #0088ff);
+            border: none;
+            border-radius: 8px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        .btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px #00ffff;
+        }
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #00ff00;
+            text-shadow: 0 0 30px #00ff00;
+            z-index: 100;
+            display: none;
+            text-align: center;
+        }
+        #instructions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ffffff;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+            font-size: 14px;
+        }
+        #progress-bar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 100;
+        }
+        #progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #00ff00);
+            width: 0%;
+            transition: width 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <div id="ui-overlay">
+        <div id="level-indicator">Level: 1 / 60</div>
+        <div id="moves-counter">Moves: 0</div>
+    </div>
+    
+    <div id="progress-bar">
+        <div id="progress-fill"></div>
+    </div>
+    
+    <div id="instructions">
+        <strong>HOW TO PLAY:</strong><br>
+        • Click on blocks to rotate them<br>
+        • Connect energy sources (🔵) to receivers (🔴)<br>
+        • Complete the circuit to win<br>
+        • Each level gets harder!<br>
+        • R - Reset level<br>
+        • N - Next level (when solved)
+    </div>
+    
+    <div id="message">LEVEL COMPLETE!</div>
+    
+    <div id="controls">
+        <button class="btn" onclick="game.resetLevel()">Reset (R)</button>
+        <button class="btn" onclick="game.prevLevel()">Previous</button>
+        <button class="btn" onclick="game.nextLevel()">Next (N)</button>
+    </div>
+    
+    <script type="module" src="/main.js"></script>
+</body>
+</html>
