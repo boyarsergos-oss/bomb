@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Shift - 50+ Уровней</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #0a0a0a;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            z-index: 100;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        
+        #levelInfo {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        #moves {
+            font-size: 18px;
+            color: #0ff;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            text-align: center;
+            z-index: 100;
+        }
+        
+        .key {
+            display: inline-block;
+            padding: 8px 15px;
+            margin: 5px;
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #0ff;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        #shiftBtn {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 40px;
+            font-size: 20px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            z-index: 100;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+        
+        #shiftBtn:hover {
+            transform: translateX(-50%) scale(1.05);
+        }
+        
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 48px;
+            text-align: center;
+            z-index: 200;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 1);
+            display: none;
+        }
+        
+        #dimension_indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px solid #0ff;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 18px;
+            z-index: 100;
+        }
+        
+        .dim-a { border-color: #00ffff; color: #00ffff; }
+        .dim-b { border-color: #ff00ff; color: #ff00ff; }
+        
+        #restartBtn {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 30px;
+            background: rgba(255, 100, 100, 0.3);
+            border: 2px solid #ff6666;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="levelInfo">Уровень: <span id="levelNum">1</span>/50</div>
+        <div id="moves">Ходов: <span id="moveCount">0</span></div>
+    </div>
+    
+    <div id="dimension_indicator" class="dim-a">Реальность: A</div>
+    
+    <button id="restartBtn">↻ Рестарт</button>
+    <button id="shiftBtn">ПРОСТРАНСТВЕННЫЙ СДВИГ (SPACE)</button>
+    
+    <div id="message"></div>
+    
+    <div id="controls">
+        <div class="key">WASD / Стрелки</div> - Движение
+        <div class="key">SPACE</div> - Сдвиг реальности
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // === ИГРОВАЯ ЛОГИКА ===
+        const Game = {
+            level: 1,
+            moves: 0,
+            dimension: 'A',
+            playerPos: { x: 0, y: 0 },
+            goalPos: { x: 0, y: 0 },
+            walls: [],
+            switches: [],
+            portals: [],
+            movingPlatforms: [],
+            isAnimating: false,
+            
+            // Генерация 50+ уникальных уровней
+            generateLevel(levelNum) {
+                const size = Math.min(8 + Math.floor(levelNum / 5), 12);
+                const difficulty = levelNum;
+                
+                this.playerPos = { x: 0, y: 0 };
+                this.walls = [];
+                this.switches = [];
+                this.portals = [];
+                this.movingPlatforms = [];
+                
+                // Границы уровня
+                for (let i = -size; i <= size; i++) {
+                    this.walls.push({ x: i, y: -size, dim: 'both' });
+                    this.walls.push({ x: i, y: size, dim: 'both' });
+                    this.walls.push({ x: -size, y: i, dim: 'both' });
+                    this.walls.push({ x: size, y: i, dim: 'both' });
+                }
+                
+                // Цель всегда в противоположном углу
+                this.goalPos = { x: size - 2, y: size - 2 };
+                
+                // Генерация препятствий в зависимости от уровня
+                if (difficulty <= 10) {
+                    // Уровни 1-10: Простые стены
+                    this.generateWalls(size, difficulty);
+                } else if (difficulty <= 20) {
+                    // Уровни 11-20: Стены + переключатели измерений
+                    this.generateWalls(size, difficulty);
+                    this.generateSwitches(size, difficulty - 10);
+                } else if (difficulty <= 30) {
+                    // Уровни 21-30: Стены + порталы
+                    this.generateWalls(size, difficulty);
+                    this.generatePortals(size, difficulty - 20);
+                } else if (difficulty <= 40) {
+                    // Уровни 31-40: Всё вместе
+                    this.generateWalls(size, difficulty);
+                    this.generateSwitches(size, 10);
+                    this.generatePortals(size, 10);
+                } else {
+                    // Уровни 41-50+: Сложные комбинации + движущиеся платформы
+                    this.generateWalls(size, difficulty);
+                    this.generateSwitches(size, 15);
+                    this.generatePortals(size, 15);
+                    this.generateMovingPlatforms(size, difficulty - 40);
+                }
+                
+                // Добавляем специальные паттерны для определённых уровней
+                this.addSpecialPatterns(levelNum, size);
+                
+                return {
+                    playerStart: { ...this.playerPos },
+                    goal: { ...this.goalPos },
+                    walls: [...this.walls],
+                    switches: [...this.switches],
+                    portals: [...this.portals],
+                    movingPlatforms: [...this.movingPlatforms]
+                };
+            },
+            
+            generateWalls(size, difficulty) {
+                const wallCount = Math.floor(difficulty * 1.5);
+                for (let i = 0; i < wallCount; i++) {
+                    let x, y, attempts = 0;
+                    do {
+                        x = Math.floor(Math.random() * (size * 2 - 4)) - size + 2;
+                        y = Math.floor(Math.random() * (size * 2 - 4)) - size + 2;
+                        attempts++;
+                    } while (attempts < 50 && (
+                        (Math.abs(x - this.playerPos.x) < 2 && Math.abs(y - this.playerPos.y) < 2) ||
+                        (Math.abs(x - this.goalPos.x) < 2 && Math.abs(y - this.goalPos.y) < 2) ||
+                        this.walls.some(w => w.x === x && w.y === y)
+                    ));
+                    
+                    if (attempts < 50) {
+                        const dim = Math.random() < 0.5 ? 'A' : (Math.random() < 0.5 ? 'B' : 'both');
+                        this.walls.push({ x, y, dim });
+                    }
+                }
+            },
+            
+            generateSwitches(size, count) {
+                for (let i = 0; i < count; i++) {
+                    let x, y, attempts = 0;
+                    do {
+                        x = Math.floor(Math.random() * (size * 2 - 6)) - size + 3;
+                        y = Math.floor(Math.random() * (size * 2 - 6)) - size + 3;
+                        attempts++;
+                    } while (attempts < 50 && (
+                        (Math.abs(x - this.playerPos.x) < 2 && Math.abs(y - this.playerPos.y) < 2) ||
+                        (Math.abs(x - this.goalPos.x) < 2 && Math.abs(y - this.goalPos.y) < 2) ||
+                        this.walls.some(w => w.x === x && w.y === y) ||
+                        this.switches.some(s => s.x === x && s.y === y)
+                    ));
+                    
+                    if (attempts < 50) {
+                        const affectsDim = Math.random() < 0.5 ? 'A' : 'B';
+                        this.switches.push({ 
+                            x, y, 
+                            activated: false,
+                            affectsDimension: affectsDim,
+                            originalState: false
+                        });
+                    }
+                }
+            },
+            
+            generatePortals(size, count) {
+                const portalPairs = Math.floor(count / 2);
+                for (let i = 0; i < portalPairs; i++) {
+                    let x1, y1, x2, y2, attempts = 0;
+                    do {
+                        x1 = Math.floor(Math.random() * (size * 2 - 6)) - size + 3;
+                        y1 = Math.floor(Math.random() * (size * 2 - 6)) - size + 3;
+                        x2 = Math.floor(Math.random() * (size * 2 - 6)) - size + 3;
+                        y2 = Math.floor(Math.random() * (size * 2 - 6)) - size + 3;
+                        attempts++;
+                    } while (attempts < 50 && (
+                        (Math.abs(x1 - this.playerPos.x) < 2 && Math.abs(y1 - this.playerPos.y) < 2) ||
+                        (Math.abs(x2 - this.goalPos.x) < 2 && Math.abs(y2 - this.goalPos.y) < 2) ||
+                        this.walls.some(w => (w.x === x1 && w.y === y1) || (w.x === x2 && w.y === y2)) ||
+                        this.portals.some(p => (p.x1 === x1 && p.y1 === y1) || (p.x2 === x2 && p.y2 === y2))
+                    ));
+                    
+                    if (attempts < 50) {
+                        this.portals.push({ x1, y1, x2, y2, active: true });
+                    }
+                }
+            },
+            
+            generateMovingPlatforms(size, count) {
+                for (let i = 0; i < count; i++) {
+                    let x, y, length, horizontal, attempts = 0;
+                    do {
+                        x = Math.floor(Math.random() * (size * 2 - 8)) - size + 4;
+                        y = Math.floor(Math.random() * (size * 2 - 8)) - size + 4;
+                        length = Math.floor(Math.random() * 3) + 2;
+                        horizontal = Math.random() < 0.5;
+                        attempts++;
+                    } while (attempts < 50 && (
+                        (Math.abs(x - this.playerPos.x) < 3 && Math.abs(y - this.playerPos.y) < 3) ||
+                        this.walls.some(w => Math.abs(w.x - x) < 4 && Math.abs(w.y - y) < 4)
+                    ));
+                    
+                    if (attempts < 50) {
+                        this.movingPlatforms.push({
+                            x, y,
+                            startX: x, startY: y,
+                            length,
+                            horizontal,
+                            direction: 1,
+                            speed: 0.02 + (count * 0.005),
+                            currentPos: 0
+                        });
+                    }
+                }
+            },
+            
+            addSpecialPatterns(levelNum, size) {
+                // Специальные паттерны для запоминающихся уровней
+                const patterns = {
+                    5: () => { // Крест
+                        for (let i = -3; i <= 3; i++) {
+                            this.walls.push({ x: i, y: 0, dim: 'A' });
+                            this.walls.push({ x: 0, y: i, dim: 'B' });
+                        }
+                    },
+                    10: () => { // Лабиринт
+                        for (let i = -4; i <= 4; i += 2) {
+                            this.walls.push({ x: i, y: -3, dim: 'both' });
+                            this.walls.push({ x: i, y: 3, dim: 'both' });
+                        }
+                    },
+                    15: () => { // Шахматная доска
+                        for (let x = -5; x <= 5; x++) {
+                            for (let y = -5; y <= 5; y++) {
+                                if ((x + y) % 2 === 0 && !(x === 0 && y === 0)) {
+                                    this.walls.push({ x, y, dim: (x > 0 ? 'A' : 'B') });
+                                }
+                            }
+                        }
+                    },
+                    25: () => { // Спираль
+                        for (let r = 1; r <= 4; r++) {
+                            for (let i = -r; i <= r; i++) {
+                                this.walls.push({ x: i, y: r, dim: r % 2 === 0 ? 'A' : 'B' });
+                                this.walls.push({ x: i, y: -r, dim: r % 2 === 0 ? 'A' : 'B' });
+                                this.walls.push({ x: r, y: i, dim: r % 2 === 0 ? 'A' : 'B' });
+                                this.walls.push({ x: -r, y: i, dim: r % 2 === 0 ? 'A' : 'B' });
+                            }
+                        }
+                    },
+                    35: () => { // Туннель
+                        for (let i = -6; i <= 6; i++) {
+                            if (i !== 0) {
+                                this.walls.push({ x: i, y: -1, dim: 'A' });
+                                this.walls.push({ x: i, y: 1, dim: 'B' });
+                            }
+                        }
+                    },
+                    45: () => { // Крепость
+                        for (let i = -4; i <= 4; i++) {
+                            this.walls.push({ x: i, y: -4, dim: 'both' });
+                            this.walls.push({ x: i, y: 4, dim: 'both' });
+                            this.walls.push({ x: -4, y: i, dim: 'both' });
+                            this.walls.push({ x: 4, y: i, dim: 'both' });
+                        }
+                        this.walls.push({ x: 0, y: 0, dim: 'both' });
+                    },
+                    50: () => { // Финальный вызов
+                        for (let x = -5; x <= 5; x++) {
+                            for (let y = -5; y <= 5; y++) {
+                                if (Math.abs(x) + Math.abs(y) <= 5 && !(x === 0 && y === 0)) {
+                                    this.walls.push({ x, y, dim: (x * y > 0 ? 'A' : 'B') });
+                                }
+                            }
+                        }
+                    }
+                };
+                
+                if (patterns[levelNum]) {
+                    patterns[levelNum]();
+                }
+            },
+            
+            shiftDimension() {
+                if (this.isAnimating) return;
+                
+                this.dimension = this.dimension === 'A' ? 'B' : 'A';
+                document.getElementById('dimension_indicator').className = this.dimension === 'A' ? 'dim-a' : 'dim-b';
+                document.getElementById('dimension_indicator').textContent = `Реальность: ${this.dimension}`;
+                
+                // Проверяем, не оказался ли игрок в стене после смены измерения
+                if (this.isWallAt(this.playerPos.x, this.playerPos.y)) {
+                    this.showMessage("ЛОВУШКА! Возврат...", 1000);
+                    setTimeout(() => {
+                        this.dimension = this.dimension === 'A' ? 'B' : 'A';
+                        document.getElementById('dimension_indicator').className = this.dimension === 'A' ? 'dim-a' : 'dim-b';
+                        document.getElementById('dimension_indicator').textContent = `Реальность: ${this.dimension}`;
+                    }, 1000);
+                }
+                
+                renderer.sceneNeedsUpdate = true;
+            },
+            
+            activateSwitch(x, y) {
+                const switchObj = this.switches.find(s => s.x === x && s.y === y && !s.activated);
+                if (switchObj) {
+                    switchObj.activated = true;
+                    // Переключаем все стены в указанном измерении
+                    this.walls.forEach(wall => {
+                        if (wall.dim === switchObj.affectsDimension) {
+                            wall.dim = wall.dim === 'A' ? 'temp_B' : (wall.dim === 'B' ? 'temp_A' : wall.dim);
+                        } else if (wall.dim === 'temp_A') {
+                            wall.dim = 'A';
+                        } else if (wall.dim === 'temp_B') {
+                            wall.dim = 'B';
+                        }
+                    });
+                    renderer.sceneNeedsUpdate = true;
+                }
+            },
+            
+            usePortal(x, y) {
+                const portal = this.portals.find(p => 
+                    (p.x1 === x && p.y1 === y) || (p.x2 === x && p.y2 === y)
+                );
+                
+                if (portal && portal.active) {
+                    if (portal.x1 === x && portal.y1 === y) {
+                        this.playerPos = { x: portal.x2, y: portal.y2 };
+                    } else {
+                        this.playerPos = { x: portal.x1, y: portal.y1 };
+                    }
+                    renderer.sceneNeedsUpdate = true;
+                }
+            },
+            
+            isWallAt(x, y) {
+                return this.walls.some(w => 
+                    w.x === x && w.y === y && 
+                    (w.dim === 'both' || w.dim === this.dimension)
+                );
+            },
+            
+            movePlayer(dx, dy) {
+                if (this.isAnimating) return;
+                
+                const newX = this.playerPos.x + dx;
+                const newY = this.playerPos.y + dy;
+                
+                // Проверка на движущиеся платформы
+                let onPlatform = false;
+                for (const platform of this.movingPlatforms) {
+                    const platX = Math.round(platform.x);
+                    const platY = Math.round(platform.y);
+                    if (newX === platX && newY === platY) {
+                        onPlatform = true;
+                        break;
+                    }
+                }
+                
+                if (!onPlatform && this.isWallAt(newX, newY)) {
+                    return; // Стена
+                }
+                
+                this.playerPos = { x: newX, y: newY };
+                this.moves++;
+                document.getElementById('moveCount').textContent = this.moves;
+                
+                // Активация переключателя
+                this.activateSwitch(newX, newY);
+                
+                // Использование портала
+                this.usePortal(newX, newY);
+                
+                renderer.sceneNeedsUpdate = true;
+                
+                // Проверка победы
+                if (newX === this.goalPos.x && newY === this.goalPos.y) {
+                    this.levelComplete();
+                }
+            },
+            
+            levelComplete() {
+                this.isAnimating = true;
+                this.showMessage(`УРОВЕНЬ ${this.level} ПРОЙДЕН!`, 2000);
+                
+                setTimeout(() => {
+                    if (this.level >= 50) {
+                        this.showMessage("🎉 ПОЗДРАВЛЯЮ! ВЫ ПРОШЛИ ВСЕ 50 УРОВНЕЙ! 🎉", 5000);
+                        this.isAnimating = false;
+                    } else {
+                        this.level++;
+                        this.moves = 0;
+                        document.getElementById('levelNum').textContent = this.level;
+                        document.getElementById('moveCount').textContent = '0';
+                        this.loadLevel(this.level);
+                        this.isAnimating = false;
+                    }
+                }, 2000);
+            },
+            
+            showMessage(text, duration) {
+                const msgEl = document.getElementById('message');
+                msgEl.textContent = text;
+                msgEl.style.display = 'block';
+                setTimeout(() => {
+                    msgEl.style.display = 'none';
+                }, duration);
+            },
+            
+            loadLevel(levelNum) {
+                const levelData = this.generateLevel(levelNum);
+                this.playerPos = { ...levelData.playerStart };
+                this.goalPos = { ...levelData.goal };
+                this.walls = levelData.walls;
+                this.switches = levelData.switches;
+                this.portals = levelData.portals;
+                this.movingPlatforms = levelData.movingPlatforms;
+                renderer.sceneNeedsUpdate = true;
+            },
+            
+            resetLevel() {
+                this.moves = 0;
+                document.getElementById('moveCount').textContent = '0';
+                this.loadLevel(this.level);
+            }
+        };
+
+        // === THREE.JS РЕНДЕРИНГ ===
+        let scene, camera, renderer;
+        let playerMesh, goalMesh, wallMeshes = [], switchMeshes = [], portalMeshes = [], platformMeshes = [];
+        
+        function init() {
+            // Сцена
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0a);
+            
+            // Камера
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 15, 12);
+            camera.lookAt(0, 0, 0);
+            
+            // Рендерер
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.sceneNeedsUpdate = true;
+            
+            // Свет
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 20);
+            pointLight1.position.set(-5, 5, -5);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0xff00ff, 0.5, 20);
+            pointLight2.position.set(5, 5, 5);
+            scene.add(pointLight2);
+            
+            // Пол (сетка)
+            const gridHelper = new THREE.GridHelper(30, 30, 0x333333, 0x222222);
+            scene.add(gridHelper);
+            
+            // Загрузка первого уровня
+            Game.loadLevel(1);
+            
+            // Обработчики событий
+            setupEventListeners();
+            
+            // Анимационный цикл
+            animate();
+        }
+        
+        function createSceneObjects() {
+            // Очистка старых объектов
+            if (playerMesh) scene.remove(playerMesh);
+            if (goalMesh) scene.remove(goalMesh);
+            wallMeshes.forEach(mesh => scene.remove(mesh));
+            switchMeshes.forEach(mesh => scene.remove(mesh));
+            portalMeshes.forEach(mesh => scene.remove(mesh));
+            platformMeshes.forEach(mesh => scene.remove(mesh));
+            wallMeshes = [];
+            switchMeshes = [];
+            portalMeshes = [];
+            platformMeshes = [];
+            
+            // Игрок
+            const playerGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+            const playerMaterial = new THREE.MeshPhongMaterial({ 
+                color: Game.dimension === 'A' ? 0x00ffff : 0xff00ff,
+                emissive: Game.dimension === 'A' ? 0x004444 : 0x440044,
+                shininess: 100
+            });
+            playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+            playerMesh.position.set(Game.playerPos.x, 0.4, Game.playerPos.y);
+            playerMesh.castShadow = true;
+            scene.add(playerMesh);
+            
+            // Цель
+            const goalGeometry = new THREE.OctahedronGeometry(0.5, 0);
+            const goalMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x004400,
+                transparent: true,
+                opacity: 0.8
+            });
+            goalMesh = new THREE.Mesh(goalGeometry, goalMaterial);
+            goalMesh.position.set(Game.goalPos.x, 0.5, Game.goalPos.y);
+            scene.add(goalMesh);
+            
+            // Стены
+            const wallGeometry = new THREE.BoxGeometry(0.9, 1, 0.9);
+            Game.walls.forEach(wall => {
+                if (wall.dim === 'both' || wall.dim === Game.dimension || wall.dim === 'temp_A' || wall.dim === 'temp_B') {
+                    const isVisible = wall.dim === 'both' || wall.dim === Game.dimension;
+                    const color = wall.dim === 'A' || wall.dim === 'temp_A' ? 0x00ffff : 
+                                  wall.dim === 'B' || wall.dim === 'temp_B' ? 0xff00ff : 0x888888;
+                    
+                    const wallMaterial = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        transparent: !isVisible,
+                        opacity: isVisible ? 1 : 0.3
+                    });
+                    const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
+                    wallMesh.position.set(wall.x, 0.5, wall.y);
+                    wallMesh.castShadow = true;
+                    scene.add(wallMesh);
+                    wallMeshes.push(wallMesh);
+                }
+            });
+            
+            // Переключатели
+            const switchGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+            Game.switches.forEach(sw => {
+                const color = sw.affectsDimension === 'A' ? 0x00ffff : 0xff00ff;
+                const switchMaterial = new THREE.MeshPhongMaterial({ 
+                    color: color,
+                    emissive: sw.activated ? color : 0x000000,
+                    shininess: 100
+                });
+                const switchMesh = new THREE.Mesh(switchGeometry, switchMaterial);
+                switchMesh.position.set(sw.x, 0.1, sw.y);
+                if (sw.activated) {
+                    switchMesh.rotation.y = Math.PI;
+                }
+                scene.add(switchMesh);
+                switchMeshes.push(switchMesh);
+            });
+            
+            // Порталы
+            const portalGeometry = new THREE.TorusGeometry(0.4, 0.1, 16, 32);
+            Game.portals.forEach(portal => {
+                if (portal.active) {
+                    const portalMaterial1 = new THREE.MeshPhongMaterial({ 
+                        color: 0xffff00,
+                        emissive: 0x444400,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const portalMesh1 = new THREE.Mesh(portalGeometry, portalMaterial1);
+                    portalMesh1.position.set(portal.x1, 0.5, portal.y1);
+                    portalMesh1.rotation.x = Math.PI / 2;
+                    scene.add(portalMesh1);
+                    portalMeshes.push(portalMesh1);
+                    
+                    const portalMaterial2 = new THREE.MeshPhongMaterial({ 
+                        color: 0xffff00,
+                        emissive: 0x444400,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const portalMesh2 = new THREE.Mesh(portalGeometry, portalMaterial2);
+                    portalMesh2.position.set(portal.x2, 0.5, portal.y2);
+                    portalMesh2.rotation.x = Math.PI / 2;
+                    scene.add(portalMesh2);
+                    portalMeshes.push(portalMesh2);
+                }
+            });
+            
+            // Движущиеся платформы
+            const platformGeometry = new THREE.BoxGeometry(0.9, 0.2, 0.9);
+            Game.movingPlatforms.forEach(platform => {
+                const platformMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0xffaa00,
+                    emissive: 0x442200
+                });
+                const platformMesh = new THREE.Mesh(platformGeometry, platformMaterial);
+                platformMesh.position.set(platform.x, 0.1, platform.y);
+                scene.add(platformMesh);
+                platformMeshes.push(platformMesh);
+            });
+        }
+        
+        function updateMovingPlatforms() {
+            Game.movingPlatforms.forEach((platform, index) => {
+                platform.currentPos += platform.direction * platform.speed;
+                
+                if (platform.currentPos > platform.length || platform.currentPos < 0) {
+                    platform.direction *= -1;
+                }
+                
+                if (platform.horizontal) {
+                    platform.x = platform.startX + platform.currentPos;
+                } else {
+                    platform.y = platform.startY + platform.currentPos;
+                }
+                
+                if (platformMeshes[index]) {
+                    platformMeshes[index].position.set(platform.x, 0.1, platform.y);
+                }
+            });
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updateMovingPlatforms();
+            
+            // Анимация цели
+            if (goalMesh) {
+                goalMesh.rotation.y += 0.02;
+                goalMesh.rotation.z += 0.01;
+            }
+            
+            // Анимация игрока (пульсация)
+            if (playerMesh) {
+                playerMesh.scale.setScalar(1 + Math.sin(Date.now() * 0.005) * 0.1);
+                playerMesh.material.color.setHex(Game.dimension === 'A' ? 0x00ffff : 0xff00ff);
+                playerMesh.material.emissive.setHex(Game.dimension === 'A' ? 0x004444 : 0x440044);
+            }
+            
+            if (renderer.sceneNeedsUpdate) {
+                createSceneObjects();
+                renderer.sceneNeedsUpdate = false;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function setupEventListeners() {
+            // Клавиатура
+            document.addEventListener('keydown', (e) => {
+                switch(e.code) {
+                    case 'KeyW':
+                    case 'ArrowUp':
+                        Game.movePlayer(0, -1);
+                        break;
+                    case 'KeyS':
+                    case 'ArrowDown':
+                        Game.movePlayer(0, 1);
+                        break;
+                    case 'KeyA':
+                    case 'ArrowLeft':
+                        Game.movePlayer(-1, 0);
+                        break;
+                    case 'KeyD':
+                    case 'ArrowRight':
+                        Game.movePlayer(1, 0);
+                        break;
+                    case 'Space':
+                        Game.shiftDimension();
+                        e.preventDefault();
+                        break;
+                    case 'KeyR':
+                        Game.resetLevel();
+                        break;
+                }
+            });
+            
+            // Кнопки
+            document.getElementById('shiftBtn').addEventListener('click', () => {
+                Game.shiftDimension();
+            });
+            
+            document.getElementById('restartBtn').addEventListener('click', () => {
+                Game.resetLevel();
+            });
+            
+            // Изменение размера окна
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // Запуск игры
+        init();
+    </script>
+</body>
+</html>
