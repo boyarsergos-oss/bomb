@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Game Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: #0a0a0f; 
+            color: #00ff88; 
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #status { 
+            position: fixed; 
+            top: 10px; 
+            left: 10px; 
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border: 1px solid #00ff88;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Загрузка...</div>
+    
+    <div id="game-container" style="position: relative;">
+        <canvas id="gameCanvas" width="600" height="520"></canvas>
+    </div>
+    
+    <script>
+        const status = document.getElementById('status');
+        let logs = ['Старт теста...'];
+        
+        function updateStatus() {
+            status.innerHTML = logs.join('<br>');
+        }
+        
+        window.onerror = function(msg, url, line) {
+            logs.push('❌ ОШИБКА: ' + msg + ' (строка ' + line + ')');
+            updateStatus();
+            return true;
+        };
+        
+        setTimeout(() => {
+            logs.push('✓ Canvas найден: ' + (document.getElementById('gameCanvas') ? 'да' : 'нет'));
+            
+            if (typeof game !== 'undefined') {
+                logs.push('✓ Игра загружена!');
+                logs.push('✓ Уровень: ' + game.currentLevel);
+                logs.push('✓ Grid: ' + game.grid.length + ' рядов');
+                logs.push('✓ Игрок: (' + game.playerPos.x + ', ' + game.playerPos.y + ')');
+                logs.push('<br><strong>ИГРА ГОТОВА! Используйте стрелки для движения.</strong>');
+            } else {
+                logs.push('❌ Объект game не создан');
+            }
+            
+            updateStatus();
+        }, 1000);
+    </script>
+    
+    <script src="game.js"></script>
+</body>
+</html>

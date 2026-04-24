@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Test</title>
+    <style>
+        body { margin: 0; background: #000; color: #0f0; font-family: monospace; }
+        #log { padding: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div id="log"></div>
+    <script>
+        const log = document.getElementById('log');
+        let messages = [];
+        
+        function addLog(msg) {
+            messages.push(msg);
+            log.textContent = messages.join('\n');
+            console.log(msg);
+        }
+        
+        // Перехват ошибок
+        window.onerror = function(msg, url, line) {
+            addLog('ERROR: ' + msg + ' at line ' + line);
+            return true;
+        };
+        
+        addLog('Starting test...');
+        
+        // Создаём необходимые элементы
+        document.body.innerHTML += `
+            <div id="game-container">
+                <canvas id="gameCanvas" width="600" height="520"></canvas>
+            </div>
+        `;
+        
+        addLog('Canvas created');
+        
+        // Проверяем canvas
+        const canvas = document.getElementById('gameCanvas');
+        if (!canvas) {
+            addLog('ERROR: Canvas not found!');
+        } else {
+            addLog('Canvas found: ' + canvas.width + 'x' + canvas.height);
+        }
+        
+        addLog('Loading game.js...');
+    </script>
+    <script src="game.js"></script>
+    <script>
+        addLog('Game script loaded');
+        addLog('Game object exists: ' + (typeof game !== 'undefined'));
+        if (typeof game !== 'undefined') {
+            addLog('Game properties:');
+            addLog('  - currentLevel: ' + game.currentLevel);
+            addLog('  - grid length: ' + (game.grid ? game.grid.length : 'N/A'));
+            addLog('  - playerPos: ' + JSON.stringify(game.playerPos));
+            addLog('  - canvas: ' + (game.canvas ? 'OK' : 'NULL'));
+        }
+        addLog('Test complete!');
+    </script>
+</body>
+</html>

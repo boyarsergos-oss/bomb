@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Minimal Game Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: #0a0a0f; 
+            color: #00ff88; 
+            font-family: monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #status { 
+            position: fixed; 
+            top: 10px; 
+            left: 10px; 
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            border: 2px solid #00ff88;
+            border-radius: 5px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        .ok { color: #00ff88; }
+        .error { color: #ff6b6b; }
+        .info { color: #00ffff; }
+    </style>
+</head>
+<body>
+    <div id="status">🔄 Загрузка игры...</div>
+    
+    <div id="game-container" style="position: relative; width: 900px; height: 700px;">
+        <canvas id="gameCanvas" width="600" height="520"></canvas>
+    </div>
+    
+    <script>
+        const status = document.getElementById('status');
+        let logs = ['<strong>🎮 Quantum Disarm - Тест</strong><br>'];
+        
+        function addLog(msg, type='info') {
+            const cls = type === 'error' ? 'error' : (type === 'ok' ? 'ok' : 'info');
+            logs.push(`<span class="${cls}">${msg}</span>`);
+            status.innerHTML = logs.join('<br>');
+        }
+        
+        window.onerror = function(msg, url, line) {
+            addLog('❌ ОШИБКА: ' + msg + ' (строка ' + line + ')', 'error');
+            return true;
+        };
+        
+        addLog('✓ HTML загружен', 'ok');
+        addLog('✓ Canvas элемент: ' + (document.getElementById('gameCanvas') ? 'найден' : 'НЕ НАЙДЕН'), 
+               document.getElementById('gameCanvas') ? 'ok' : 'error');
+        
+        setTimeout(() => {
+            if (typeof game !== 'undefined') {
+                addLog('✓ Игра инициализирована!', 'ok');
+                addLog('✓ Уровень: ' + (game.currentLevel + 1) + '/50', 'ok');
+                addLog('✓ Сетка: ' + game.grid.length + 'x' + game.grid[0].length, 'ok');
+                addLog('✓ Игрок: (' + game.playerPos.x + ', ' + game.playerPos.y + ')', 'ok');
+                addLog('✓ Canvas контекст: ' + (game.ctx ? 'OK' : 'NULL'), game.ctx ? 'ok' : 'error');
+                addLog('<br><strong>✅ ИГРА ГОТОВА!</strong>', 'ok');
+                addLog('<br>Управление:<br>← ↑ ↓ → или WASD - движение<br>R - рестарт', 'info');
+            } else {
+                addLog('❌ Объект game не создан!', 'error');
+            }
+        }, 500);
+    </script>
+    
+    <script src="game.js"></script>
+</body>
+</html>
