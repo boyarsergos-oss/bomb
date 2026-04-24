@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Flow - 3D Puzzle Game</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            overflow: hidden; 
+            background: #0a0a1a;
+            color: white;
+        }
+        #game-container { position: relative; width: 100vw; height: 100vh; }
+        #ui-overlay {
+            position: absolute; top: 20px; left: 20px; z-index: 100;
+            background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px;
+            backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1);
+        }
+        h1 { font-size: 24px; margin-bottom: 10px; color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+        .stat { margin: 5px 0; font-size: 16px; }
+        .stat-label { color: #aaa; }
+        .stat-value { color: #fff; font-weight: bold; }
+        #message {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 48px; font-weight: bold; text-align: center;
+            text-shadow: 0 0 20px currentColor; opacity: 0; transition: opacity 0.3s;
+            z-index: 200; pointer-events: none;
+        }
+        #controls {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px;
+            display: flex; gap: 10px; z-index: 100;
+        }
+        button {
+            padding: 10px 20px; font-size: 16px; border: none; border-radius: 5px;
+            cursor: pointer; transition: all 0.2s; background: #333; color: white;
+        }
+        button:hover { background: #555; transform: scale(1.05); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #next-btn { background: #00aa00; }
+        #next-btn:hover { background: #00cc00; }
+        #reset-btn { background: #aa4400; }
+        #reset-btn:hover { background: #cc5500; }
+        .progress-bar {
+            width: 200px; height: 8px; background: #333; border-radius: 4px;
+            overflow: hidden; margin-top: 10px;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #00ffff, #00ff00);
+            width: 0%; transition: width 0.3s;
+        }
+        #instructions {
+            position: absolute; top: 20px; right: 20px; z-index: 100;
+            background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px;
+            max-width: 250px; font-size: 14px;
+        }
+        #instructions h3 { color: #00ffff; margin-bottom: 10px; }
+        #instructions p { margin: 5px 0; color: #ccc; }
+        kbd {
+            background: #333; padding: 2px 6px; border-radius: 3px;
+            font-family: monospace; border: 1px solid #555;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <div id="ui-overlay">
+        <h1>⚡ Energy Flow</h1>
+        <div class="stat"><span class="stat-label">Уровень:</span> <span class="stat-value" id="level-display">1/60</span></div>
+        <div class="stat"><span class="stat-label">Ходы:</span> <span class="stat-value" id="moves-display">0</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+
+    <div id="instructions">
+        <h3>🎮 Как играть</h3>
+        <p>Кликай на блоки, чтобы вращать их</p>
+        <p>Соедини 🔵 источники с 🔴 приёмниками</p>
+        <p><kbd>R</kbd> - сброс уровня</p>
+        <p><kbd>N</kbd> - следующий уровень</p>
+        <p><kbd>P</kbd> - предыдущий уровень</p>
+    </div>
+
+    <div id="message"></div>
+
+    <div id="controls">
+        <button id="reset-btn" onclick="resetLevel()">🔄 Сброс (R)</button>
+        <button id="prev-btn" onclick="prevLevel()">◀ Назад (P)</button>
+        <button id="next-btn" onclick="nextLevel()" disabled>Вперёд ▶ (N)</button>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // Game state
+        let currentLevel = 1;
+        const totalLevels = 60;
+        let moves = 0;
+        let levelCompleted = false;
+        let grid = [];
+        let gridSize = 3;
+        let blocks = [];
+        let connections = [];
+
+        // Three.js setup
+        const container = document.getElementById('game-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a1a);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 15, 10);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        const pointLight = new THREE.PointLight(0x00ffff, 0.5, 50);
+        pointLight.position.set(0, 5, 0);
+        scene.add(pointLight);
+
+        // Grid helper
+        const gridHelper = new THREE.GridHelper(20, 20, 0x333333, 0x222222);
+        scene.add(gridHelper);
+
+        // Block types
+        const BLOCK_TYPES = {
+            EMPTY: 0,
+            SOURCE: 1,
+            RECEIVER: 2,
+            STRAIGHT: 3,
+            CORNER: 4,
+            CROSS: 5,
+            OBSTACLE: 6
+        };
+
+        // Generate level
+        function generateLevel(level) {
+            // Determine grid size based on level
+            gridSize = Math.min(3 + Math.floor(level / 10), 10);
+            
+            // Clear grid
+            grid = [];
+            for (let x = 0; x < gridSize; x++) {
+                grid[x] = [];
+                for (let z = 0; z < gridSize; z++) {
+                    grid[x][z] = BLOCK_TYPES.EMPTY;
+                }
+            }
+
+            // Place sources and receivers
+            const numSources = Math.min(1 + Math.floor(level / 15), 3);
+            const numReceivers = numSources;
+
+            // Place obstacles
+            const numObstacles = Math.floor(level / 8);
+            for (let i = 0; i < numObstacles; i++) {
+                let x, z;
+                do {
+                    x = Math.floor(Math.random() * gridSize);
+                    z = Math.floor(Math.random() * gridSize);
+                } while (grid[x][z] !== BLOCK_TYPES.EMPTY || (x === 0 && z === 0));
+                grid[x][z] = BLOCK_TYPES.OBSTACLE;
+            }
+
+            // Place straight and corner pieces
+            const numPieces = Math.floor((gridSize * gridSize - numObstacles) * 0.6);
+            for (let i = 0; i < numPieces; i++) {
+                let x, z;
+                do {
+                    x = Math.floor(Math.random() * gridSize);
+                    z = Math.floor(Math.random() * gridSize);
+                } while (grid[x][z] !== BLOCK_TYPES.EMPTY);
+                
+                const type = Math.random() > 0.4 ? BLOCK_TYPES.STRAIGHT : BLOCK_TYPES.CORNER;
+                grid[x][z] = type;
+            }
+
+            // Ensure at least one source and receiver
+            let sourcePlaced = false;
+            let receiverPlaced = false;
+            
+            for (let x = 0; x < gridSize; x++) {
+                for (let z = 0; z < gridSize; z++) {
+                    if (grid[x][z] === BLOCK_TYPES.EMPTY && !sourcePlaced) {
+                        grid[x][z] = BLOCK_TYPES.SOURCE;
+                        sourcePlaced = true;
+                    } else if (grid[x][z] === BLOCK_TYPES.EMPTY && !receiverPlaced && sourcePlaced) {
+                        grid[x][z] = BLOCK_TYPES.RECEIVER;
+                        receiverPlaced = true;
+                    }
+                }
+            }
+
+            // If still missing, force place
+            if (!sourcePlaced) {
+                grid[0][0] = BLOCK_TYPES.SOURCE;
+            }
+            if (!receiverPlaced) {
+                grid[gridSize-1][gridSize-1] = BLOCK_TYPES.RECEIVER;
+            }
+        }
+
+        // Create block mesh
+        function createBlock(type, rotation, x, z) {
+            const group = new THREE.Group();
+            group.position.set(x - gridSize/2 + 0.5, 0.5, z - gridSize/2 + 0.5);
+            group.userData = { type, rotation, gridX: x, gridZ: z };
+
+            const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+            let material;
+
+            switch(type) {
+                case BLOCK_TYPES.SOURCE:
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0x0088ff, 
+                        emissive: 0x0044aa,
+                        emissiveIntensity: 0.5
+                    });
+                    // Add sphere indicator
+                    const sphereGeo = new THREE.SphereGeometry(0.3, 16, 16);
+                    const sphereMat = new THREE.MeshPhongMaterial({ 
+                        color: 0x00ffff, 
+                        emissive: 0x00ffff,
+                        emissiveIntensity: 0.8
+                    });
+                    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+                    sphere.position.y = 0.6;
+                    group.add(sphere);
+                    break;
+                case BLOCK_TYPES.RECEIVER:
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0xff4444, 
+                        emissive: 0xaa0000,
+                        emissiveIntensity: 0.3
+                    });
+                    // Add ring indicator
+                    const ringGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
+                    const ringMat = new THREE.MeshPhongMaterial({ 
+                        color: 0xff0000, 
+                        emissive: 0xff0000,
+                        emissiveIntensity: 0.6
+                    });
+                    const ring = new THREE.Mesh(ringGeo, ringMat);
+                    ring.rotation.x = Math.PI / 2;
+                    ring.position.y = 0.6;
+                    group.add(ring);
+                    break;
+                case BLOCK_TYPES.STRAIGHT:
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0x444444,
+                        specular: 0x222222
+                    });
+                    // Add connection indicators
+                    const connGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.8, 8);
+                    const connMat = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+                    const conn1 = new THREE.Mesh(connGeo, connMat);
+                    conn1.rotation.z = Math.PI / 2;
+                    conn1.position.set(0, 0, 0.4);
+                    const conn2 = new THREE.Mesh(connGeo, connMat);
+                    conn2.rotation.z = Math.PI / 2;
+                    conn2.position.set(0, 0, -0.4);
+                    group.add(conn1, conn2);
+                    break;
+                case BLOCK_TYPES.CORNER:
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0x555555,
+                        specular: 0x333333
+                    });
+                    // Add L-shaped connection
+                    const lGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.8, 8);
+                    const lMat = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+                    const l1 = new THREE.Mesh(lGeo, lMat);
+                    l1.rotation.z = Math.PI / 2;
+                    l1.position.set(0, 0, 0.4);
+                    const l2 = new THREE.Mesh(lGeo, lMat);
+                    l2.rotation.x = Math.PI / 2;
+                    l2.position.set(0.4, 0, 0);
+                    group.add(l1, l2);
+                    break;
+                case BLOCK_TYPES.CROSS:
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0x666666,
+                        specular: 0x444444
+                    });
+                    // Add cross connections
+                    const crossGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8);
+                    const crossMat = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+                    const c1 = new THREE.Mesh(crossGeo, crossMat);
+                    c1.rotation.z = Math.PI / 2;
+                    c1.position.set(0, 0, 0.4);
+                    const c2 = new THREE.Mesh(crossGeo, crossMat);
+                    c2.rotation.z = Math.PI / 2;
+                    c2.position.set(0, 0, -0.4);
+                    const c3 = new THREE.Mesh(crossGeo, crossMat);
+                    c3.rotation.x = Math.PI / 2;
+                    c3.position.set(0.4, 0, 0);
+                    const c4 = new THREE.Mesh(crossGeo, crossMat);
+                    c4.rotation.x = Math.PI / 2;
+                    c4.position.set(-0.4, 0, 0);
+                    group.add(c1, c2, c3, c4);
+                    break;
+                case BLOCK_TYPES.OBSTACLE:
+                    material = new THREE.MeshPhongMaterial({ 
+                        color: 0x331111,
+                        emissive: 0x220000,
+                        emissiveIntensity: 0.3
+                    });
+                    // Add spikes
+                    const spikeGeo = new THREE.ConeGeometry(0.15, 0.4, 4);
+                    const spikeMat = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+                    for (let i = 0; i < 4; i++) {
+                        const spike = new THREE.Mesh(spikeGeo, spikeMat);
+                        spike.position.set(
+                            Math.cos(i * Math.PI / 2) * 0.3,
+                            0.2,
+                            Math.sin(i * Math.PI / 2) * 0.3
+                        );
+                        spike.rotation.x = Math.PI / 4;
+                        spike.rotation.z = i * Math.PI / 2;
+                        group.add(spike);
+                    }
+                    break;
+                default:
+                    material = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            }
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+
+            group.rotation.y = (rotation * Math.PI) / 2;
+            return group;
+        }
+
+        // Build level
+        function buildLevel() {
+            // Clear existing blocks
+            blocks.forEach(block => scene.remove(block));
+            blocks = [];
+            connections = [];
+
+            generateLevel(currentLevel);
+
+            // Create blocks
+            for (let x = 0; x < gridSize; x++) {
+                for (let z = 0; z < gridSize; z++) {
+                    const type = grid[x][z];
+                    if (type !== BLOCK_TYPES.EMPTY) {
+                        const rotation = Math.floor(Math.random() * 4);
+                        const block = createBlock(type, rotation, x, z);
+                        scene.add(block);
+                        blocks.push(block);
+                    }
+                }
+            }
+
+            // Reset camera
+            const targetPos = gridSize / 2 - 0.5;
+            camera.position.set(targetPos, 15, targetPos + 8);
+            camera.lookAt(targetPos, 0, targetPos);
+
+            updateUI();
+            checkConnections();
+        }
+
+        // Check connections using BFS
+        function checkConnections() {
+            connections = [];
+            const visited = new Set();
+            const queue = [];
+
+            // Find all sources
+            blocks.forEach(block => {
+                if (block.userData.type === BLOCK_TYPES.SOURCE) {
+                    queue.push({ block, direction: 0, path: [block] });
+                    visited.add(`${block.userData.gridX},${block.userData.gridZ}`);
+                }
+            });
+
+            while (queue.length > 0) {
+                const { block, direction, path } = queue.shift();
+                const { type, rotation, gridX, gridZ } = block.userData;
+
+                // Get exit directions based on type and rotation
+                const exits = getExitDirections(type, rotation);
+
+                exits.forEach(exitDir => {
+                    const nextX = gridX + getDirectionOffset(exitDir).x;
+                    const nextZ = gridZ + getDirectionOffset(exitDir).z;
+
+                    if (nextX < 0 || nextX >= gridSize || nextZ < 0 || nextZ >= gridSize) return;
+
+                    const nextBlock = blocks.find(b => 
+                        b.userData.gridX === nextX && b.userData.gridZ === nextZ
+                    );
+
+                    if (!nextBlock || visited.has(`${nextX},${nextZ}`)) return;
+
+                    const nextType = nextBlock.userData.type;
+                    if (nextType === BLOCK_TYPES.OBSTACLE) return;
+
+                    // Check if next block can receive from opposite direction
+                    const oppositeDir = (exitDir + 2) % 4;
+                    const nextExits = getExitDirections(nextType, nextBlock.userData.rotation);
+                    
+                    if (nextExits.includes(oppositeDir) || nextType === BLOCK_TYPES.RECEIVER) {
+                        const newPath = [...path, nextBlock];
+                        
+                        if (nextType === BLOCK_TYPES.RECEIVER) {
+                            connections.push(newPath);
+                        } else {
+                            visited.add(`${nextX},${nextZ}`);
+                            queue.push({ block: nextBlock, direction: exitDir, path: newPath });
+                        }
+                    }
+                });
+            }
+
+            // Highlight connected blocks
+            highlightConnectedBlocks();
+            
+            // Check win condition
+            const won = connections.some(path => 
+                path[path.length - 1].userData.type === BLOCK_TYPES.RECEIVER
+            );
+
+            if (won && !levelCompleted) {
+                levelCompleted = true;
+                showMessage('🎉 УРОВЕНЬ ПРОЙДЕН! 🎉', '#00ff00');
+                document.getElementById('next-btn').disabled = false;
+                
+                // Update progress
+                const progress = (currentLevel / totalLevels) * 100;
+                document.getElementById('progress-fill').style.width = `${progress}%`;
+            }
+        }
+
+        function getExitDirections(type, rotation) {
+            const baseExits = {
+                [BLOCK_TYPES.SOURCE]: [0],
+                [BLOCK_TYPES.RECEIVER]: [0],
+                [BLOCK_TYPES.STRAIGHT]: [0, 2],
+                [BLOCK_TYPES.CORNER]: [0, 1],
+                [BLOCK_TYPES.CROSS]: [0, 1, 2, 3],
+                [BLOCK_TYPES.OBSTACLE]: []
+            };
+
+            const exits = baseExits[type] || [];
+            return exits.map(dir => (dir + rotation) % 4);
+        }
+
+        function getDirectionOffset(dir) {
+            const offsets = [
+                { x: 0, z: -1 },  // 0: forward
+                { x: 1, z: 0 },   // 1: right
+                { x: 0, z: 1 },   // 2: backward
+                { x: -1, z: 0 }   // 3: left
+            ];
+            return offsets[dir];
+        }
+
+        function highlightConnectedBlocks() {
+            // Reset all highlights
+            blocks.forEach(block => {
+                block.children.forEach(child => {
+                    if (child.material) {
+                        child.material.emissiveIntensity = child.material.emissiveIntensity || 0;
+                    }
+                });
+            });
+
+            // Highlight connected
+            connections.forEach(path => {
+                path.forEach(block => {
+                    block.children.forEach(child => {
+                        if (child.material) {
+                            child.material.emissiveIntensity = 0.5;
+                        }
+                    });
+                });
+            });
+        }
+
+        // Rotate block
+        function rotateBlock(block) {
+            if (levelCompleted) return;
+            
+            block.userData.rotation = (block.userData.rotation + 1) % 4;
+            block.rotation.y = (block.userData.rotation * Math.PI) / 2;
+            moves++;
+            updateUI();
+            checkConnections();
+        }
+
+        // Raycaster for click detection
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function onMouseClick(event) {
+            if (levelCompleted) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(blocks, true);
+
+            if (intersects.length > 0) {
+                // Find the parent group
+                let object = intersects[0].object;
+                while (object.parent && object.parent !== scene) {
+                    object = object.parent;
+                }
+
+                if (blocks.includes(object)) {
+                    rotateBlock(object);
+                }
+            }
+        }
+
+        window.addEventListener('click', onMouseClick);
+
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'r') resetLevel();
+            if (e.key.toLowerCase() === 'n' && levelCompleted) nextLevel();
+            if (e.key.toLowerCase() === 'p') prevLevel();
+        });
+
+        // UI functions
+        function updateUI() {
+            document.getElementById('level-display').textContent = `${currentLevel}/${totalLevels}`;
+            document.getElementById('moves-display').textContent = moves;
+        }
+
+        function showMessage(text, color) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.style.color = color;
+            msgEl.style.opacity = 1;
+            
+            setTimeout(() => {
+                msgEl.style.opacity = 0;
+            }, 2000);
+        }
+
+        window.resetLevel = function() {
+            moves = 0;
+            levelCompleted = false;
+            document.getElementById('next-btn').disabled = true;
+            buildLevel();
+            showMessage('🔄 Уровень сброшен', '#ffff00');
+        };
+
+        window.nextLevel = function() {
+            if (currentLevel < totalLevels) {
+                currentLevel++;
+                resetLevel();
+            }
+        };
+
+        window.prevLevel = function() {
+            if (currentLevel > 1) {
+                currentLevel--;
+                resetLevel();
+            }
+        };
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Animate connected blocks
+            const time = Date.now() * 0.001;
+            connections.forEach(path => {
+                path.forEach((block, index) => {
+                    const offset = Math.sin(time * 2 + index) * 0.05;
+                    block.position.y = 0.5 + offset;
+                });
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Start game
+        buildLevel();
+        animate();
+
+        // Initial message
+        setTimeout(() => {
+            showMessage('🎮 Соедини цепи энергии!', '#00ffff');
+        }, 500);
+    </script>
+</body>
+</html>
