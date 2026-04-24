@@ -87,13 +87,51 @@
         <div class="control-hint"><span class="key">🖱️</span> Левая кнопка мыши - Вращение</div>
         <div class="control-hint"><span class="key">🖱️</span> Колесо мыши - Зум</div>
         <div class="control-hint"><span class="key">🖱️</span> Правая кнопка мыши - Панорамирование</div>
+        <div class="control-hint" style="margin-top: 10px;"><span class="key">E</span> - Режим редактирования</div>
+    </div>
+
+    <!-- Панель редактирования -->
+    <div id="edit-panel" style="display: none; position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; color: #fff; z-index: 100; max-height: 80vh; overflow-y: auto;">
+        <h3 style="color: #ff6b6b; margin-bottom: 10px;">🛠️ Редактор элементов</h3>
+        <div style="margin-bottom: 10px;">
+            <button id="toggle-edit-mode" style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; width: 100%;">Выйти из режима (E)</button>
+        </div>
+        <div style="margin-bottom: 10px; font-size: 0.9em; color: #aaa;">Кликните на элемент для выбора</div>
+        <div id="selected-element-info" style="background: rgba(255,255,255,0.1); padding: 8px; border-radius: 5px; margin-bottom: 10px; display: none;">
+            <div style="font-weight: bold; color: #4ecdc4;" id="selected-name">-</div>
+            <div style="font-size: 0.8em; margin-top: 5px;">
+                <div>X: <span id="pos-x">0.00</span></div>
+                <div>Y: <span id="pos-y">0.00</span></div>
+                <div>Z: <span id="pos-z">0.00</span></div>
+            </div>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="show-gizmo" checked>
+                <span>Показать манипулятор</span>
+            </label>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="highlight-selected" checked>
+                <span>Подсветка выбранного</span>
+            </label>
+        </div>
+        <div id="elements-list" style="max-height: 300px; overflow-y: auto;"></div>
+        <button id="reset-positions" style="background: #e74c3c; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px;">Сбросить позиции</button>
+    </div>
+
+    <!-- Индикатор режима редактирования -->
+    <div id="edit-mode-indicator" style="display: none; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(255, 107, 107, 0.9); color: white; padding: 10px 20px; border-radius: 20px; z-index: 100; font-weight: bold;">
+        ✏️ РЕЖИМ РЕДАКТИРОВАНИЯ
     </div>
 
     <script type="importmap">
     {
         "imports": {
             "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "three-transform-controls": "https://unpkg.com/three@0.160.0/examples/jsm/controls/TransformControls.js"
         }
     }
     </script>
@@ -101,6 +139,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
         // Сцена, камера, рендерер
         const scene = new THREE.Scene();
@@ -430,13 +469,215 @@
         gridHelper.position.y = -0.99;
         scene.add(gridHelper);
 
+        // === РЕЖИМ РЕДАКТИРОВАНИЯ ===
+        let editMode = false;
+        let selectedObject = null;
+        let originalMaterials = new Map();
+        
+        // TransformControls для перемещения объектов
+        const transformControl = new TransformControls(camera, renderer.domElement);
+        transformControl.addEventListener('dragging-changed', (event) => {
+            controls.enabled = !event.value;
+        });
+        transformControl.addEventListener('change', () => {
+            updateSelectedInfo();
+        });
+        scene.add(transformControl);
+
+        // Список всех редактируемых элементов бомбы
+        const editableElements = [];
+        
+        function collectEditableObjects(group, parentName = '') {
+            group.children.forEach((child, index) => {
+                if (child.isMesh && child.geometry) {
+                    const name = `${parentName ? parentName + '_' : ''}${child.type}_${index}`;
+                    child.userData.editableName = name;
+                    child.userData.originalPosition = child.position.clone();
+                    editableElements.push(child);
+                }
+                if (child.isGroup) {
+                    collectEditableObjects(child, child.type || `group_${index}`);
+                }
+            });
+        }
+        collectEditableObjects(bombGroup, 'bomb');
+
+        // UI элементы
+        const editPanel = document.getElementById('edit-panel');
+        const editModeIndicator = document.getElementById('edit-mode-indicator');
+        const selectedElementInfo = document.getElementById('selected-element-info');
+        const selectedNameEl = document.getElementById('selected-name');
+        const posXEl = document.getElementById('pos-x');
+        const posYEl = document.getElementById('pos-y');
+        const posZEl = document.getElementById('pos-z');
+        const elementsList = document.getElementById('elements-list');
+        const showGizmoCheckbox = document.getElementById('show-gizmo');
+        const highlightCheckbox = document.getElementById('highlight-selected');
+        const resetButton = document.getElementById('reset-positions');
+        const toggleEditModeButton = document.getElementById('toggle-edit-mode');
+
+        // Функция включения/выключения режима редактирования
+        function setEditMode(enabled) {
+            editMode = enabled;
+            editPanel.style.display = enabled ? 'block' : 'none';
+            editModeIndicator.style.display = enabled ? 'block' : 'none';
+            
+            if (enabled) {
+                transformControl.enabled = true;
+                renderElementsList();
+                document.body.style.cursor = 'crosshair';
+            } else {
+                transformControl.enabled = false;
+                transformControl.detach();
+                if (selectedObject) {
+                    deselectObject();
+                }
+                document.body.style.cursor = 'default';
+            }
+        }
+
+        // Рендеринг списка элементов
+        function renderElementsList() {
+            elementsList.innerHTML = '';
+            editableElements.forEach((elem, idx) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 5px; margin: 3px 0; background: rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer; font-size: 0.85em;';
+                div.textContent = elem.userData.editableName || `Element ${idx}`;
+                div.onclick = () => selectObject(elem);
+                if (elem === selectedObject) {
+                    div.style.background = 'rgba(78, 205, 196, 0.3)';
+                    div.style.border = '1px solid #4ecdc4';
+                }
+                elementsList.appendChild(div);
+            });
+        }
+
+        // Выбор объекта
+        function selectObject(object) {
+            if (selectedObject) {
+                deselectObject();
+            }
+            selectedObject = object;
+            transformControl.attach(object);
+            selectedElementInfo.style.display = 'block';
+            selectedNameEl.textContent = object.userData.editableName || 'Unknown';
+            updateSelectedInfo();
+            renderElementsList();
+            
+            // Подсветка выбранного объекта
+            if (highlightCheckbox.checked) {
+                if (!originalMaterials.has(object)) {
+                    originalMaterials.set(object, object.material);
+                }
+                const highlightMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x4ecdc4, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.5
+                });
+                object.material = highlightMaterial;
+            }
+        }
+
+        // Снятие выделения
+        function deselectObject() {
+            if (selectedObject && originalMaterials.has(selectedObject)) {
+                selectedObject.material = originalMaterials.get(selectedObject);
+                originalMaterials.delete(selectedObject);
+            }
+            selectedObject = null;
+            transformControl.detach();
+            selectedElementInfo.style.display = 'none';
+            renderElementsList();
+        }
+
+        // Обновление информации о позиции
+        function updateSelectedInfo() {
+            if (selectedObject) {
+                posXEl.textContent = selectedObject.position.x.toFixed(2);
+                posYEl.textContent = selectedObject.position.y.toFixed(2);
+                posZEl.textContent = selectedObject.position.z.toFixed(2);
+            }
+        }
+
+        // Обработчики UI
+        toggleEditModeButton.addEventListener('click', () => setEditMode(false));
+        
+        showGizmoCheckbox.addEventListener('change', (e) => {
+            transformControl.visible = e.target.checked;
+        });
+
+        highlightCheckbox.addEventListener('change', (e) => {
+            if (selectedObject) {
+                if (e.target.checked && !originalMaterials.has(selectedObject)) {
+                    originalMaterials.set(selectedObject, selectedObject.material);
+                    const highlightMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0x4ecdc4, 
+                        wireframe: true,
+                        transparent: true,
+                        opacity: 0.5
+                    });
+                    selectedObject.material = highlightMaterial;
+                } else if (!e.target.checked && originalMaterials.has(selectedObject)) {
+                    selectedObject.material = originalMaterials.get(selectedObject);
+                    originalMaterials.delete(selectedObject);
+                }
+            }
+        });
+
+        resetButton.addEventListener('click', () => {
+            editableElements.forEach(elem => {
+                if (elem.userData.originalPosition) {
+                    elem.position.copy(elem.userData.originalPosition);
+                }
+            });
+            if (selectedObject) {
+                updateSelectedInfo();
+            }
+        });
+
+        // Raycaster для выбора объектов кликом
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        renderer.domElement.addEventListener('click', (event) => {
+            if (!editMode) return;
+            
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Проверяем пересечения только с редактируемыми элементами
+            const intersects = raycaster.intersectObjects(editableElements);
+            
+            if (intersects.length > 0) {
+                selectObject(intersects[0].object);
+            } else {
+                deselectObject();
+            }
+        });
+
+        // Клавиша E для переключения режима редактирования
+        window.addEventListener('keydown', (event) => {
+            if (event.code === 'KeyE') {
+                setEditMode(!editMode);
+            }
+            // Переключение режимов манипулятора (T - translate, R - rotate, S - scale)
+            if (editMode && selectedObject) {
+                if (event.code === 'KeyT') transformControl.setMode('translate');
+                if (event.code === 'KeyR') transformControl.setMode('rotate');
+                if (event.code === 'KeyS') transformControl.setMode('scale');
+            }
+        });
+
         // Анимация
         let autoRotate = true;
 
         function animate() {
             requestAnimationFrame(animate);
 
-            if (autoRotate) {
+            if (autoRotate && !editMode) {
                 bombGroup.rotation.y += 0.005;
             }
 
