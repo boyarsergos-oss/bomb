@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Бомба - HTML5</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">🔥 3D Бомба 🔥</div>
+    <div id="controls">Перетащите мышкой для вращения | Колесико для зума</div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Сцена, камера и рендерер
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 7);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        const pointLight = new THREE.PointLight(0xff6600, 0.5, 10);
+        pointLight.position.set(2, 3, 4);
+        scene.add(pointLight);
+
+        // Группа для бомбы
+        const bombGroup = new THREE.Group();
+        scene.add(bombGroup);
+
+        // Основной корпус бомбы (цилиндр)
+        const bodyGeometry = new THREE.CylinderGeometry(1.5, 1.5, 4, 32);
+        const bodyMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x2c3e50,
+            specular: 0x111111,
+            shininess: 30
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.castShadow = true;
+        body.rotation.x = Math.PI / 2; // Повернуть горизонтально
+        bombGroup.add(body);
+
+        // Носовая часть (конус)
+        const noseGeometry = new THREE.ConeGeometry(1.5, 2, 32);
+        const noseMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x34495e,
+            specular: 0x111111,
+            shininess: 30
+        });
+        const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+        nose.rotation.x = Math.PI / 2;
+        nose.position.z = 3; // Смещение вперед
+        nose.castShadow = true;
+        bombGroup.add(nose);
+
+        // Хвостовая часть (конус)
+        const tailGeometry = new THREE.ConeGeometry(1.5, 1.5, 32);
+        const tailMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x2c3e50,
+            specular: 0x111111,
+            shininess: 30
+        });
+        const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+        tail.rotation.x = -Math.PI / 2;
+        tail.position.z = -2.75; // Смещение назад
+        tail.castShadow = true;
+        bombGroup.add(tail);
+
+        // Плавники (крестовина)
+        const finGeometry = new THREE.BoxGeometry(0.2, 2.5, 1.5);
+        const finMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x34495e,
+            specular: 0x111111,
+            shininess: 30
+        });
+
+        // Вертикальные плавники
+        const fin1 = new THREE.Mesh(finGeometry, finMaterial);
+        fin1.position.set(0, 1.25, -2.5);
+        fin1.castShadow = true;
+        bombGroup.add(fin1);
+
+        const fin2 = new THREE.Mesh(finGeometry, finMaterial);
+        fin2.position.set(0, -1.25, -2.5);
+        fin2.castShadow = true;
+        bombGroup.add(fin2);
+
+        // Горизонтальные плавники
+        const finHorizontalGeometry = new THREE.BoxGeometry(2.5, 0.2, 1.5);
+        const fin3 = new THREE.Mesh(finHorizontalGeometry, finMaterial);
+        fin3.position.set(0, 0, -2.5);
+        fin3.rotation.y = Math.PI / 2;
+        fin3.castShadow = true;
+        bombGroup.add(fin3);
+
+        // Детали на корпусе (полосы)
+        const stripeGeometry = new THREE.TorusGeometry(1.52, 0.15, 16, 32);
+        const stripeMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xe74c3c,
+            emissive: 0xaa0000,
+            emissiveIntensity: 0.3
+        });
+
+        const stripe1 = new THREE.Mesh(stripeGeometry, stripeMaterial);
+        stripe1.rotation.y = Math.PI / 2;
+        stripe1.position.z = 0.5;
+        bombGroup.add(stripe1);
+
+        const stripe2 = new THREE.Mesh(stripeGeometry, stripeMaterial);
+        stripe2.rotation.y = Math.PI / 2;
+        stripe2.position.z = -0.5;
+        bombGroup.add(stripe2);
+
+        // Взрыватель спереди
+        const fuseGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16);
+        const fuseMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x8e44ad,
+            specular: 0x222222,
+            shininess: 50
+        });
+        const fuse = new THREE.Mesh(fuseGeometry, fuseMaterial);
+        fuse.rotation.x = Math.PI / 2;
+        fuse.position.z = 4.4;
+        bombGroup.add(fuse);
+
+        // Красная кнопка/индикатор
+        const indicatorGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const indicatorMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.8
+        });
+        const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+        indicator.position.set(0, 0.3, 4.6);
+        bombGroup.add(indicator);
+
+        // Позиционирование камеры
+        camera.position.z = 8;
+
+        // Переменные для управления вращением
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationVelocity = { x: 0.005, y: 0.01 };
+
+        // Обработчики событий мыши
+        renderer.domElement.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+
+            bombGroup.rotation.y += deltaX * 0.01;
+            bombGroup.rotation.x += deltaY * 0.01;
+
+            rotationVelocity = { 
+                x: deltaY * 0.005, 
+                y: deltaX * 0.005 
+            };
+
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        renderer.domElement.addEventListener('mouseleave', () => {
+            isDragging = false;
+        });
+
+        // Обработка колесика мыши для зума
+        renderer.domElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            camera.position.z += e.deltaY * 0.01;
+            camera.position.z = Math.max(5, Math.min(15, camera.position.z));
+        }, { passive: false });
+
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Автоматическое вращение с инерцией
+            if (!isDragging) {
+                bombGroup.rotation.y += rotationVelocity.y;
+                bombGroup.rotation.x += rotationVelocity.x;
+
+                // Затухание скорости
+                rotationVelocity.x *= 0.98;
+                rotationVelocity.y *= 0.98;
+
+                // Минимальное вращение
+                if (Math.abs(rotationVelocity.y) < 0.001) {
+                    rotationVelocity.y = 0.005;
+                }
+            }
+
+            // Пульсация индикатора
+            const time = Date.now() * 0.003;
+            indicator.scale.setScalar(1 + Math.sin(time) * 0.1);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
