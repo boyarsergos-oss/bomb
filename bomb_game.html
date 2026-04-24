@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>C4 Bomb - Counter-Strike 2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            text-align: center;
+            z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #info h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+        }
+        
+        #info p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            text-align: center;
+            z-index: 100;
+            background: rgba(0,0,0,0.5);
+            padding: 15px 25px;
+            border-radius: 10px;
+        }
+        
+        .control-hint {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        
+        .key {
+            display: inline-block;
+            background: #ff6b6b;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="info">
+        <h1>💣 C4 BOMB</h1>
+        <p>Counter-Strike 2 Style</p>
+    </div>
+    
+    <div id="controls">
+        <div class="control-hint"><span class="key">🖱️</span> Левая кнопка мыши - Вращение</div>
+        <div class="control-hint"><span class="key">🖱️</span> Колесо мыши - Зум</div>
+        <div class="control-hint"><span class="key">🖱️</span> Правая кнопка мыши - Панорамирование</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // Сцена, камера, рендерер
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(3, 3, 3);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        // Контролы орбиты
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 2;
+        controls.maxDistance = 10;
+        
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 10, 7);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        const pointLight = new THREE.PointLight(0xff6b6b, 0.5, 10);
+        pointLight.position.set(-2, 3, 2);
+        scene.add(pointLight);
+        
+        // Группа для бомбы
+        const bombGroup = new THREE.Group();
+        
+        // Материалы
+        const mainBodyMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xd4af37,
+            metalness: 0.7,
+            roughness: 0.3
+        });
+        
+        const screenMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1a,
+            metalness: 0.9,
+            roughness: 0.1
+        });
+        
+        const buttonMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2d2d2d,
+            metalness: 0.5,
+            roughness: 0.4
+        });
+        
+        const ledMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.5
+        });
+        
+        const wireMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1a,
+            metalness: 0.3,
+            roughness: 0.7
+        });
+        
+        // Основной корпус бомбы
+        const mainGeometry = new THREE.BoxGeometry(1.2, 0.3, 0.8);
+        const mainBody = new THREE.Mesh(mainGeometry, mainBodyMaterial);
+        mainBody.castShadow = true;
+        mainBody.receiveShadow = true;
+        bombGroup.add(mainBody);
+        
+        // Верхняя пластина
+        const topPlateGeometry = new THREE.BoxGeometry(1.15, 0.05, 0.75);
+        const topPlate = new THREE.Mesh(topPlateGeometry, mainBodyMaterial);
+        topPlate.position.y = 0.175;
+        topPlate.castShadow = true;
+        bombGroup.add(topPlate);
+        
+        // Экран
+        const screenGeometry = new THREE.BoxGeometry(0.5, 0.15, 0.05);
+        const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+        screen.position.set(0, 0.2, 0.25);
+        screen.castShadow = true;
+        bombGroup.add(screen);
+        
+        // LED индикаторы на экране
+        const ledGeometry = new THREE.BoxGeometry(0.03, 0.05, 0.02);
+        for (let i = 0; i < 4; i++) {
+            const led = new THREE.Mesh(ledGeometry, ledMaterial);
+            led.position.set(-0.15 + i * 0.1, 0.28, 0.38);
+            bombGroup.add(led);
+        }
+        
+        // Кнопки
+        const buttonGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.03, 16);
+        const buttonPositions = [
+            { x: 0.35, z: 0.2 },
+            { x: 0.45, z: 0.2 },
+            { x: 0.35, z: 0.1 },
+            { x: 0.45, z: 0.1 }
+        ];
+        
+        buttonPositions.forEach(pos => {
+            const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
+            button.position.set(pos.x, 0.165, pos.z);
+            button.rotation.x = Math.PI / 2;
+            button.castShadow = true;
+            bombGroup.add(button);
+        });
+        
+        // Цифровая клавиатура
+        const keypadGeometry = new THREE.BoxGeometry(0.4, 0.25, 0.03);
+        const keypad = new THREE.Mesh(keypadGeometry, buttonMaterial);
+        keypad.position.set(-0.25, 0.165, 0.25);
+        keypad.castShadow = true;
+        bombGroup.add(keypad);
+        
+        // Кнопки клавиатуры (3x4)
+        const smallButtonGeometry = new THREE.BoxGeometry(0.08, 0.05, 0.02);
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 3; col++) {
+                const key = new THREE.Mesh(smallButtonGeometry, mainBodyMaterial);
+                key.position.set(
+                    -0.35 + col * 0.12,
+                    0.18,
+                    0.15 + row * 0.08
+                );
+                bombGroup.add(key);
+            }
+        }
+        
+        // Провода
+        const wireColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+        const wireStartPositions = [
+            { x: -0.5, y: 0.15, z: -0.3 },
+            { x: -0.45, y: 0.15, z: -0.3 },
+            { x: -0.4, y: 0.15, z: -0.3 },
+            { x: -0.35, y: 0.15, z: -0.3 }
+        ];
+        
+        wireStartPositions.forEach((pos, index) => {
+            const wireCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(pos.x, pos.y, pos.z),
+                new THREE.Vector3(pos.x - 0.1, pos.y + 0.2, pos.z - 0.1),
+                new THREE.Vector3(pos.x - 0.15, pos.y + 0.1, pos.z - 0.15),
+                new THREE.Vector3(pos.x - 0.2, pos.y + 0.15, pos.z - 0.2)
+            ]);
+            
+            const wireGeometry = new THREE.TubeGeometry(wireCurve, 20, 0.015, 8, false);
+            const wireMaterialColored = new THREE.MeshStandardMaterial({ 
+                color: wireColors[index],
+                metalness: 0.3,
+                roughness: 0.5
+            });
+            const wire = new THREE.Mesh(wireGeometry, wireMaterialColored);
+            wire.castShadow = true;
+            bombGroup.add(wire);
+        });
+        
+        // Антенна
+        const antennaBaseGeometry = new THREE.CylinderGeometry(0.03, 0.04, 0.1, 8);
+        const antennaBase = new THREE.Mesh(antennaBaseGeometry, mainBodyMaterial);
+        antennaBase.position.set(0.5, 0.2, -0.3);
+        bombGroup.add(antennaBase);
+        
+        const antennaRodGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.4, 8);
+        const antennaRod = new THREE.Mesh(antennaRodGeometry, mainBodyMaterial);
+        antennaRod.position.set(0.5, 0.45, -0.3);
+        bombGroup.add(antennaRod);
+        
+        // Взрыватель
+        const detonatorGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.3, 16);
+        const detonatorMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x8b0000,
+            metalness: 0.6,
+            roughness: 0.4
+        });
+        const detonator = new THREE.Mesh(detonatorGeometry, detonatorMaterial);
+        detonator.position.set(0, 0.35, -0.2);
+        detonator.rotation.x = Math.PI / 6;
+        detonator.castShadow = true;
+        bombGroup.add(detonator);
+        
+        // Добавляем бомбу на сцену
+        scene.add(bombGroup);
+        
+        // Пол
+        const floorGeometry = new THREE.PlaneGeometry(20, 20);
+        const floorMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2a2a3e,
+            metalness: 0.5,
+            roughness: 0.8
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -1;
+        floor.receiveShadow = true;
+        scene.add(floor);
+        
+        // Сетка на полу
+        const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+        gridHelper.position.y = -0.99;
+        scene.add(gridHelper);
+        
+        // Анимация
+        let autoRotate = true;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (autoRotate) {
+                bombGroup.rotation.y += 0.005;
+            }
+            
+            // Пульсация LED индикаторов
+            const time = Date.now() * 0.003;
+            ledMaterial.emissiveIntensity = 0.5 + Math.sin(time) * 0.3;
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Остановка авто-вращения при взаимодействии
+        controls.addEventListener('start', () => {
+            autoRotate = false;
+        });
+        
+        animate();
+    </script>
+</body>
+</html>
