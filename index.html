@@ -96,6 +96,9 @@
             camera.position.set(0, 5, 12);
             camera.lookAt(0, 0, 0);
             
+            // Переменные для анимации
+            let bounceTime = 0;
+            
             // Рендерер
             renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -270,10 +273,12 @@
         
         function celebrateWin() {
             // Анимация победы - игрок прыгает и светится
+            let jumpHeight = 0;
             const winInterval = setInterval(() => {
-                player.position.y += 0.3;
+                jumpHeight += 0.15;
+                player.position.y = 1 + Math.abs(Math.sin(jumpHeight)) * 2;
                 player.material.emissive.setHex(0x00ff00);
-                if (player.position.y > 3) {
+                if (jumpHeight > 3) {
                     clearInterval(winInterval);
                 }
             }, 100);
@@ -291,7 +296,7 @@
         function showDeath() {
             // Анимация смерти - игрок падает
             const deathInterval = setInterval(() => {
-                player.position.y -= 0.1;
+                player.position.y -= 0.15;
                 player.material.color.setHex(0xff0000);
                 if (player.position.y < -2) {
                     clearInterval(deathInterval);
@@ -333,14 +338,12 @@
             requestAnimationFrame(animate);
             
             if (!gameOver) {
-                // Легкая анимация игрока (дыхание)
-                player.scale.y = 1 + Math.sin(Date.now() * 0.003) * 0.05;
+                // Анимация подпрыгивания игрока на месте
+                bounceTime += 0.05;
+                player.position.y = 1 + Math.sin(bounceTime) * 0.2;
                 
-                // Вращение камеры вокруг сцены
-                const time = Date.now() * 0.0003;
-                camera.position.x = Math.sin(time) * 12;
-                camera.position.z = Math.cos(time) * 12;
-                camera.lookAt(0, 0, -5);
+                // Лёгкое вращение игрока
+                player.rotation.y += 0.02;
             }
             
             renderer.render(scene, camera);
