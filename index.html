@@ -342,8 +342,7 @@
                 bounceTime += 0.05;
                 player.position.y = 1 + Math.sin(bounceTime) * 0.2;
                 
-                // Лёгкое вращение игрока
-                player.rotation.y += 0.02;
+                // Игрок не вращается
             }
             
             renderer.render(scene, camera);
