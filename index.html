@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Flappy Bird 3rd Person</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #70c5ce; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #score {
+            font-size: 48px;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            font-weight: bold;
+        }
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            text-align: center;
+            display: none;
+            z-index: 20;
+        }
+        #start-msg {
+            display: block;
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div id="score">0</div>
+    </div>
+    <div id="message">
+        <div id="start-msg">Нажми ПРОБЕЛ или кликни,<br>чтобы начать</div>
+        <div id="game-over-msg" style="display:none;">
+            GAME OVER<br>
+            <span style="font-size:20px">Нажми для рестарта</span>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // --- НАСТРОЙКИ ---
+        const CONFIG = {
+            gravity: 0.25,
+            jumpStrength: 0.18, // Чуть сильнее прыжок для отзывчивости
+            speed: 0.15,
+            pipeGap: 3.5,       // Размер прохода (достаточно большой)
+            pipeSpawnDist: 12,  // Расстояние между трубами
+            groundY: -6,
+            ceilingY: 10,
+            birdZ: 0,           // Птица всегда на Z=0
+            cameraDist: 8,      // Расстояние камеры от птицы
+            cameraHeight: 2     // Камера чуть выше птицы
+        };
+
+        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
+        let scene, camera, renderer;
+        let bird, birdVelocity;
+        let pipes = [];
+        let ground, ceiling;
+        let score = 0;
+        let isGameOver = false;
+        let isPlaying = false;
+        let frameId;
+
+        // Элементы UI
+        const scoreEl = document.getElementById('score');
+        const startMsg = document.getElementById('start-msg');
+        const gameOverMsg = document.getElementById('game-over-msg');
+        const messageContainer = document.getElementById('message');
+
+        function init() {
+            // Сцена
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x70c5ce);
+            scene.fog = new THREE.Fog(0x70c5ce, 20, 60);
+
+            // Камера (вид от 3-го лица: сбоку-сзади)
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Рендерер
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Свет
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.camera.left = -20;
+            dirLight.shadow.camera.right = 20;
+            dirLight.shadow.camera.top = 20;
+            dirLight.shadow.camera.bottom = -20;
+            scene.add(dirLight);
+
+            createWorld();
+            createBird();
+            
+            // Обработчики
+            window.addEventListener('resize', onWindowResize, false);
+            document.addEventListener('keydown', handleInput);
+            document.addEventListener('mousedown', handleInput);
+            document.addEventListener('touchstart', handleInput);
+
+            animate();
+        }
+
+        function createWorld() {
+            // Пол (Земля)
+            const groundGeo = new THREE.PlaneGeometry(200, 20);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0xded895 });
+            ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = CONFIG.groundY;
+            ground.position.z = 50; // Земля уходит вдаль
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Декор земли (трава сверху)
+            const grassGeo = new THREE.PlaneGeometry(200, 2);
+            const grassMat = new THREE.MeshStandardMaterial({ color: 0x73bf2e });
+            const grass = new THREE.Mesh(grassGeo, grassMat);
+            grass.rotation.x = -Math.PI / 2;
+            grass.position.y = CONFIG.groundY + 0.01;
+            grass.position.z = 50;
+            scene.add(grass);
+
+            // Потолок (невидимая граница, но можно добавить визуальный эффект неба)
+            // Визуально потолка нет, но логически он есть на CONFIG.ceilingY
+        }
+
+        function createBird() {
+            const birdGroup = new THREE.Group();
+
+            // Тело
+            const bodyGeo = new THREE.SphereGeometry(0.5, 16, 16);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffd700 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.castShadow = true;
+            birdGroup.add(body);
+
+            // Глаз
+            const eyeGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const eye = new THREE.Mesh(eyeGeo, eyeMat);
+            eye.position.set(0.3, 0.2, 0.4);
+            birdGroup.add(eye);
+
+            const pupilGeo = new THREE.SphereGeometry(0.05, 8, 8);
+            const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+            const pupil = new THREE.Mesh(pupilGeo, pupilMat);
+            pupil.position.set(0.35, 0.2, 0.55);
+            birdGroup.add(pupil);
+
+            // Клюв
+            const beakGeo = new THREE.ConeGeometry(0.15, 0.4, 8);
+            const beakMat = new THREE.MeshStandardMaterial({ color: 0xffa500 });
+            const beak = new THREE.Mesh(beakGeo, beakMat);
+            beak.rotation.x = Math.PI / 2;
+            beak.position.set(0.5, 0, 0.3);
+            birdGroup.add(beak);
+
+            // Крыло
+            const wingGeo = new THREE.BoxGeometry(0.1, 0.4, 0.6);
+            const wingMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const wing = new THREE.Mesh(wingGeo, wingMat);
+            wing.position.set(0, 0, 0.5);
+            birdGroup.add(wing);
+
+            bird = birdGroup;
+            bird.position.set(0, 0, CONFIG.birdZ);
+            scene.add(bird);
+
+            birdVelocity = 0;
+        }
+
+        function createPipe(zPosition) {
+            // Расчет высоты прохода
+            // Проход должен быть строго между groundY + gap/2 и ceilingY - gap/2
+            const minPipeBottom = CONFIG.groundY + CONFIG.pipeGap / 2 + 0.5; // + запас
+            const maxPipeBottom = CONFIG.ceilingY - CONFIG.pipeGap / 2 - 0.5;
+            
+            const pipeBottomY = Math.random() * (maxPipeBottom - minPipeBottom) + minPipeBottom;
+            const pipeTopY = pipeBottomY + CONFIG.pipeGap;
+
+            const pipeGeo = new THREE.BoxGeometry(2, 20, 2); // Ширина, Высота, Глубина
+            const pipeMat = new THREE.MeshStandardMaterial({ color: 0x73bf2e });
+
+            // Нижняя труба
+            const bottomPipe = new THREE.Mesh(pipeGeo, pipeMat);
+            // Центр нижней трубы: Y = (groundY + высота_трубы/2)
+            // Высота нижней трубы = pipeBottomY - CONFIG.groundY
+            const bottomHeight = pipeBottomY - CONFIG.groundY;
+            bottomPipe.scale.y = bottomHeight / 20; // Масштабируем по высоте
+            bottomPipe.position.set(0, CONFIG.groundY + bottomHeight / 2, zPosition);
+            bottomPipe.castShadow = true;
+            bottomPipe.receiveShadow = true;
+            
+            // Верхняя труба
+            const topPipe = new THREE.Mesh(pipeGeo, pipeMat);
+            // Высота верхней трубы = CONFIG.ceilingY - pipeTopY (или просто бесконечность вверх, но ограничим)
+            // Для простоты сделаем фиксированную длину, уходящую вверх
+            const topHeight = 15; 
+            topPipe.scale.y = topHeight / 20;
+            topPipe.position.set(0, pipeTopY + topHeight / 2, zPosition);
+            topPipe.castShadow = true;
+            topPipe.receiveShadow = true;
+
+            scene.add(bottomPipe);
+            scene.add(topPipe);
+
+            pipes.push({
+                bottom: bottomPipe,
+                top: topPipe,
+                passed: false,
+                z: zPosition
+            });
+        }
+
+        function resetGame() {
+            // Очистка труб
+            pipes.forEach(p => {
+                scene.remove(p.bottom);
+                scene.remove(p.top);
+            });
+            pipes = [];
+
+            // Сброс птицы
+            bird.position.y = 0;
+            birdVelocity = 0;
+            bird.rotation.z = 0;
+
+            score = 0;
+            scoreEl.innerText = score;
+            isGameOver = false;
+            isPlaying = true;
+            
+            startMsg.style.display = 'none';
+            gameOverMsg.style.display = 'none';
+
+            // Создаем первые трубы
+            for (let i = 1; i <= 3; i++) {
+                createPipe(-i * CONFIG.pipeSpawnDist);
+            }
+        }
+
+        function handleInput(e) {
+            if (e.type === 'keydown' && e.code !== 'Space') return;
+            if (e.type === 'keydown') e.preventDefault();
+
+            if (!isPlaying) {
+                resetGame();
+                return;
+            }
+
+            if (isGameOver) {
+                resetGame();
+                return;
+            }
+
+            // Прыжок
+            birdVelocity = CONFIG.jumpStrength;
+        }
+
+        function checkCollisions() {
+            const birdBox = new THREE.Box3().setFromObject(bird);
+            // Уменьшаем хитбокс птицы немного, чтобы было честно (0.8 от размера)
+            birdBox.expandByScalar(-0.1);
+
+            // 1. Столкновение с полом
+            if (bird.position.y <= CONFIG.groundY + 0.5) { // 0.5 - радиус птицы
+                return true;
+            }
+
+            // 2. Столкновение с потолком
+            if (bird.position.y >= CONFIG.ceilingY - 0.5) {
+                return true;
+            }
+
+            // 3. Столкновение с трубами
+            for (let p of pipes) {
+                const bottomBox = new THREE.Box3().setFromObject(p.bottom);
+                const topBox = new THREE.Box3().setFromObject(p.top);
+
+                if (birdBox.intersectsBox(bottomBox) || birdBox.intersectsBox(topBox)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function update() {
+            if (!isPlaying || isGameOver) return;
+
+            // Физика птицы
+            birdVelocity -= CONFIG.gravity * 0.05; // Коэффициент времени
+            bird.position.y += birdVelocity;
+
+            // Вращение птицы в зависимости от скорости
+            bird.rotation.z = Math.min(Math.max(birdVelocity * 2, -0.5), 0.5);
+
+            // Движение труб навстречу (эффект движения вперед)
+            // Вместо движения птицы вперед, двигаем мир назад
+            const moveSpeed = CONFIG.speed;
+            
+            pipes.forEach((p, index) => {
+                p.bottom.position.z += moveSpeed;
+                p.top.position.z += moveSpeed;
+                p.z += moveSpeed;
+
+                // Проверка счета
+                if (!p.passed && p.z > CONFIG.birdZ + 1) {
+                    p.passed = true;
+                    score++;
+                    scoreEl.innerText = score;
+                }
+
+                // Удаление старых труб и создание новых
+                if (p.z > 20) {
+                    scene.remove(p.bottom);
+                    scene.remove(p.top);
+                    pipes.splice(index, 1);
+                    
+                    // Добавляем новую трубу в конец
+                    const lastPipeZ = pipes.length > 0 ? pipes[pipes.length-1].z : -CONFIG.pipeSpawnDist;
+                    createPipe(lastPipeZ - CONFIG.pipeSpawnDist);
+                }
+            });
+
+            // Обновление позиции земли (бесконечный пол)
+            ground.position.z += moveSpeed;
+            if (ground.position.z > 60) ground.position.z = 40;
+
+            // Камера следует за птицей (плавно)
+            // Вид от 3-го лица: камера сзади (по Z+) и чуть выше
+            const targetCamX = bird.position.x;
+            const targetCamY = bird.position.y + CONFIG.cameraHeight;
+            const targetCamZ = bird.position.z + CONFIG.cameraDist;
+
+            camera.position.x += (targetCamX - camera.position.x) * 0.1;
+            camera.position.y += (targetCamY - camera.position.y) * 0.1;
+            camera.position.z += (targetCamZ - camera.position.z) * 0.1;
+            
+            camera.lookAt(bird.position.x, bird.position.y, bird.position.z - 5);
+
+            // Проверка столкновений
+            if (checkCollisions()) {
+                isGameOver = true;
+                gameOverMsg.style.display = 'block';
+            }
+        }
+
+        function animate() {
+            frameId = requestAnimationFrame(animate);
+            update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Запуск
+        init();
+    </script>
+</body>
+</html>
