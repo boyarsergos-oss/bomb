@@ -469,12 +469,12 @@
             physics: {
                 gravity: 9.81,
                 mass: 1.5,
-                drag: 0.3,
-                angularDrag: 2.0,
-                maxThrust: 22.0,
+                drag: 0.08,
+                angularDrag: 3.0,
+                maxThrust: 35.0,
                 maxTilt: Math.PI / 4,
-                motorResponse: 8.0,
-                gyroStability: 8.0
+                motorResponse: 12.0,
+                gyroStability: 10.0
             },
             battery: 100,
             time: 0,
@@ -2417,10 +2417,10 @@
             if (keys['ArrowRight']) keyboardRoll = -1;
 
             // Combine inputs (touch + keyboard)
-            const targetThrottle = controls.throttle + keyboardThrottle * 0.5;
-            const targetYaw = controls.yaw + keyboardYaw * 0.5;
-            const targetPitch = controls.pitch + keyboardPitch * 0.5;
-            const targetRoll = controls.roll + keyboardRoll * 0.5;
+            const targetThrottle = controls.throttle + keyboardThrottle * 1.0;
+            const targetYaw = controls.yaw + keyboardYaw * 1.0;
+            const targetPitch = controls.pitch + keyboardPitch * 1.0;
+            const targetRoll = controls.roll + keyboardRoll * 1.0;
 
             // Smooth input response
             const responseSpeed = phys.motorResponse * deltaTime;
@@ -2439,7 +2439,7 @@
             // Добавочная тяга от управления:
             // throttle > 0 -> подъем (тяга > веса)
             // throttle < 0 -> снижение (тяга < веса)
-            const thrustMagnitude = hoverThrust + (drone.throttle * hoverThrust * 0.8);
+            const thrustMagnitude = hoverThrust + (drone.throttle * hoverThrust * 1.5);
             
             // Гравитация ВСЕГДА действует полностью
             const gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass, 0);
@@ -2601,7 +2601,7 @@
 
         function updateUI() {
             document.getElementById('altitude').textContent = state.drone.position.y.toFixed(1);
-            document.getElementById('speed').textContent = state.drone.velocity.length().toFixed(1);
+            document.getElementById('speed').textContent = state.drone.velocity.length().toFixed(2);
             document.getElementById('heading').textContent = Math.round(THREE.MathUtils.radToDeg(state.drone.rotation.y) % 360) + '°';
             document.getElementById('battery').textContent = Math.round(state.battery) + '%';
             
