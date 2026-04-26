@@ -322,8 +322,9 @@
             score = 0;
             scoreDisplay.textContent = score;
             
-            // Сброс таймера создания труб
-            lastPipeTime = Date.now();
+            // Сброс таймера создания труб - устанавливаем время в будущее, 
+            // чтобы первая труба появилась только через pipeSpawnInterval
+            lastPipeTime = Date.now() + pipeSpawnInterval;
         }
         
         function gameOver() {
