@@ -430,6 +430,7 @@
         <div id="levelComplete">
             <div>🎉 Уровень пройден! 🎉</div>
             <div style="font-size: 18px; margin-top: 10px;">Вы успешно посадили дрон!</div>
+            <div style="font-size: 14px; margin-top: 5px; opacity: 0.8;">Следующий уровень загрузится автоматически...</div>
             <button id="continueBtn">Продолжить на уровень 2</button>
         </div>
         
@@ -477,7 +478,9 @@
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, -20), radius: 3, landed: false }
+                { position: new THREE.Vector3(0, 0, -20), radius: 3, landed: false },
+                { position: new THREE.Vector3(-15, 0, 15), radius: 2.5, landed: false },
+                { position: new THREE.Vector3(20, 0, -30), radius: 2, landed: false }
             ],
             objects: [
                 { type: 'cube', position: new THREE.Vector3(-10, 5, -10), size: new THREE.Vector3(3, 10, 3), color: 0x8B4513 },
@@ -1499,6 +1502,15 @@
                 currentZone.landed = true;
                 showMessage("✓ Уровень пройден!");
                 showLevelComplete();
+                // Автоматический переход на следующий уровень через 2 секунды
+                setTimeout(() => {
+                    if (state.level < state.landingZones.length) {
+                        nextLevel();
+                    } else {
+                        hideLevelComplete();
+                        showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+                    }
+                }, 2000);
             } else if (distance < currentZone.radius) {
                 if (relativeAltitude >= 1.0) {
                     showMessage("↓ Снизьте высоту для посадки");
@@ -1524,6 +1536,7 @@
 
         function nextLevel() {
             if (state.level < state.landingZones.length) {
+                hideLevelComplete();
                 state.level++;
                 state.drone.position.set(0, 2, 0);
                 state.drone.velocity.set(0, 0, 0);
@@ -1531,13 +1544,14 @@
                 state.drone.angularVelocity.set(0, 0, 0);
                 state.battery = 100;
                 updateLandingZoneVisibility();
-                hideLevelComplete();
                 showMessage("");
                 document.getElementById('level').textContent = state.level;
                 
                 // Update continue button text for level 2
                 if (state.level === 2) {
                     document.getElementById('continueBtn').textContent = 'Продолжить на уровень 3';
+                } else if (state.level === 3) {
+                    document.getElementById('continueBtn').textContent = 'Продолжить на уровень 4';
                 }
             } else {
                 showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
