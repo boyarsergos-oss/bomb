@@ -233,10 +233,15 @@
         sunLight.shadow.camera.bottom = -50;
         scene.add(sunLight);
 
-        // Ground
+        // Ground with grass texture
         const groundGeometry = new THREE.PlaneGeometry(200, 200, 50, 50);
+        const textureLoader = new THREE.TextureLoader();
+        const grassTexture = textureLoader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+        grassTexture.wrapS = THREE.RepeatWrapping;
+        grassTexture.wrapT = THREE.RepeatWrapping;
+        grassTexture.repeat.set(20, 20);
         const groundMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x3a7d3a,
+            map: grassTexture,
             roughness: 0.8,
             metalness: 0.2
         });
@@ -245,41 +250,7 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Grid helper
-        const gridHelper = new THREE.GridHelper(200, 20, 0x000000, 0x000000);
-        gridHelper.position.y = 0.01;
-        gridHelper.material.opacity = 0.2;
-        gridHelper.material.transparent = true;
-        scene.add(gridHelper);
-
-        // Obstacles
-        function createObstacle(x, z, width, height, depth) {
-            const geometry = new THREE.BoxGeometry(width, height, depth);
-            const material = new THREE.MeshStandardMaterial({ 
-                color: 0x8b4513,
-                roughness: 0.7,
-                metalness: 0.3
-            });
-            const obstacle = new THREE.Mesh(geometry, material);
-            obstacle.position.set(x, height / 2, z);
-            obstacle.castShadow = true;
-            obstacle.receiveShadow = true;
-            scene.add(obstacle);
-            return obstacle;
-        }
-
-        const obstacles = [];
-        for (let i = 0; i < 15; i++) {
-            const x = (Math.random() - 0.5) * 150;
-            const z = (Math.random() - 0.5) * 150;
-            const width = 2 + Math.random() * 4;
-            const height = 5 + Math.random() * 15;
-            const depth = 2 + Math.random() * 4;
-            
-            if (Math.abs(x) > 10 || Math.abs(z) > 10) {
-                obstacles.push(createObstacle(x, z, width, height, depth));
-            }
-        }
+        // Grid helper removed along with obstacles
 
         // Drone Model
         const droneGroup = new THREE.Group();
