@@ -452,7 +452,8 @@
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false }
+                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false },
+                { position: new THREE.Vector3(0, 6.95, -40), radius: 2.5, landed: false }
             ],
             objects: [],
             houses: []
@@ -1242,6 +1243,11 @@
         }
         
         // createBuilding(); - отключено для очистки сцены
+        
+        // Add house for level 2
+        const houseForLevel2 = { position: new THREE.Vector3(0, 0, -40) };
+        state.houses.push(houseForLevel2);
+        createHouseModel(houseForLevel2.position);
 
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
@@ -1254,10 +1260,11 @@
                 markerGroups[index].forEach(m => m.visible = visible);
             });
             
-            // Show/hide building based on level (отключено - здание удалено)
-            // if (buildingGroup) {
-            //     buildingGroup.visible = state.level >= 2;
-            // }
+            // Show/hide house based on level
+            houseMeshes.forEach((mesh, index) => {
+                // Show house on level 2 (index 0 in houses array corresponds to level 2)
+                mesh.visible = state.level >= 2;
+            });
         }
         updateLandingZoneVisibility();
 
@@ -2365,7 +2372,13 @@
             if (state.level < state.landingZones.length) {
                 hideLevelComplete();
                 state.level++;
-                state.drone.position.set(0, 2, 0);
+                // Reset drone position for next level
+                if (state.level === 2) {
+                    // For level 2, start near the house
+                    state.drone.position.set(0, 2, -20);
+                } else {
+                    state.drone.position.set(0, 2, 0);
+                }
                 state.drone.velocity.set(0, 0, 0);
                 state.drone.rotation.set(0, 0, 0);
                 state.drone.angularVelocity.set(0, 0, 0);
