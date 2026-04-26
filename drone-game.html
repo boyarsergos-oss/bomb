@@ -469,13 +469,13 @@
             physics: {
                 gravity: 9.81,
                 mass: 1.8,
-                drag: 8.5,
-                angularDrag: 12.0,
-                maxThrust: 45.0,
-                maxTilt: Math.PI / 5,
-                motorResponse: 15.0,
-                gyroStability: 25.0,
-                autoLevelStrength: 8.0
+                drag: 0.12,
+                angularDrag: 8.0,
+                maxThrust: 55.0,
+                maxTilt: Math.PI / 4,
+                motorResponse: 18.0,
+                gyroStability: 20.0,
+                autoLevelStrength: 6.0
             },
             battery: 100,
             time: 0,
@@ -2481,8 +2481,8 @@
                 } else {
                     drone.velocity.y = Math.max(0, drone.velocity.y);
                 }
-                drone.velocity.x *= 0.15; // Сильное трение о землю для быстрой остановки
-                drone.velocity.z *= 0.15;
+                drone.velocity.x *= 0.25; // Трение о землю для быстрой остановки
+                drone.velocity.z *= 0.25;
             }
 
             // Ceiling collision
@@ -2494,8 +2494,8 @@
             // Мгновенное гашение горизонтальной скорости при отпускании стиков (как у реального дрона с GPS hold)
             const horizontalSpeed = new THREE.Vector2(drone.velocity.x, drone.velocity.z).length();
             if (horizontalSpeed > 0.1 && Math.abs(state.controls.pitch) < 0.1 && Math.abs(state.controls.roll) < 0.1) {
-                drone.velocity.x *= 0.85; // Быстрое замедление
-                drone.velocity.z *= 0.85;
+                drone.velocity.x *= 0.92; // Быстрое замедление
+                drone.velocity.z *= 0.92;
             }
 
             // Angular physics
