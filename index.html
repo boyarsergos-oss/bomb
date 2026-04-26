@@ -321,6 +321,9 @@
             // Сброс счета
             score = 0;
             scoreDisplay.textContent = score;
+            
+            // Сброс таймера создания труб
+            lastPipeTime = Date.now();
         }
         
         function gameOver() {
