@@ -316,34 +316,12 @@
             0%, 100% { transform: translate(-50%, -50%) scale(1); }
             50% { transform: translate(-50%, -50%) scale(1.05); }
         }
-
-        #continueBtn {
-            margin-top: 20px;
-            padding: 15px 30px;
-            font-size: 18px;
-            background: linear-gradient(45deg, #00ff00, #00aa00);
-            border: none;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
-        }
-
-        #continueBtn:hover {
-            background: linear-gradient(45deg, #00ff00, #00cc00);
-        }
         
         /* Responsive modal for level complete */
         @media (orientation: landscape) {
             #levelComplete {
                 padding: 20px 30px;
                 font-size: 18px;
-            }
-            
-            #continueBtn {
-                padding: 12px 24px;
-                font-size: 16px;
             }
         }
         
@@ -352,11 +330,6 @@
                 padding: 20px 30px;
                 font-size: 18px;
                 max-width: 90%;
-            }
-            
-            #continueBtn {
-                padding: 12px 24px;
-                font-size: 16px;
             }
         }
         
@@ -432,8 +405,7 @@
         <div id="levelComplete">
             <div>🎉 Уровень пройден! 🎉</div>
             <div style="font-size: 18px; margin-top: 10px;">Вы успешно посадили дрон!</div>
-            <div style="font-size: 14px; margin-top: 5px; opacity: 0.8;">Следующий уровень загрузится автоматически...</div>
-            <button id="continueBtn">Продолжить на уровень 2</button>
+            <div style="font-size: 14px; margin-top: 5px; opacity: 0.8;">Игра пройдена!</div>
         </div>
         
         <div id="controls">
@@ -480,9 +452,7 @@
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false },
-                { position: new THREE.Vector3(-15, 0, 15), radius: 2.5, landed: false },
-                { position: new THREE.Vector3(20, 0, -30), radius: 2, landed: false }
+                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false }
             ],
             objects: [],
             houses: []
@@ -2403,26 +2373,10 @@
                 updateLandingZoneVisibility();
                 showMessage("");
                 document.getElementById('level').textContent = state.level;
-                
-                // Update continue button text for level 2
-                if (state.level === 2) {
-                    document.getElementById('continueBtn').textContent = 'Продолжить на уровень 3';
-                } else if (state.level === 3) {
-                    document.getElementById('continueBtn').textContent = 'Продолжить на уровень 4';
-                }
             } else {
                 showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
             }
         }
-
-        // Continue button event listener - support both click and touch
-        const continueBtn = document.getElementById('continueBtn');
-        continueBtn.addEventListener('click', nextLevel);
-        continueBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            nextLevel();
-        }, { passive: false });
         
         // Editor mode button listeners
         document.getElementById('modeToggle').addEventListener('click', toggleEditorMode);
