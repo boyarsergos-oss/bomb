@@ -480,7 +480,7 @@
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, 80), radius: 3, landed: false },
+                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false },
                 { position: new THREE.Vector3(-15, 0, 15), radius: 2.5, landed: false },
                 { position: new THREE.Vector3(20, 0, -30), radius: 2, landed: false }
             ],
@@ -723,12 +723,13 @@
             scene.add(beam);
             landingBeamMeshes.push(beam);
 
-            // Green arrow pointing up (will animate)
+            // Green arrow pointing down (will animate)
             const arrowGroup = new THREE.Group();
             const arrowHeadGeometry = new THREE.ConeGeometry(0.8, 1.5, 4);
             const arrowHeadMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
             const arrowHead = new THREE.Mesh(arrowHeadGeometry, arrowHeadMaterial);
-            arrowHead.position.y = 0.75;
+            arrowHead.rotation.x = Math.PI; // Rotate to point down
+            arrowHead.position.y = -0.75;
             arrowGroup.add(arrowHead);
             
             const arrowShaftGeometry = new THREE.CylinderGeometry(0.15, 0.15, 2, 8);
@@ -738,7 +739,7 @@
             arrowGroup.add(arrowShaft);
             
             arrowGroup.position.copy(zone.position);
-            arrowGroup.position.y = zone.position.y + 1;
+            arrowGroup.position.y = zone.position.y + 3;
             scene.add(arrowGroup);
             landingArrowMeshes.push(arrowGroup);
 
@@ -2687,7 +2688,7 @@
             // Animate landing arrows (bobbing up and down)
             landingArrowMeshes.forEach((arrow, index) => {
                 if (arrow && arrow.visible) {
-                    arrow.position.y = state.landingZones[index].position.y + 1 + Math.sin(state.time * 3 + index) * 0.3;
+                    arrow.position.y = state.landingZones[index].position.y + 3 + Math.sin(state.time * 3 + index) * 0.3;
                 }
             });
 
