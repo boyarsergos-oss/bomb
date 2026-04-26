@@ -411,6 +411,7 @@
                 <button class="editor-btn" id="selectObjectBtn">Выбрать объект</button>
                 <button class="editor-btn" id="addLandingZoneBtn">+ Добавить зону</button>
                 <button class="editor-btn" id="addObjectBtn">+ Добавить куб</button>
+                <button class="editor-btn" id="addHouseBtn">+ Добавить дом</button>
                 <button class="editor-btn danger" id="removeSelectedBtn">- Удалить выбранное</button>
                 <button class="editor-btn" id="saveLevelBtn">💾 Сохранить уровень</button>
                 <button class="editor-btn" id="loadLevelBtn">📂 Загрузить уровень</button>
@@ -486,7 +487,8 @@
                 { type: 'cube', position: new THREE.Vector3(-10, 5, -10), size: new THREE.Vector3(3, 10, 3), color: 0x8B4513 },
                 { type: 'cube', position: new THREE.Vector3(10, 3, -15), size: new THREE.Vector3(2, 6, 2), color: 0x808080 },
                 { type: 'cube', position: new THREE.Vector3(-15, 4, 10), size: new THREE.Vector3(4, 8, 4), color: 0x2F4F4F }
-            ]
+            ],
+            houses: []
         };
 
         // Three.js Setup
@@ -654,6 +656,10 @@
         // Editable objects (cubes, etc.)
         const objectMeshes = [];
         
+        // House meshes and collision boxes
+        const houseMeshes = [];
+        const houseCollisionBoxes = [];
+        
         // Editor state
         const editor = {
             active: false,
@@ -750,6 +756,266 @@
         
         // Create initial objects
         state.objects.forEach((_, index) => createObjectMesh(index));
+        
+        // Function to create house model (exact copy from house-model.html)
+        function createHouseModel(position) {
+            const houseGroup = new THREE.Group();
+            
+            // Materials
+            const wallMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xf5f5dc, // Beige
+                roughness: 0.8,
+                metalness: 0.1
+            });
+
+            const roofMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x4a4a4a, // Dark gray
+                roughness: 0.7,
+                metalness: 0.2
+            });
+
+            const windowMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x87ceeb, // Blue
+                roughness: 0.1,
+                metalness: 0.8,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            const doorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x8b4513, // Brown
+                roughness: 0.6,
+                metalness: 0.1
+            });
+
+            const foundationMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x696969, // Gray
+                roughness: 0.9,
+                metalness: 0.1
+            });
+
+            // House dimensions
+            const houseWidth = 10;
+            const houseHeight = 6;
+            const houseDepth = 8;
+            const wallThickness = 0.3;
+
+            // Foundation
+            const foundationGeometry = new THREE.BoxGeometry(houseWidth + 0.5, 0.5, houseDepth + 0.5);
+            const foundation = new THREE.Mesh(foundationGeometry, foundationMaterial);
+            foundation.position.y = 0.25;
+            foundation.castShadow = true;
+            foundation.receiveShadow = true;
+            houseGroup.add(foundation);
+
+            // Main building (box)
+            const buildingGeometry = new THREE.BoxGeometry(houseWidth, houseHeight, houseDepth);
+            const building = new THREE.Mesh(buildingGeometry, wallMaterial);
+            building.position.y = houseHeight / 2 + 0.5;
+            building.castShadow = true;
+            building.receiveShadow = true;
+            houseGroup.add(building);
+
+            // Flat roof
+            const roofOverhang = 0.4;
+            const roofThickness = 0.3;
+            const roofGeometry = new THREE.BoxGeometry(
+                houseWidth + roofOverhang * 2, 
+                roofThickness, 
+                houseDepth + roofOverhang * 2
+            );
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = houseHeight + 0.5 + roofThickness / 2;
+            roof.castShadow = true;
+            roof.receiveShadow = true;
+            houseGroup.add(roof);
+
+            // Parapet on roof (decorative element)
+            const parapetHeight = 0.4;
+            const parapetThickness = 0.15;
+            
+            // Front parapet
+            const frontParapet = new THREE.Mesh(
+                new THREE.BoxGeometry(houseWidth + roofOverhang * 2, parapetHeight, parapetThickness),
+                roofMaterial
+            );
+            frontParapet.position.set(0, houseHeight + 0.5 + roofThickness + parapetHeight / 2, houseDepth / 2 + roofOverhang);
+            frontParapet.castShadow = true;
+            houseGroup.add(frontParapet);
+
+            // Back parapet
+            const backParapet = new THREE.Mesh(
+                new THREE.BoxGeometry(houseWidth + roofOverhang * 2, parapetHeight, parapetThickness),
+                roofMaterial
+            );
+            backParapet.position.set(0, houseHeight + 0.5 + roofThickness + parapetHeight / 2, -houseDepth / 2 - roofOverhang);
+            backParapet.castShadow = true;
+            houseGroup.add(backParapet);
+
+            // Left parapet
+            const leftParapet = new THREE.Mesh(
+                new THREE.BoxGeometry(parapetThickness, parapetHeight, houseDepth),
+                roofMaterial
+            );
+            leftParapet.position.set(-houseWidth / 2 - roofOverhang, houseHeight + 0.5 + roofThickness + parapetHeight / 2, 0);
+            leftParapet.castShadow = true;
+            houseGroup.add(leftParapet);
+
+            // Right parapet
+            const rightParapet = new THREE.Mesh(
+                new THREE.BoxGeometry(parapetThickness, parapetHeight, houseDepth),
+                roofMaterial
+            );
+            rightParapet.position.set(houseWidth / 2 + roofOverhang, houseHeight + 0.5 + roofThickness + parapetHeight / 2, 0);
+            rightParapet.castShadow = true;
+            houseGroup.add(rightParapet);
+
+            // Windows
+            const windowWidth = 1.5;
+            const windowHeight = 1.8;
+            const windowDepth = 0.1;
+
+            function createWindow(x, y, z, rotateY = 0) {
+                const windowMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(windowWidth, windowHeight, windowDepth),
+                    windowMaterial
+                );
+                windowMesh.position.set(x, y, z);
+                windowMesh.rotation.y = rotateY;
+                windowMesh.castShadow = true;
+                houseGroup.add(windowMesh);
+
+                // Window frame
+                const frameThickness = 0.05;
+                const frameMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+                
+                // Top frame
+                const topFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(windowWidth + 0.1, frameThickness, windowDepth + 0.05),
+                    frameMaterial
+                );
+                topFrame.position.set(x, y + windowHeight / 2, z);
+                topFrame.rotation.y = rotateY;
+                houseGroup.add(topFrame);
+
+                // Bottom frame
+                const bottomFrame = new THREE.Mesh(
+                    new THREE.BoxGeometry(windowWidth + 0.1, frameThickness, windowDepth + 0.05),
+                    frameMaterial
+                );
+                bottomFrame.position.set(x, y - windowHeight / 2, z);
+                bottomFrame.rotation.y = rotateY;
+                houseGroup.add(bottomFrame);
+            }
+
+            // Front windows (first floor)
+            createWindow(-3, 2, houseDepth / 2 + 0.05);
+            createWindow(3, 2, houseDepth / 2 + 0.05);
+
+            // Front windows (second floor)
+            createWindow(-3, 4.5, houseDepth / 2 + 0.05);
+            createWindow(3, 4.5, houseDepth / 2 + 0.05);
+
+            // Back windows (first floor)
+            createWindow(-3, 2, -houseDepth / 2 - 0.05, Math.PI);
+            createWindow(3, 2, -houseDepth / 2 - 0.05, Math.PI);
+
+            // Back windows (second floor)
+            createWindow(-3, 4.5, -houseDepth / 2 - 0.05, Math.PI);
+            createWindow(3, 4.5, -houseDepth / 2 - 0.05, Math.PI);
+
+            // Side windows (first floor)
+            createWindow(-houseWidth / 2 - 0.05, 2, -2, Math.PI / 2);
+            createWindow(houseWidth / 2 + 0.05, 2, 2, -Math.PI / 2);
+
+            // Side windows (second floor)
+            createWindow(-houseWidth / 2 - 0.05, 4.5, -2, Math.PI / 2);
+            createWindow(houseWidth / 2 + 0.05, 4.5, 2, -Math.PI / 2);
+
+            // Door
+            const doorWidth = 1.8;
+            const doorHeight = 2.5;
+            const doorDepth = 0.15;
+
+            const door = new THREE.Mesh(
+                new THREE.BoxGeometry(doorWidth, doorHeight, doorDepth),
+                doorMaterial
+            );
+            door.position.set(0, doorHeight / 2, houseDepth / 2 + 0.05);
+            door.castShadow = true;
+            houseGroup.add(door);
+
+            // Door frame
+            const doorFrameMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+            const doorFrameTop = new THREE.Mesh(
+                new THREE.BoxGeometry(doorWidth + 0.2, 0.1, doorDepth + 0.05),
+                doorFrameMaterial
+            );
+            doorFrameTop.position.set(0, doorHeight, houseDepth / 2 + 0.05);
+            houseGroup.add(doorFrameTop);
+
+            const doorFrameLeft = new THREE.Mesh(
+                new THREE.BoxGeometry(0.1, doorHeight, doorDepth + 0.05),
+                doorFrameMaterial
+            );
+            doorFrameLeft.position.set(-doorWidth / 2 - 0.05, doorHeight / 2, houseDepth / 2 + 0.05);
+            houseGroup.add(doorFrameLeft);
+
+            const doorFrameRight = new THREE.Mesh(
+                new THREE.BoxGeometry(0.1, doorHeight, doorDepth + 0.05),
+                doorFrameMaterial
+            );
+            doorFrameRight.position.set(doorWidth / 2 + 0.05, doorHeight / 2, houseDepth / 2 + 0.05);
+            houseGroup.add(doorFrameRight);
+
+            // Door handle
+            const handleGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+            const handleMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+            
+            const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+            handle.position.set(0.6, doorHeight / 2, houseDepth / 2 + 0.15);
+            houseGroup.add(handle);
+
+            // Chimney on roof
+            const chimneyWidth = 0.8;
+            const chimneyHeight = 2;
+            const chimneyDepth = 0.8;
+
+            const chimney = new THREE.Mesh(
+                new THREE.BoxGeometry(chimneyWidth, chimneyHeight, chimneyDepth),
+                new THREE.MeshStandardMaterial({ color: 0x8b0000, roughness: 0.7 }) // Brick color
+            );
+            chimney.position.set(3, houseHeight + 0.5 + roofThickness + chimneyHeight / 2, -2);
+            chimney.castShadow = true;
+            houseGroup.add(chimney);
+
+            // Chimney cap
+            const chimneyCap = new THREE.Mesh(
+                new THREE.BoxGeometry(chimneyWidth + 0.2, 0.15, chimneyDepth + 0.2),
+                roofMaterial
+            );
+            chimneyCap.position.set(3, houseHeight + 0.5 + roofThickness + chimneyHeight + 0.075, -2);
+            chimneyCap.castShadow = true;
+            houseGroup.add(chimneyCap);
+
+            // Set position
+            houseGroup.position.copy(position);
+            
+            scene.add(houseGroup);
+            
+            // Create collision box for the entire house (simplified as a single box)
+            const totalHeight = houseHeight + 0.5 + roofThickness + parapetHeight + chimneyHeight;
+            const collisionBox = new THREE.Box3();
+            collisionBox.setFromCenterAndSize(
+                new THREE.Vector3(position.x, totalHeight / 2, position.z),
+                new THREE.Vector3(houseWidth + roofOverhang * 2, totalHeight, houseDepth + roofOverhang * 2)
+            );
+            
+            houseMeshes.push(houseGroup);
+            houseCollisionBoxes.push(collisionBox);
+            
+            return houseGroup;
+        }
         
         // Try to load saved level on startup (will override defaults if save exists)
         const savedLevelExists = localStorage.getItem('droneGameLevel');
@@ -1422,9 +1688,72 @@
             updateSelectedObjectInfo();
         }
         
+        function addHouse() {
+            const newPosition = new THREE.Vector3(
+                (Math.random() - 0.5) * 40,
+                0,
+                (Math.random() - 0.5) * 40
+            );
+            
+            state.houses.push({
+                position: newPosition
+            });
+            
+            createHouseModel(newPosition);
+            selectHouse(state.houses.length - 1);
+            updateSelectedObjectInfo();
+        }
+        
+        function selectHouse(index) {
+            deselectObject();
+            
+            if (index < 0 || index >= state.houses.length) return;
+            
+            editor.selectedIndex = index;
+            editor.selectedObject = houseMeshes[index];
+            editor.selectedType = 'house';
+            
+            // Highlight selected house with a bounding box helper
+            const house = houseMeshes[index];
+            const box = new THREE.Box3().setFromObject(house);
+            const helper = new THREE.Box3Helper(box, 0x00ff00);
+            scene.add(helper);
+            
+            // Store reference to helper for cleanup
+            if (!editor.selectionHelpers) editor.selectionHelpers = [];
+            editor.selectionHelpers.push(helper);
+            
+            // Center camera on selected house
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            camera.position.set(center.x, center.y + 20, center.z + 20);
+            camera.lookAt(center);
+            cameraLookAt.copy(center);
+            
+            updateSelectedObjectInfo();
+        }
+        
         function removeSelectedObject() {
             if (editor.selectedIndex < 0) {
                 alert('Сначала выберите объект');
+                return;
+            }
+            
+            // Handle house removal
+            if (editor.selectedType === 'house' && state.houses[editor.selectedIndex]) {
+                // Remove from scene
+                scene.remove(houseMeshes[editor.selectedIndex]);
+                
+                // Remove collision box
+                houseCollisionBoxes.splice(editor.selectedIndex, 1);
+                houseMeshes.splice(editor.selectedIndex, 1);
+                state.houses.splice(editor.selectedIndex, 1);
+                
+                // Reset indices
+                editor.selectedIndex = -1;
+                editor.selectedObject = null;
+                editor.selectedType = 'landingZone';
+                updateSelectedObjectInfo();
                 return;
             }
             
@@ -1575,6 +1904,7 @@
             }
         });
         document.getElementById('addLandingZoneBtn').addEventListener('click', addLandingZone);
+        document.getElementById('addHouseBtn').addEventListener('click', addHouse);
         document.getElementById('removeSelectedBtn').addEventListener('click', removeSelectedObject);
         document.getElementById('saveLevelBtn').addEventListener('click', saveLevel);
         document.getElementById('loadLevelBtn').addEventListener('click', loadLevel);
