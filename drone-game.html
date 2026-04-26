@@ -188,6 +188,106 @@
             opacity: 0.8;
         }
         
+        #editorPanel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 15px;
+            display: none;
+            pointer-events: auto;
+            z-index: 1000;
+        }
+        
+        #editorPanel.active {
+            display: block;
+        }
+        
+        #editorPanel h3 {
+            color: #6af;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .editor-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .editor-btn {
+            padding: 10px 15px;
+            font-size: 14px;
+            background: linear-gradient(45deg, #4a90d9, #2c5aa0);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .editor-btn:hover {
+            background: linear-gradient(45deg, #5a9ee9, #3c6ab0);
+            transform: scale(1.05);
+        }
+        
+        .editor-btn.active {
+            background: linear-gradient(45deg, #00ff00, #00aa00);
+        }
+        
+        .editor-btn.danger {
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+        }
+        
+        .editor-btn.danger:hover {
+            background: linear-gradient(45deg, #ff6666, #dd2222);
+        }
+        
+        #editorInfo {
+            position: absolute;
+            bottom: 220px;
+            left: 20px;
+            color: #0f0;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            pointer-events: none;
+            max-width: 300px;
+        }
+        
+        #editorInfo.active {
+            display: block;
+        }
+        
+        #modeToggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            font-size: 14px;
+            background: linear-gradient(45deg, #ff8800, #cc6600);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            pointer-events: auto;
+            box-shadow: 0 4px 10px rgba(255, 136, 0, 0.4);
+            z-index: 999;
+        }
+        
+        #modeToggle:hover {
+            background: linear-gradient(45deg, #ff9922, #dd7711);
+            transform: scale(1.05);
+        }
+        
         #message {
             margin-top: 10px;
             color: #6af;
@@ -300,6 +400,27 @@
             <p>🕹️ Right Joystick - Click & Drag for Pitch/Roll</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p style="color: #ff6b6b; font-weight: bold;">🎯 Land in the RED CIRCLE to advance!</p>
+        </div>
+
+        <button id="modeToggle">🛠️ Editor Mode</button>
+        
+        <div id="editorPanel">
+            <h3>🎮 Level Editor</h3>
+            <div class="editor-controls">
+                <button class="editor-btn" id="selectLandingZoneBtn">Select Landing Zone</button>
+                <button class="editor-btn" id="addLandingZoneBtn">+ Add Zone</button>
+                <button class="editor-btn danger" id="removeLandingZoneBtn">- Remove Zone</button>
+                <button class="editor-btn" id="exitEditorBtn">Exit Editor</button>
+            </div>
+        </div>
+        
+        <div id="editorInfo">
+            <div><strong>Editor Mode Active</strong></div>
+            <div id="selectedObjectInfo">No object selected</div>
+            <div style="margin-top: 10px; font-size: 12px; color: #aaa;">
+                🖱️ Click and drag objects to move them<br>
+                📍 Use arrow keys for precise positioning
+            </div>
         </div>
 
         <div id="levelComplete">
@@ -518,6 +639,16 @@
         const landingZoneMeshes = [];
         const landingGlowMeshes = [];
         const markerGroups = [];
+        
+        // Editor state
+        const editor = {
+            active: false,
+            selectedObject: null,
+            selectedIndex: -1,
+            cameraMode: 'top',
+            originalCameraPosition: new THREE.Vector3(),
+            originalCameraTarget: new THREE.Vector3()
+        };
 
         function createLandingZone(index) {
             const zone = state.landingZones[index];
@@ -684,8 +815,28 @@
         
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
+            
+            // Editor mode: arrow keys for precise positioning
+            if (editor.active && editor.selectedIndex >= 0) {
+                const step = e.shiftKey ? 1 : 0.2;
+                if (e.code === 'ArrowLeft') {
+                    moveSelectedObject(-step, 0, 0);
+                } else if (e.code === 'ArrowRight') {
+                    moveSelectedObject(step, 0, 0);
+                } else if (e.code === 'ArrowUp') {
+                    moveSelectedObject(0, 0, -step);
+                } else if (e.code === 'ArrowDown') {
+                    moveSelectedObject(0, 0, step);
+                }
+            }
+            
             if (e.code === 'Space') {
                 resetDrone();
+            }
+            
+            // Toggle editor with E key
+            if (e.code === 'KeyE' && !e.repeat) {
+                toggleEditorMode();
             }
         });
         
@@ -872,6 +1023,81 @@
                 resetJoystick(rightJoystick, false);
             }
         });
+        
+        // Editor mode mouse handling for dragging objects
+        let isDraggingObject = false;
+        const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        const raycaster = new THREE.Raycaster();
+        const mouseVector = new THREE.Vector2();
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (!editor.active || editor.selectedIndex < 0) return;
+            
+            mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouseVector, camera);
+            const intersectionPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
+            
+            const zone = state.landingZones[editor.selectedIndex];
+            if (zone) {
+                const dx = intersectionPoint.x - zone.position.x;
+                const dz = intersectionPoint.z - zone.position.z;
+                if (Math.sqrt(dx * dx + dz * dz) < zone.radius + 1) {
+                    isDraggingObject = true;
+                }
+            }
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (!editor.active || !isDraggingObject || editor.selectedIndex < 0) return;
+            
+            mouseVector.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouseVector, camera);
+            const intersectionPoint = new THREE.Vector3();
+            
+            if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) {
+                moveSelectedObject(
+                    intersectionPoint.x - state.landingZones[editor.selectedIndex].position.x,
+                    0,
+                    intersectionPoint.z - state.landingZones[editor.selectedIndex].position.z
+                );
+                // Reset position to the intersection point
+                state.landingZones[editor.selectedIndex].position.x = intersectionPoint.x;
+                state.landingZones[editor.selectedIndex].position.z = intersectionPoint.z;
+                
+                // Update mesh positions directly
+                const mesh = landingZoneMeshes[editor.selectedIndex];
+                mesh.position.x = intersectionPoint.x;
+                mesh.position.z = intersectionPoint.z;
+                
+                const glow = landingGlowMeshes[editor.selectedIndex];
+                glow.position.x = intersectionPoint.x;
+                glow.position.z = intersectionPoint.z;
+                
+                // Update markers
+                const markers = markerGroups[editor.selectedIndex];
+                const zone = state.landingZones[editor.selectedIndex];
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i / 4) * Math.PI * 2;
+                    markers[i].position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
+                    markers[i].position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
+                }
+                
+                updateSelectedObjectInfo();
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDraggingObject = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isDraggingObject = false;
+        });
 
         function resetDrone() {
             state.drone.position.set(0, 2, 0);
@@ -880,9 +1106,212 @@
             state.drone.angularVelocity.set(0, 0, 0);
             state.battery = 100;
         }
+        
+        // Editor Functions
+        function toggleEditorMode() {
+            editor.active = !editor.active;
+            
+            const editorPanel = document.getElementById('editorPanel');
+            const editorInfo = document.getElementById('editorInfo');
+            const modeToggle = document.getElementById('modeToggle');
+            const controls = document.getElementById('controls');
+            const instructions = document.getElementById('instructions');
+            
+            if (editor.active) {
+                // Enter editor mode
+                editorPanel.classList.add('active');
+                editorInfo.classList.add('active');
+                modeToggle.textContent = '🎮 Play Mode';
+                modeToggle.style.background = 'linear-gradient(45deg, #00aa00, #008800)';
+                controls.style.display = 'none';
+                instructions.style.display = 'none';
+                
+                // Save camera position
+                editor.originalCameraPosition.copy(camera.position);
+                editor.originalCameraTarget.copy(cameraLookAt);
+                
+                // Set top-down view
+                setTopDownCamera();
+                
+                // Show all landing zones in editor
+                landingZoneMeshes.forEach(mesh => mesh.visible = true);
+                landingGlowMeshes.forEach(mesh => mesh.visible = true);
+                markerGroups.forEach(group => group.forEach(m => m.visible = true));
+                
+                // Disable physics in editor mode
+                state.drone.velocity.set(0, 0, 0);
+                state.drone.angularVelocity.set(0, 0, 0);
+            } else {
+                // Exit editor mode
+                editorPanel.classList.remove('active');
+                editorInfo.classList.remove('active');
+                modeToggle.textContent = '🛠️ Editor Mode';
+                modeToggle.style.background = 'linear-gradient(45deg, #ff8800, #cc6600)';
+                controls.style.display = 'flex';
+                instructions.style.display = 'block';
+                
+                // Restore camera
+                camera.position.copy(editor.originalCameraPosition);
+                cameraLookAt.copy(editor.originalCameraTarget);
+                editor.cameraMode = 'third';
+                
+                // Restore visibility based on level
+                updateLandingZoneVisibility();
+                
+                // Deselect any selected object
+                deselectObject();
+            }
+        }
+        
+        function setTopDownCamera() {
+            editor.cameraMode = 'top';
+            const dronePos = state.drone.position;
+            camera.position.set(dronePos.x, 30, dronePos.z + 0.1);
+            camera.lookAt(dronePos.x, 0, dronePos.z);
+            cameraLookAt.set(dronePos.x, 0, dronePos.z);
+        }
+        
+        function selectLandingZone(index) {
+            deselectObject();
+            
+            if (index < 0 || index >= state.landingZones.length) return;
+            
+            editor.selectedIndex = index;
+            editor.selectedObject = landingZoneMeshes[index];
+            
+            // Highlight selected zone
+            const mesh = landingZoneMeshes[index];
+            mesh.material = mesh.material.clone();
+            mesh.material.color.setHex(0x00ff00);
+            mesh.material.opacity = 1;
+            
+            // Center camera on selected zone
+            const zone = state.landingZones[index];
+            camera.position.set(zone.position.x, 30, zone.position.z + 0.1);
+            camera.lookAt(zone.position.x, 0, zone.position.z);
+            cameraLookAt.set(zone.position.x, 0, zone.position.z);
+            
+            updateSelectedObjectInfo();
+        }
+        
+        function deselectObject() {
+            if (editor.selectedIndex >= 0 && landingZoneMeshes[editor.selectedIndex]) {
+                const mesh = landingZoneMeshes[editor.selectedIndex];
+                mesh.material.dispose();
+                mesh.material = new THREE.MeshBasicMaterial({ 
+                    color: 0xff0000,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -1,
+                    polygonOffsetUnits: -1
+                });
+            }
+            editor.selectedObject = null;
+            editor.selectedIndex = -1;
+            updateSelectedObjectInfo();
+        }
+        
+        function updateSelectedObjectInfo() {
+            const infoEl = document.getElementById('selectedObjectInfo');
+            if (editor.selectedIndex >= 0 && state.landingZones[editor.selectedIndex]) {
+                const zone = state.landingZones[editor.selectedIndex];
+                infoEl.innerHTML = `
+                    <div><strong>Landing Zone ${editor.selectedIndex + 1}</strong></div>
+                    <div style="font-size: 12px; margin-top: 5px;">
+                        Position: (${zone.position.x.toFixed(1)}, ${zone.position.y.toFixed(1)}, ${zone.position.z.toFixed(1)})<br>
+                        Radius: ${zone.radius.toFixed(1)}m
+                    </div>
+                `;
+            } else {
+                infoEl.textContent = 'No object selected';
+            }
+        }
+        
+        function addLandingZone() {
+            const newIndex = state.landingZones.length;
+            const newPosition = new THREE.Vector3(
+                (Math.random() - 0.5) * 40,
+                0,
+                (Math.random() - 0.5) * 40
+            );
+            
+            state.landingZones.push({
+                position: newPosition,
+                radius: 3,
+                landed: false
+            });
+            
+            createLandingZone(newIndex);
+            selectLandingZone(newIndex);
+            updateSelectedObjectInfo();
+        }
+        
+        function removeLandingZone() {
+            if (editor.selectedIndex < 0) {
+                alert('Please select a landing zone first');
+                return;
+            }
+            
+            if (state.landingZones.length <= 1) {
+                alert('Cannot remove the last landing zone');
+                return;
+            }
+            
+            // Remove from scene
+            scene.remove(landingZoneMeshes[editor.selectedIndex]);
+            scene.remove(landingGlowMeshes[editor.selectedIndex]);
+            markerGroups[editor.selectedIndex].forEach(m => scene.remove(m));
+            
+            // Remove from arrays
+            landingZoneMeshes.splice(editor.selectedIndex, 1);
+            landingGlowMeshes.splice(editor.selectedIndex, 1);
+            markerGroups.splice(editor.selectedIndex, 1);
+            state.landingZones.splice(editor.selectedIndex, 1);
+            
+            // Reset indices
+            editor.selectedIndex = -1;
+            editor.selectedObject = null;
+            updateSelectedObjectInfo();
+        }
+        
+        function moveSelectedObject(dx, dy, dz) {
+            if (editor.selectedIndex < 0) return;
+            
+            const zone = state.landingZones[editor.selectedIndex];
+            zone.position.x += dx;
+            zone.position.y = Math.max(0, zone.position.y + dy);
+            zone.position.z += dz;
+            
+            // Update mesh positions
+            const mesh = landingZoneMeshes[editor.selectedIndex];
+            mesh.position.x = zone.position.x;
+            mesh.position.z = zone.position.z;
+            mesh.position.y = zone.position.y + 0.05;
+            
+            const glow = landingGlowMeshes[editor.selectedIndex];
+            glow.position.x = zone.position.x;
+            glow.position.z = zone.position.z;
+            glow.position.y = zone.position.y - 0.1;
+            
+            // Update markers
+            const markers = markerGroups[editor.selectedIndex];
+            for (let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2;
+                markers[i].position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
+                markers[i].position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
+                markers[i].position.y = zone.position.y + 0.5;
+            }
+            
+            updateSelectedObjectInfo();
+        }
 
         // Check if drone is in landing zone
         function checkLanding() {
+            // Skip landing check in editor mode
+            if (editor.active) return;
+            
             const currentZone = state.landingZones[state.level - 1];
             if (!currentZone || currentZone.landed) return;
 
@@ -952,8 +1381,30 @@
             e.stopPropagation();
             nextLevel();
         }, { passive: false });
+        
+        // Editor mode button listeners
+        document.getElementById('modeToggle').addEventListener('click', toggleEditorMode);
+        document.getElementById('selectLandingZoneBtn').addEventListener('click', () => {
+            if (state.landingZones.length > 0) {
+                selectLandingZone(0);
+            }
+        });
+        document.getElementById('addLandingZoneBtn').addEventListener('click', addLandingZone);
+        document.getElementById('removeLandingZoneBtn').addEventListener('click', removeLandingZone);
+        document.getElementById('exitEditorBtn').addEventListener('click', () => {
+            if (editor.active) {
+                toggleEditorMode();
+            }
+        });
 
         function updatePhysics(deltaTime) {
+            // Skip physics in editor mode
+            if (editor.active) {
+                droneGroup.position.copy(state.drone.position);
+                droneGroup.rotation.copy(state.drone.rotation);
+                return;
+            }
+            
             const phys = state.physics;
             const drone = state.drone;
             const controls = state.controls;
