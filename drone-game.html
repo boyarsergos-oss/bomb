@@ -33,6 +33,7 @@
             display: block;
             width: 100vw;
             height: 100vh;
+            cursor: default;
         }
         
         #ui {
@@ -294,6 +295,8 @@
             <p>Space - Reset Position</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p style="color: #ff6b6b; font-weight: bold;">🎯 Land in the RED CIRCLE to advance!</p>
+            <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
+            <p style="color: #ffd700; font-weight: bold;">✏️ Hold SHIFT to edit level position</p>
         </div>
 
         <div id="levelComplete">
@@ -593,16 +596,65 @@
 
         // Input handling
         const keys = {};
+        let editMode = false;
         
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
             if (e.code === 'Space') {
                 resetDrone();
             }
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                editMode = true;
+                canvas.style.cursor = 'move';
+            }
         });
         
         document.addEventListener('keyup', (e) => {
             keys[e.code] = false;
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+                editMode = false;
+                canvas.style.cursor = 'default';
+            }
+        });
+
+        // Mouse click for editing landing zone position
+        canvas.addEventListener('mousedown', (e) => {
+            if (!editMode) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            // Create a raycaster to find ground position
+            const mouse = new THREE.Vector2(mouseX, mouseY);
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+            const target = new THREE.Vector3();
+            raycaster.ray.intersectPlane(groundPlane, target);
+            
+            if (target) {
+                const currentZoneIndex = state.level - 1;
+                if (currentZoneIndex >= 0 && currentZoneIndex < state.landingZones.length) {
+                    state.landingZones[currentZoneIndex].position.copy(target);
+                    
+                    // Update visual elements
+                    landingZoneMeshes[currentZoneIndex].position.copy(target);
+                    landingGlowMeshes[currentZoneIndex].position.copy(target);
+                    
+                    // Update markers
+                    const markers = markerGroups[currentZoneIndex];
+                    const zone = state.landingZones[currentZoneIndex];
+                    for (let i = 0; i < markers.length; i++) {
+                        const angle = (i / 4) * Math.PI * 2;
+                        markers[i].position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
+                        markers[i].position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
+                    }
+                    
+                    showMessage(`✏️ Zone moved to (${target.x.toFixed(1)}, ${target.z.toFixed(1)})`);
+                }
+            }
         });
 
         // Touch controls
