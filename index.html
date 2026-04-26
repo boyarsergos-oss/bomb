@@ -120,9 +120,10 @@
         let birdVelocity = 0;
         const gravity = 0.015;
         const jumpStrength = 0.25;
-        const pipeSpeed = 0.08;
-        const pipeSpawnInterval = 1500;
+        const pipeSpeed = 0.15;
+        const pipeSpawnInterval = 2000;
         let lastPipeTime = 0;
+        let birdZ = 0; // Птичка летит вперёд по оси Z
         
         // Инициализация Three.js
         function init() {
@@ -133,10 +134,10 @@
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 20, 50);
             
-            // Камера (вид от третьего лица)
+            // Камера (вид от третьего лица - сзади птички)
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 0, 8);
-            camera.lookAt(0, 0, 0);
+            camera.position.set(0, 2, 8);
+            camera.lookAt(0, 0, -5);
             
             // Рендерер
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
@@ -178,11 +179,11 @@
             const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
             
             const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-            leftEye.position.set(0.3, 0.15, 0.2);
+            leftEye.position.set(-0.3, 0.15, 0.2);
             bird.add(leftEye);
             
             const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-            rightEye.position.set(0.3, 0.15, -0.2);
+            rightEye.position.set(-0.3, 0.15, -0.2);
             bird.add(rightEye);
             
             // Клюв
@@ -190,7 +191,7 @@
             const beakMaterial = new THREE.MeshPhongMaterial({ color: 0xFF6600 });
             const beak = new THREE.Mesh(beakGeometry, beakMaterial);
             beak.rotation.x = Math.PI / 2;
-            beak.position.set(0.5, 0, 0);
+            beak.position.set(-0.5, 0, 0);
             bird.add(beak);
             
             // Крылья
@@ -198,18 +199,19 @@
             const wingMaterial = new THREE.MeshPhongMaterial({ color: 0xFFA500 });
             
             const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
-            leftWing.position.set(-0.2, 0, 0.4);
+            leftWing.position.set(0.2, 0, 0.4);
             bird.add(leftWing);
             
             const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
-            rightWing.position.set(-0.2, 0, -0.4);
+            rightWing.position.set(0.2, 0, -0.4);
             bird.add(rightWing);
             
             bird.position.set(0, 0, 0);
+            bird.rotation.y = Math.PI; // Разворачиваем птичку спиной к камере
             scene.add(bird);
         }
         
-        function createPipe(xPosition) {
+        function createPipe(zPosition) {
             const gapSize = 3.5;
             const pipeWidth = 1.5;
             const pipeDepth = 1.5;
@@ -227,28 +229,28 @@
             });
             
             // Нижняя труба
-            const bottomGeometry = new THREE.BoxGeometry(pipeDepth, bottomHeight, pipeWidth);
+            const bottomGeometry = new THREE.BoxGeometry(pipeWidth, bottomHeight, pipeDepth);
             const bottomPipe = new THREE.Mesh(bottomGeometry, pipeMaterial);
-            bottomPipe.position.set(xPosition, -5 + bottomHeight / 2, 0);
+            bottomPipe.position.set(0, -5 + bottomHeight / 2, zPosition);
             bottomPipe.castShadow = true;
             bottomPipe.receiveShadow = true;
             
             // Верхняя труба
-            const topGeometry = new THREE.BoxGeometry(pipeDepth, topHeight, pipeWidth);
+            const topGeometry = new THREE.BoxGeometry(pipeWidth, topHeight, pipeDepth);
             const topPipe = new THREE.Mesh(topGeometry, pipeMaterial);
-            topPipe.position.set(xPosition, 5 - topHeight / 2, 0);
+            topPipe.position.set(0, 5 - topHeight / 2, zPosition);
             topPipe.castShadow = true;
             topPipe.receiveShadow = true;
             
             // Добавляем "шапку" трубам для красоты
-            const capGeometry = new THREE.BoxGeometry(pipeDepth + 0.2, 0.3, pipeWidth + 0.2);
+            const capGeometry = new THREE.BoxGeometry(pipeWidth + 0.2, 0.3, pipeDepth + 0.2);
             const capMaterial = new THREE.MeshPhongMaterial({ color: 0x3CB371 });
             
             const bottomCap = new THREE.Mesh(capGeometry, capMaterial);
-            bottomCap.position.set(xPosition, -5 + bottomHeight, 0);
+            bottomCap.position.set(0, -5 + bottomHeight, zPosition);
             
             const topCap = new THREE.Mesh(capGeometry, capMaterial);
-            topCap.position.set(xPosition, 5 - topHeight, 0);
+            topCap.position.set(0, 5 - topHeight, zPosition);
             
             scene.add(bottomPipe);
             scene.add(topPipe);
@@ -261,7 +263,7 @@
                 bottomCap: bottomCap,
                 topCap: topCap,
                 passed: false,
-                x: xPosition
+                z: zPosition
             });
         }
         
@@ -304,15 +306,16 @@
             
             // Сбрасываем позицию птички
             bird.position.set(0, 0, 0);
-            bird.rotation.set(0, 0, 0);
+            bird.rotation.set(0, Math.PI, 0);
             birdVelocity = 0;
+            birdZ = 0;
             
             // Сбрасываем счёт
             score = 0;
             document.getElementById('ui').textContent = '0';
             
             // Создаём первую трубу
-            createPipe(10);
+            createPipe(-15);
         }
         
         function gameOver() {
@@ -335,12 +338,16 @@
         function update(timestamp) {
             if (!gameRunning) return;
             
-            // Физика птички
+            // Птичка летит вперёд по оси Z
+            birdZ -= pipeSpeed;
+            bird.position.z = birdZ;
+            
+            // Физика птички (вверх-вниз по Y)
             birdVelocity -= gravity;
             bird.position.y += birdVelocity;
             
             // Вращение птички в зависимости от скорости
-            bird.rotation.z = Math.min(Math.max(birdVelocity * 2, -0.5), 0.5);
+            bird.rotation.x = Math.min(Math.max(birdVelocity * 2, -0.5), 0.5);
             
             // Проверка столкновений с землёй и потолком
             if (bird.position.y < -4.5 || bird.position.y > 4.5) {
@@ -350,20 +357,13 @@
             
             // Создание новых труб
             if (timestamp - lastPipeTime > pipeSpawnInterval) {
-                createPipe(15);
+                createPipe(birdZ - 20);
                 lastPipeTime = timestamp;
             }
             
             // Обновление труб
             for (let i = pipes.length - 1; i >= 0; i--) {
                 const pipe = pipes[i];
-                
-                // Движение труб
-                pipe.x -= pipeSpeed;
-                pipe.bottom.position.x = pipe.x;
-                pipe.top.position.x = pipe.x;
-                pipe.bottomCap.position.x = pipe.x;
-                pipe.topCap.position.x = pipe.x;
                 
                 // Проверка столкновений
                 if (checkCollision(pipe)) {
@@ -372,14 +372,14 @@
                 }
                 
                 // Подсчёт очков
-                if (!pipe.passed && pipe.x < bird.position.x - 1) {
+                if (!pipe.passed && pipe.z < bird.position.z - 1) {
                     pipe.passed = true;
                     score++;
                     document.getElementById('ui').textContent = score;
                 }
                 
                 // Удаление труб за экраном
-                if (pipe.x < -10) {
+                if (pipe.z < birdZ - 15) {
                     scene.remove(pipe.bottom);
                     scene.remove(pipe.top);
                     scene.remove(pipe.bottomCap);
@@ -389,8 +389,9 @@
             }
             
             // Камера следует за птичкой (плавно)
-            camera.position.y += (bird.position.y - camera.position.y) * 0.1;
-            camera.lookAt(bird.position.x + 2, bird.position.y, bird.position.z);
+            camera.position.z = birdZ + 8;
+            camera.position.y += (bird.position.y + 2 - camera.position.y) * 0.1;
+            camera.lookAt(bird.position.x, bird.position.y, bird.position.z - 5);
         }
         
         function animate(timestamp) {
@@ -400,8 +401,8 @@
             
             // Анимация крыльев
             if (gameRunning) {
-                bird.children[3].rotation.z = Math.sin(timestamp * 0.02) * 0.3;
-                bird.children[4].rotation.z = -Math.sin(timestamp * 0.02) * 0.3;
+                bird.children[3].rotation.x = Math.sin(timestamp * 0.02) * 0.3;
+                bird.children[4].rotation.x = -Math.sin(timestamp * 0.02) * 0.3;
             }
             
             renderer.render(scene, camera);
