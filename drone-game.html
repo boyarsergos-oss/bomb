@@ -539,12 +539,21 @@
             // Calculate thrust force - throttle directly controls thrust, no auto-hover
             // Throttle range: -1 to 1, maps to 0 to maxThrust
             const thrustMagnitude = Math.max(0, drone.throttle) * phys.maxThrust;
+            
+            // Only apply gravity when throttle is very low (near zero)
+            // This allows the drone to stay at the same height when throttle is released
+            let gravityForce;
+            if (drone.throttle < 0.02) {
+                gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass, 0);
+            } else {
+                // When throttle is applied, we balance gravity to allow stable hovering
+                // The thrust exactly counteracts gravity when throttle is in neutral position
+                gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass * (1 - drone.throttle), 0);
+            }
+
             const thrustDirection = new THREE.Vector3(0, 1, 0);
             thrustDirection.applyEuler(drone.rotation);
             const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude);
-
-            // Gravity
-            const gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass, 0);
 
             // Drag force
             const dragForce = drone.velocity.clone().multiplyScalar(-phys.drag);
