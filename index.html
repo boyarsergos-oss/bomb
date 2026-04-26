@@ -525,10 +525,13 @@
                     airplane.rotation.z = -targetX * 0.5;
                     airplane.rotation.x = targetY * 0.3;
                 } else {
-                    // Возврат к нейтральной позиции
+                    // Возврат к нейтральной позиции - выравниваем самолёт
                     airplane.rotation.z *= 0.95;
                     airplane.rotation.x *= 0.95;
                 }
+                
+                // Выравнивание самолёта по горизонтали (чтобы не летел под углом)
+                airplane.rotation.y = 0;
                 
                 // Ограничение границ
                 airplane.position.x = Math.max(-maxX, Math.min(maxX, airplane.position.x));
