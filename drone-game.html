@@ -477,8 +477,7 @@
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false },
-                { position: new THREE.Vector3(0, 6.15, -50), radius: 3, landed: false }
+                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false }
             ],
             objects: [],
             houses: []
@@ -1270,14 +1269,16 @@
         
         // createBuilding(); - отключено для очистки сцены
         
-        // Create house for Level 2 at z=-50 with landing zone on roof
+        // House for Level 2 (created when level starts)
+        let level2HouseCreated = false;
+        
         function createLevel2House() {
+            if (level2HouseCreated) return;
             const housePosition = new THREE.Vector3(0, 0, -50);
             createHouseModel(housePosition);
+            level2HouseCreated = true;
         }
         
-        createLevel2House();
-
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
             landingZoneMeshes.forEach((mesh, index) => {
@@ -1289,10 +1290,13 @@
                 markerGroups[index].forEach(m => m.visible = visible);
             });
             
-            // Show/hide building based on level (отключено - здание удалено)
-            // if (buildingGroup) {
-            //     buildingGroup.visible = state.level >= 2;
-            // }
+            // Show/hide house based on level
+            if (state.level >= 2 && level2HouseCreated) {
+                // House is already created and visible
+            } else if (state.level < 2) {
+                // Hide house meshes if going back to level 1 (not typical but for safety)
+                // This would require tracking house meshes, which we don't do currently
+            }
         }
         updateLandingZoneVisibility();
 
@@ -1897,6 +1901,11 @@
             state.drone.velocity.set(0, 0, 0);
             state.drone.rotation.set(0, 0, 0);
             state.drone.angularVelocity.set(0, 0, 0);
+            
+            // Create house for Level 2
+            if (state.level === 2) {
+                createLevel2House();
+            }
         }
         
         // Editor Functions
@@ -2371,8 +2380,14 @@
                 currentZone.landed = true;
                 
                 // Check if there's a next level
-                if (state.level < state.landingZones.length) {
-                    // Go to next level
+                if (state.level === 1) {
+                    // Go to Level 2 - add the landing zone on the house roof
+                    // House height: 6 (walls) + 0.5 (foundation) + 0.3 (roof) + 0.4 (parapet) = 7.2
+                    state.landingZones.push({ 
+                        position: new THREE.Vector3(0, 7.2, -50), 
+                        radius: 3, 
+                        landed: false 
+                    });
                     state.level++;
                     showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
                     resetDroneForLevel();
