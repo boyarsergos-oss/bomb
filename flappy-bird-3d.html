@@ -304,14 +304,45 @@
         
         // Проверка столкновений
         function checkCollision() {
-            const birdBox = new THREE.Box3().setFromObject(birdBody);
+            // Получаем точную позицию и размер птицы
+            const birdRadius = 0.8; // Радиус тела птицы
+            const birdX = bird.position.x;
+            const birdY = bird.position.y;
+            const birdZ = bird.position.z;
             
             for (const pipe of pipes) {
-                const topBox = new THREE.Box3().setFromObject(pipe.top);
-                const bottomBox = new THREE.Box3().setFromObject(pipe.bottom);
+                const pipeX = pipe.top.position.x;
+                const pipeZ = pipe.zPosition;
+                const pipeRadius = 1.5; // Радиус трубы
                 
-                if (birdBox.intersectsBox(topBox) || birdBox.intersectsBox(bottomBox)) {
-                    return true;
+                // Расстояние по X между птицей и трубой
+                const dx = Math.abs(birdX - pipeX);
+                // Расстояние по Z между птицей и трубой
+                const dz = Math.abs(birdZ - pipeZ);
+                
+                // Проверяем, находится ли птица в зоне трубы по оси Z
+                // Труба имеет радиус 1.5, птица имеет радиус 0.8
+                const zThreshold = pipeRadius + birdRadius;
+                
+                if (dz < zThreshold) {
+                    // Птица находится в зоне трубы по Z, проверяем Y
+                    const gapY = (pipe.top.position.y + pipe.bottom.position.y) / 2;
+                    const topPipeBottom = gapY + pipeGap / 2; // Низ верхней трубы
+                    const bottomPipeTop = gapY - pipeGap / 2; // Верх нижней трубы
+                    
+                    // Проверяем столкновение с верхней трубой
+                    if (birdY + birdRadius > topPipeBottom - pipeRadius && birdY - birdRadius < topPipeBottom + 10) {
+                        if (dx < pipeRadius + birdRadius) {
+                            return true;
+                        }
+                    }
+                    
+                    // Проверяем столкновение с нижней трубой
+                    if (birdY - birdRadius < bottomPipeTop + pipeRadius && birdY + birdRadius > bottomPipeTop - 10) {
+                        if (dx < pipeRadius + birdRadius) {
+                            return true;
+                        }
+                    }
                 }
             }
             
