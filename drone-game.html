@@ -1000,20 +1000,98 @@
 
             // Set position
             houseGroup.position.copy(position);
-            
+
             scene.add(houseGroup);
+
+            // Create precise collision boxes for each part of the house (matching exact geometry)
+            const houseColliders = [];
             
-            // Create collision box for the entire house (simplified as a single box)
-            const totalHeight = houseHeight + 0.5 + roofThickness + parapetHeight + chimneyHeight;
-            const collisionBox = new THREE.Box3();
-            collisionBox.setFromCenterAndSize(
-                new THREE.Vector3(position.x, totalHeight / 2, position.z),
-                new THREE.Vector3(houseWidth + roofOverhang * 2, totalHeight, houseDepth + roofOverhang * 2)
-            );
+            // Foundation collider
+            houseColliders.push({
+                min: new THREE.Vector3(-((houseWidth + 0.5) / 2), 0, -((houseDepth + 0.5) / 2)),
+                max: new THREE.Vector3(((houseWidth + 0.5) / 2), 0.5, ((houseDepth + 0.5) / 2))
+            });
             
+            // Main building collider
+            houseColliders.push({
+                min: new THREE.Vector3(-(houseWidth / 2), 0.5, -(houseDepth / 2)),
+                max: new THREE.Vector3((houseWidth / 2), houseHeight + 0.5, (houseDepth / 2))
+            });
+            
+            // Roof collider
+            houseColliders.push({
+                min: new THREE.Vector3(-((houseWidth + roofOverhang * 2) / 2), houseHeight + 0.5, -((houseDepth + roofOverhang * 2) / 2)),
+                max: new THREE.Vector3(((houseWidth + roofOverhang * 2) / 2), houseHeight + 0.5 + roofThickness, ((houseDepth + roofOverhang * 2) / 2))
+            });
+            
+            // Front parapet collider
+            houseColliders.push({
+                min: new THREE.Vector3(-((houseWidth + roofOverhang * 2) / 2), houseHeight + 0.5 + roofThickness, (houseDepth / 2 + roofOverhang) - (parapetThickness / 2)),
+                max: new THREE.Vector3(((houseWidth + roofOverhang * 2) / 2), houseHeight + 0.5 + roofThickness + parapetHeight, (houseDepth / 2 + roofOverhang) + (parapetThickness / 2))
+            });
+            
+            // Back parapet collider
+            houseColliders.push({
+                min: new THREE.Vector3(-((houseWidth + roofOverhang * 2) / 2), houseHeight + 0.5 + roofThickness, (-houseDepth / 2 - roofOverhang) - (parapetThickness / 2)),
+                max: new THREE.Vector3(((houseWidth + roofOverhang * 2) / 2), houseHeight + 0.5 + roofThickness + parapetHeight, (-houseDepth / 2 - roofOverhang) + (parapetThickness / 2))
+            });
+            
+            // Left parapet collider
+            houseColliders.push({
+                min: new THREE.Vector3((-houseWidth / 2 - roofOverhang) - (parapetThickness / 2), houseHeight + 0.5 + roofThickness, -(houseDepth / 2)),
+                max: new THREE.Vector3((-houseWidth / 2 - roofOverhang) + (parapetThickness / 2), houseHeight + 0.5 + roofThickness + parapetHeight, (houseDepth / 2))
+            });
+            
+            // Right parapet collider
+            houseColliders.push({
+                min: new THREE.Vector3((houseWidth / 2 + roofOverhang) - (parapetThickness / 2), houseHeight + 0.5 + roofThickness, -(houseDepth / 2)),
+                max: new THREE.Vector3((houseWidth / 2 + roofOverhang) + (parapetThickness / 2), houseHeight + 0.5 + roofThickness + parapetHeight, (houseDepth / 2))
+            });
+            
+            // Door collider
+            houseColliders.push({
+                min: new THREE.Vector3(-(doorWidth / 2), 0.5, (houseDepth / 2 + 0.05) - (doorDepth / 2)),
+                max: new THREE.Vector3((doorWidth / 2), doorHeight + 0.5, (houseDepth / 2 + 0.05) + (doorDepth / 2))
+            });
+            
+            // Chimney collider
+            houseColliders.push({
+                min: new THREE.Vector3(3 - (chimneyWidth / 2), houseHeight + 0.5 + roofThickness, -2 - (chimneyDepth / 2)),
+                max: new THREE.Vector3(3 + (chimneyWidth / 2), houseHeight + 0.5 + roofThickness + chimneyHeight, -2 + (chimneyDepth / 2))
+            });
+            
+            // Chimney cap collider
+            houseColliders.push({
+                min: new THREE.Vector3(3 - ((chimneyWidth + 0.2) / 2), houseHeight + 0.5 + roofThickness + chimneyHeight, -2 - ((chimneyDepth + 0.2) / 2)),
+                max: new THREE.Vector3(3 + ((chimneyWidth + 0.2) / 2), houseHeight + 0.5 + roofThickness + chimneyHeight + 0.15, -2 + ((chimneyDepth + 0.2) / 2))
+            });
+            
+            // Windows colliders (all windows)
+            const windowPositions = [
+                { x: -3, y: 2, z: houseDepth / 2 + 0.05 },
+                { x: 3, y: 2, z: houseDepth / 2 + 0.05 },
+                { x: -3, y: 4.5, z: houseDepth / 2 + 0.05 },
+                { x: 3, y: 4.5, z: houseDepth / 2 + 0.05 },
+                { x: -3, y: 2, z: -houseDepth / 2 - 0.05 },
+                { x: 3, y: 2, z: -houseDepth / 2 - 0.05 },
+                { x: -3, y: 4.5, z: -houseDepth / 2 - 0.05 },
+                { x: 3, y: 4.5, z: -houseDepth / 2 - 0.05 },
+                { x: -houseWidth / 2 - 0.05, y: 2, z: -2 },
+                { x: houseWidth / 2 + 0.05, y: 2, z: 2 },
+                { x: -houseWidth / 2 - 0.05, y: 4.5, z: -2 },
+                { x: houseWidth / 2 + 0.05, y: 4.5, z: 2 }
+            ];
+            
+            windowPositions.forEach(wp => {
+                houseColliders.push({
+                    min: new THREE.Vector3(wp.x - (windowWidth / 2), wp.y - (windowHeight / 2), wp.z - (windowDepth / 2)),
+                    max: new THREE.Vector3(wp.x + (windowWidth / 2), wp.y + (windowHeight / 2), wp.z + (windowDepth / 2))
+                });
+            });
+
             houseMeshes.push(houseGroup);
-            houseCollisionBoxes.push(collisionBox);
-            
+            houseCollisionBoxes.push(houseColliders);
+
             return houseGroup;
         }
         
@@ -1486,16 +1564,112 @@
                     mesh.position.x = intersectionPoint.x;
                     mesh.position.z = intersectionPoint.z;
                     
-                    // Recreate collision box with new position
-                    const totalHeight = 6 + 0.5 + 0.3 + 0.5 + 1.5; // houseHeight + foundation + roofThickness + parapetHeight + chimneyHeight
-                    const houseWidth = 10;
-                    const houseDepth = 8;
-                    const roofOverhang = 0.5;
-                    houseCollisionBoxes[editor.selectedIndex] = new THREE.Box3();
-                    houseCollisionBoxes[editor.selectedIndex].setFromCenterAndSize(
-                        new THREE.Vector3(intersectionPoint.x, totalHeight / 2, intersectionPoint.z),
-                        new THREE.Vector3(houseWidth + roofOverhang * 2, totalHeight, houseDepth + roofOverhang * 2)
-                    );
+                    // Recreate precise collision boxes with new position (matching exact geometry)
+                    const houseGroup = houseMeshes[editor.selectedIndex];
+                    const houseColliders = [];
+                    
+                    // House dimensions (same as in createHouseModel)
+                    const hWidth = 10;
+                    const hHeight = 6;
+                    const hDepth = 8;
+                    const hRoofOverhang = 0.4;
+                    const hRoofThickness = 0.3;
+                    const hParapetHeight = 0.4;
+                    const hParapetThickness = 0.15;
+                    const hDoorWidth = 1.8;
+                    const hDoorHeight = 2.5;
+                    const hDoorDepth = 0.15;
+                    const hChimneyWidth = 0.8;
+                    const hChimneyHeight = 2;
+                    const hChimneyDepth = 0.8;
+                    const hWindowWidth = 1.5;
+                    const hWindowHeight = 1.8;
+                    const hWindowDepth = 0.1;
+                    
+                    // Foundation collider
+                    houseColliders.push({
+                        min: new THREE.Vector3(-((hWidth + 0.5) / 2), 0, -((hDepth + 0.5) / 2)),
+                        max: new THREE.Vector3(((hWidth + 0.5) / 2), 0.5, ((hDepth + 0.5) / 2))
+                    });
+                    
+                    // Main building collider
+                    houseColliders.push({
+                        min: new THREE.Vector3(-(hWidth / 2), 0.5, -(hDepth / 2)),
+                        max: new THREE.Vector3((hWidth / 2), hHeight + 0.5, (hDepth / 2))
+                    });
+                    
+                    // Roof collider
+                    houseColliders.push({
+                        min: new THREE.Vector3(-((hWidth + hRoofOverhang * 2) / 2), hHeight + 0.5, -((hDepth + hRoofOverhang * 2) / 2)),
+                        max: new THREE.Vector3(((hWidth + hRoofOverhang * 2) / 2), hHeight + 0.5 + hRoofThickness, ((hDepth + hRoofOverhang * 2) / 2))
+                    });
+                    
+                    // Front parapet collider
+                    houseColliders.push({
+                        min: new THREE.Vector3(-((hWidth + hRoofOverhang * 2) / 2), hHeight + 0.5 + hRoofThickness, (hDepth / 2 + hRoofOverhang) - (hParapetThickness / 2)),
+                        max: new THREE.Vector3(((hWidth + hRoofOverhang * 2) / 2), hHeight + 0.5 + hRoofThickness + hParapetHeight, (hDepth / 2 + hRoofOverhang) + (hParapetThickness / 2))
+                    });
+                    
+                    // Back parapet collider
+                    houseColliders.push({
+                        min: new THREE.Vector3(-((hWidth + hRoofOverhang * 2) / 2), hHeight + 0.5 + hRoofThickness, (-hDepth / 2 - hRoofOverhang) - (hParapetThickness / 2)),
+                        max: new THREE.Vector3(((hWidth + hRoofOverhang * 2) / 2), hHeight + 0.5 + hRoofThickness + hParapetHeight, (-hDepth / 2 - hRoofOverhang) + (hParapetThickness / 2))
+                    });
+                    
+                    // Left parapet collider
+                    houseColliders.push({
+                        min: new THREE.Vector3((-hWidth / 2 - hRoofOverhang) - (hParapetThickness / 2), hHeight + 0.5 + hRoofThickness, -(hDepth / 2)),
+                        max: new THREE.Vector3((-hWidth / 2 - hRoofOverhang) + (hParapetThickness / 2), hHeight + 0.5 + hRoofThickness + hParapetHeight, (hDepth / 2))
+                    });
+                    
+                    // Right parapet collider
+                    houseColliders.push({
+                        min: new THREE.Vector3((hWidth / 2 + hRoofOverhang) - (hParapetThickness / 2), hHeight + 0.5 + hRoofThickness, -(hDepth / 2)),
+                        max: new THREE.Vector3((hWidth / 2 + hRoofOverhang) + (hParapetThickness / 2), hHeight + 0.5 + hRoofThickness + hParapetHeight, (hDepth / 2))
+                    });
+                    
+                    // Door collider
+                    houseColliders.push({
+                        min: new THREE.Vector3(-(hDoorWidth / 2), 0.5, (hDepth / 2 + 0.05) - (hDoorDepth / 2)),
+                        max: new THREE.Vector3((hDoorWidth / 2), hDoorHeight + 0.5, (hDepth / 2 + 0.05) + (hDoorDepth / 2))
+                    });
+                    
+                    // Chimney collider
+                    houseColliders.push({
+                        min: new THREE.Vector3(3 - (hChimneyWidth / 2), hHeight + 0.5 + hRoofThickness, -2 - (hChimneyDepth / 2)),
+                        max: new THREE.Vector3(3 + (hChimneyWidth / 2), hHeight + 0.5 + hRoofThickness + hChimneyHeight, -2 + (hChimneyDepth / 2))
+                    });
+                    
+                    // Chimney cap collider
+                    houseColliders.push({
+                        min: new THREE.Vector3(3 - ((hChimneyWidth + 0.2) / 2), hHeight + 0.5 + hRoofThickness + hChimneyHeight, -2 - ((hChimneyDepth + 0.2) / 2)),
+                        max: new THREE.Vector3(3 + ((hChimneyWidth + 0.2) / 2), hHeight + 0.5 + hRoofThickness + hChimneyHeight + 0.15, -2 + ((hChimneyDepth + 0.2) / 2))
+                    });
+                    
+                    // Windows colliders
+                    const windowPositions = [
+                        { x: -3, y: 2, z: hDepth / 2 + 0.05 },
+                        { x: 3, y: 2, z: hDepth / 2 + 0.05 },
+                        { x: -3, y: 4.5, z: hDepth / 2 + 0.05 },
+                        { x: 3, y: 4.5, z: hDepth / 2 + 0.05 },
+                        { x: -3, y: 2, z: -hDepth / 2 - 0.05 },
+                        { x: 3, y: 2, z: -hDepth / 2 - 0.05 },
+                        { x: -3, y: 4.5, z: -hDepth / 2 - 0.05 },
+                        { x: 3, y: 4.5, z: -hDepth / 2 - 0.05 },
+                        { x: -hWidth / 2 - 0.05, y: 2, z: -2 },
+                        { x: hWidth / 2 + 0.05, y: 2, z: 2 },
+                        { x: -hWidth / 2 - 0.05, y: 4.5, z: -2 },
+                        { x: hWidth / 2 + 0.05, y: 4.5, z: 2 }
+                    ];
+                    
+                    windowPositions.forEach(wp => {
+                        houseColliders.push({
+                            min: new THREE.Vector3(wp.x - (hWindowWidth / 2), wp.y - (hWindowHeight / 2), wp.z - (hWindowDepth / 2)),
+                            max: new THREE.Vector3(wp.x + (hWindowWidth / 2), wp.y + (hWindowHeight / 2), wp.z + (hWindowDepth / 2))
+                        });
+                    });
+                    
+                    houseCollisionBoxes[editor.selectedIndex] = houseColliders;
                 }
                 
                 updateSelectedObjectInfo();
@@ -1525,6 +1699,9 @@
                     position: { x: zone.position.x, y: zone.position.y, z: zone.position.z },
                     radius: zone.radius,
                     landed: zone.landed
+                })),
+                houses: state.houses.map(house => ({
+                    position: { x: house.position.x, y: house.position.y, z: house.position.z }
                 }))
             };
             localStorage.setItem('droneGameLevel', JSON.stringify(levelData));
@@ -2175,16 +2352,24 @@
                 }
             }
             
-            // Check collision with house collision boxes
+            // Check collision with house collision boxes (precise geometry-based colliders)
             for (let i = 0; i < houseCollisionBoxes.length; i++) {
-                if (droneBox.intersectsBox(houseCollisionBoxes[i])) {
-                    // Simple collision response: push drone away
-                    const center = new THREE.Vector3();
-                    houseCollisionBoxes[i].getCenter(center);
-                    const direction = drone.position.clone().sub(center).normalize();
-                    if (direction.length() > 0) {
-                        drone.position.add(direction.multiplyScalar(0.1));
-                        drone.velocity.multiplyScalar(0.5);
+                const houseColliders = houseCollisionBoxes[i];
+                for (let j = 0; j < houseColliders.length; j++) {
+                    const collider = houseColliders[j];
+                    const localDronePos = drone.position.clone().sub(houseMeshes[i].position);
+                    if (localDronePos.x >= collider.min.x && localDronePos.x <= collider.max.x &&
+                        localDronePos.y >= collider.min.y && localDronePos.y <= collider.max.y &&
+                        localDronePos.z >= collider.min.z && localDronePos.z <= collider.max.z) {
+                        // Simple collision response: push drone away
+                        const worldColliderMin = collider.min.clone().add(houseMeshes[i].position);
+                        const worldColliderMax = collider.max.clone().add(houseMeshes[i].position);
+                        const center = new THREE.Vector3().addVectors(worldColliderMin, worldColliderMax).multiplyScalar(0.5);
+                        const direction = drone.position.clone().sub(center).normalize();
+                        if (direction.length() > 0) {
+                            drone.position.add(direction.multiplyScalar(0.1));
+                            drone.velocity.multiplyScalar(0.5);
+                        }
                     }
                 }
             }
