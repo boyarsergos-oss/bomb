@@ -271,6 +271,29 @@
                 display: none;
             }
         }
+            
+            /* Mobile edit mode hint */
+            #mobileEditHint {
+                position: absolute;
+                bottom: 180px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(255, 215, 0, 0.9);
+                color: #000;
+                padding: 10px 20px;
+                border-radius: 10px;
+                font-size: 14px;
+                font-weight: bold;
+                display: none;
+                pointer-events: none;
+                text-align: center;
+                z-index: 1000;
+            }
+            
+            .edit-mode #mobileEditHint {
+                display: block;
+            }
+        }
     </style>
 </head>
 <body>
@@ -298,6 +321,8 @@
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p style="color: #ffd700; font-weight: bold;">✏️ Hold SHIFT to edit level position</p>
         </div>
+
+        <div id="mobileEditHint">👆 Long press to edit • Tap to move zone</div>
 
         <div id="levelComplete">
             <div>🎉 Level Complete! 🎉</div>
@@ -597,6 +622,8 @@
         // Input handling
         const keys = {};
         let editMode = false;
+                document.body.classList.remove('edit-mode');
+                canvas.style.cursor = 'default';
         
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
@@ -605,6 +632,7 @@
             }
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
                 editMode = true;
+                document.body.classList.add('edit-mode');
                 canvas.style.cursor = 'move';
             }
         });
@@ -613,36 +641,35 @@
             keys[e.code] = false;
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
                 editMode = false;
+                document.body.classList.remove('edit-mode');
                 canvas.style.cursor = 'default';
             }
         });
 
-        // Mouse click for editing landing zone position
-        canvas.addEventListener('mousedown', (e) => {
-            if (!editMode) return;
-            
+        // Function to move landing zone to touched/clicked position
+        function moveLandingZone(clientX, clientY) {
             const rect = canvas.getBoundingClientRect();
-            const mouseX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-            const mouseY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-            
+            const mouseX = ((clientX - rect.left) / rect.width) * 2 - 1;
+            const mouseY = -((clientY - rect.top) / rect.height) * 2 + 1;
+
             // Create a raycaster to find ground position
             const mouse = new THREE.Vector2(mouseX, mouseY);
             const raycaster = new THREE.Raycaster();
             raycaster.setFromCamera(mouse, camera);
-            
+
             const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
             const target = new THREE.Vector3();
             raycaster.ray.intersectPlane(groundPlane, target);
-            
+
             if (target) {
                 const currentZoneIndex = state.level - 1;
                 if (currentZoneIndex >= 0 && currentZoneIndex < state.landingZones.length) {
                     state.landingZones[currentZoneIndex].position.copy(target);
-                    
+
                     // Update visual elements
                     landingZoneMeshes[currentZoneIndex].position.copy(target);
                     landingGlowMeshes[currentZoneIndex].position.copy(target);
-                    
+
                     // Update markers
                     const markers = markerGroups[currentZoneIndex];
                     const zone = state.landingZones[currentZoneIndex];
@@ -651,12 +678,51 @@
                         markers[i].position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
                         markers[i].position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
                     }
-                    
+
                     showMessage(`✏️ Zone moved to (${target.x.toFixed(1)}, ${target.z.toFixed(1)})`);
                 }
             }
+        }
+
+        // Mouse click for editing landing zone position
+        canvas.addEventListener('mousedown', (e) => {
+            if (!editMode) return;
+            moveLandingZone(e.clientX, e.clientY);
         });
 
+        // Touch support for editing on mobile
+        let editTouchStartTime = 0;
+        let editTouchTimer = null;
+
+        canvas.addEventListener('touchstart', (e) => {
+            // Check if touch is on canvas (not on controls)
+            if (editMode) {
+                const touch = e.changedTouches[0];
+                moveLandingZone(touch.clientX, touch.clientY);
+            } else {
+                // Long press (500ms) to enter edit mode on mobile
+                const touch = e.changedTouches[0];
+                editTouchStartTime = Date.now();
+                editTouchTimer = setTimeout(() => {
+                    editMode = true;
+                document.body.classList.add('edit-mode');
+                canvas.style.cursor = 'move';
+                    canvas.style.cursor = 'move';
+                    showMessage('✏️ Edit Mode: Tap to move zone');
+                    // Move the zone immediately on long press
+                    moveLandingZone(touch.clientX, touch.clientY);
+                }, 500);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            const touchDuration = Date.now() - editTouchStartTime;
+            // Clear the timer if touch was short (less than 500ms)
+            if (editTouchTimer && touchDuration < 500) {
+                clearTimeout(editTouchTimer);
+            }
+            editTouchTimer = null;
+        }, { passive: false });
         // Touch controls
         const leftZone = document.getElementById('leftZone');
         const rightZone = document.getElementById('rightZone');
