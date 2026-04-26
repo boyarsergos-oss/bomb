@@ -147,6 +147,7 @@
             <div><span class="label">Speed:</span> <span class="value" id="speed">0.0</span> m/s</div>
             <div><span class="label">Heading:</span> <span class="value" id="heading">0°</span></div>
             <div><span class="label">Battery:</span> <span class="value" id="battery">100%</span></div>
+            <div><span class="label">Level:</span> <span class="value" id="level">1</span></div>
         </div>
         
         <div id="instructions">
@@ -156,6 +157,7 @@
             <p>↑/↓ - Pitch Forward/Back</p>
             <p>←/→ - Roll Left/Right</p>
             <p>Space - Reset Position</p>
+            <p style="color: #ff6; margin-top: 10px;">🎯 Land the drone in the RED CIRCLE to advance!</p>
         </div>
         
         <div id="controls">
@@ -199,7 +201,10 @@
                 gyroStability: 8.0
             },
             battery: 100,
-            time: 0
+            time: 0,
+            level: 1,
+            landed: false,
+            targetPosition: new THREE.Vector3(10, 0, 10)
         };
 
         // Three.js Setup
@@ -337,6 +342,49 @@
 
         scene.add(droneGroup);
 
+        // Red Circle Target (Landing Zone)
+        const targetGroup = new THREE.Group();
+        
+        // Outer red ring
+        const outerRingGeometry = new THREE.RingGeometry(2.5, 3, 32);
+        const redMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff0000, 
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.8
+        });
+        const outerRing = new THREE.Mesh(outerRingGeometry, redMaterial);
+        outerRing.rotation.x = -Math.PI / 2;
+        outerRing.position.y = 0.01;
+        targetGroup.add(outerRing);
+        
+        // Inner red ring
+        const innerRingGeometry = new THREE.RingGeometry(2, 2.3, 32);
+        const innerRing = new THREE.Mesh(innerRingGeometry, redMaterial);
+        innerRing.rotation.x = -Math.PI / 2;
+        innerRing.position.y = 0.02;
+        targetGroup.add(innerRing);
+        
+        // Center marker
+        const centerGeometry = new THREE.CircleGeometry(0.5, 16);
+        const centerMarker = new THREE.Mesh(centerGeometry, redMaterial);
+        centerMarker.rotation.x = -Math.PI / 2;
+        centerMarker.position.y = 0.03;
+        targetGroup.add(centerMarker);
+        
+        // Landing pad base
+        const padGeometry = new THREE.CylinderGeometry(3, 3, 0.2, 32);
+        const padMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x333333,
+            roughness: 0.8,
+            metalness: 0.5
+        });
+        const landingPad = new THREE.Mesh(padGeometry, padMaterial);
+        landingPad.position.y = -0.1;
+        targetGroup.add(landingPad);
+        
+        scene.add(targetGroup);
+
         // Camera offset for third-person view
         const cameraOffset = new THREE.Vector3(0, 3, 6);
         const cameraLookAt = new THREE.Vector3(0, 0, 0);
@@ -472,6 +520,59 @@
             state.drone.rotation.set(0, 0, 0);
             state.drone.angularVelocity.set(0, 0, 0);
             state.battery = 100;
+            state.landed = false;
+        }
+        
+        function updateTargetPosition() {
+            // Move target to new random position for each level
+            const angle = (state.level - 1) * Math.PI / 4;
+            const radius = 10 + (state.level - 1) * 5;
+            state.targetPosition.x = Math.cos(angle) * radius;
+            state.targetPosition.z = Math.sin(angle) * radius;
+            
+            // Update target group position
+            targetGroup.position.copy(state.targetPosition);
+            
+            // Update UI
+            document.getElementById('level').textContent = state.level;
+        }
+
+        function checkLanding(deltaTime) {
+            if (state.landed) return;
+            
+            const dronePos = state.drone.position;
+            const targetPos = state.targetPosition;
+            
+            // Check horizontal distance to target
+            const horizontalDist = Math.sqrt(
+                Math.pow(dronePos.x - targetPos.x, 2) + 
+                Math.pow(dronePos.z - targetPos.z, 2)
+            );
+            
+            // Check if drone is low enough (near ground)
+            const isLow = dronePos.y < 1.0;
+            
+            // Check if drone is slow enough
+            const isSlow = dronePos.length() < 0.5 || state.drone.velocity.length() < 0.3;
+            
+            // Check if within the red circle (radius ~2.5)
+            const isInCircle = horizontalDist < 2.5;
+            
+            if (isLow && isInCircle && isSlow) {
+                // Successfully landed in the red circle!
+                state.landed = true;
+                state.level++;
+                
+                // Show success message briefly
+                setTimeout(() => {
+                    alert(`🎉 Level ${state.level - 1} Complete! Moving to Level ${state.level}`);
+                    updateTargetPosition();
+                    // Reset drone position but keep level
+                    state.drone.position.set(0, 2, 0);
+                    state.drone.velocity.set(0, 0, 0);
+                    state.landed = false;
+                }, 100);
+            }
         }
 
         function updatePhysics(deltaTime) {
@@ -633,6 +734,7 @@
 
             updatePhysics(deltaTime);
             updateUI();
+            checkLanding(deltaTime);
 
             renderer.render(scene, camera);
         }
@@ -643,6 +745,9 @@
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
+        // Initialize target position
+        updateTargetPosition();
 
         // Start the game
         animate();
