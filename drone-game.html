@@ -370,11 +370,16 @@
         
         <div id="instructions">
             <h3>PC Controls</h3>
+            <p><strong>Keyboard:</strong></p>
             <p>W/S - Throttle Up/Down</p>
             <p>A/D - Yaw Left/Right</p>
             <p>↑/↓ - Pitch Forward/Back</p>
             <p>←/→ - Roll Left/Right</p>
             <p>Space - Reset Position</p>
+            <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
+            <p><strong>Mouse (like on phone):</strong></p>
+            <p>🕹️ Left Joystick - Click & Drag for Throttle/Yaw</p>
+            <p>🕹️ Right Joystick - Click & Drag for Pitch/Roll</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p style="color: #ff6b6b; font-weight: bold;">🎯 Land in the RED CIRCLE to advance!</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
@@ -847,7 +852,7 @@
 
             if (isLeft) {
                 state.controls.throttle = -normalizedY;
-                state.controls.yaw = 0;
+                state.controls.yaw = normalizedX;
             } else {
                 state.controls.pitch = normalizedY;
                 state.controls.roll = -normalizedX;
@@ -934,6 +939,64 @@
             rightTouch = null;
             resetJoystick(rightJoystick, false);
         }, { passive: false });
+
+        // Mouse controls for PC (analogous to touch controls)
+        let leftMouseDown = false;
+        let rightMouseDown = false;
+
+        leftZone.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            leftMouseDown = true;
+            handleTouch(e, leftZone, leftJoystick, true);
+        });
+
+        leftZone.addEventListener('mousemove', (e) => {
+            e.preventDefault();
+            if (leftMouseDown) {
+                handleTouch(e, leftZone, leftJoystick, true);
+            }
+        });
+
+        leftZone.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            leftMouseDown = false;
+            resetJoystick(leftJoystick, true);
+        });
+
+        leftZone.addEventListener('mouseleave', (e) => {
+            e.preventDefault();
+            if (leftMouseDown) {
+                leftMouseDown = false;
+                resetJoystick(leftJoystick, true);
+            }
+        });
+
+        rightZone.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            rightMouseDown = true;
+            handleTouch(e, rightZone, rightJoystick, false);
+        });
+
+        rightZone.addEventListener('mousemove', (e) => {
+            e.preventDefault();
+            if (rightMouseDown) {
+                handleTouch(e, rightZone, rightJoystick, false);
+            }
+        });
+
+        rightZone.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            rightMouseDown = false;
+            resetJoystick(rightJoystick, false);
+        });
+
+        rightZone.addEventListener('mouseleave', (e) => {
+            e.preventDefault();
+            if (rightMouseDown) {
+                rightMouseDown = false;
+                resetJoystick(rightJoystick, false);
+            }
+        });
 
         function resetDrone() {
             state.drone.position.set(0, 2, 0);
