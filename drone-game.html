@@ -193,7 +193,7 @@
                 mass: 1.5,
                 drag: 0.5,
                 angularDrag: 2.0,
-                maxThrust: 25.0,
+                maxThrust: 22.0,
                 maxTilt: Math.PI / 6,
                 motorResponse: 5.0,
                 gyroStability: 8.0
@@ -536,8 +536,9 @@
             drone.pitch += (targetPitch - drone.pitch) * responseSpeed;
             drone.roll += (targetRoll - drone.roll) * responseSpeed;
 
-            // Calculate thrust force
-            const thrustMagnitude = (1 + drone.throttle) * phys.maxThrust;
+            // Calculate thrust force - throttle directly controls thrust, no auto-hover
+            // Throttle range: -1 to 1, maps to 0 to maxThrust
+            const thrustMagnitude = Math.max(0, drone.throttle) * phys.maxThrust;
             const thrustDirection = new THREE.Vector3(0, 1, 0);
             thrustDirection.applyEuler(drone.rotation);
             const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude);
