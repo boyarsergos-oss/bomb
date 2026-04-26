@@ -624,17 +624,18 @@
             scene.add(landingZone);
             landingZoneMeshes.push(landingZone);
 
-            // Red glow effect
+            // Red glow effect (positioned lower to avoid z-fighting)
             const glowGeometry = new THREE.CircleGeometry(zone.radius, 32);
             const glowMaterial = new THREE.MeshBasicMaterial({
                 color: 0xff0000,
                 transparent: true,
-                opacity: 0.3
+                opacity: 0.3,
+                depthWrite: false
             });
             const landingGlow = new THREE.Mesh(glowGeometry, glowMaterial);
             landingGlow.rotation.x = -Math.PI / 2;
             landingGlow.position.copy(zone.position);
-            landingGlow.position.y = 0.01;
+            landingGlow.position.y = -0.1;
             scene.add(landingGlow);
             landingGlowMeshes.push(landingGlow);
 
