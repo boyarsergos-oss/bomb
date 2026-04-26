@@ -383,7 +383,7 @@
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p style="color: #ff6b6b; font-weight: bold;">🎯 Land in the RED CIRCLE to advance!</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
-            <p style="color: #ffd700; font-weight: bold;">✏️ Hold SHIFT to edit level position</p>
+            <p style="color: #ffd700; font-weight: bold;">✏️ Hold SHIFT to edit level position (Top-Down View)</p>
         </div>
 
         <div id="mobileEditHint">👆 Long press to edit • Tap to move zone</div>
@@ -682,8 +682,8 @@
         // Adjust camera based on orientation
         function updateCameraForOrientation() {
             if (topDownView) {
-                // Top-down view: camera directly above
-                cameraOffset.set(0, 30, 0);
+                // Top-down view: camera directly above, looking straight down
+                cameraOffset.set(0, 50, 0);
             } else {
                 const isLandscape = window.innerWidth > window.innerHeight;
                 
@@ -710,8 +710,12 @@
             }
             if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
                 editMode = true;
+                topDownView = true;
+                topDownBtn.classList.add('active');
+                topDownBtn.textContent = '🔍 Normal View';
                 document.body.classList.add('edit-mode');
                 canvas.style.cursor = 'move';
+                updateCameraForOrientation();
             }
         });
         
