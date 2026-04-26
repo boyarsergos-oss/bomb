@@ -378,59 +378,59 @@
     
     <div id="ui">
         <div id="info">
-            <div><span class="label">Level:</span> <span class="value" id="level">1</span></div>
-            <div><span class="label">Altitude:</span> <span class="value" id="altitude">0.0</span> m</div>
-            <div><span class="label">Speed:</span> <span class="value" id="speed">0.0</span> m/s</div>
-            <div><span class="label">Heading:</span> <span class="value" id="heading">0°</span></div>
-            <div><span class="label">Battery:</span> <span class="value" id="battery">100%</span></div>
+            <div><span class="label">Уровень:</span> <span class="value" id="level">1</span></div>
+            <div><span class="label">Высота:</span> <span class="value" id="altitude">0.0</span> м</div>
+            <div><span class="label">Скорость:</span> <span class="value" id="speed">0.0</span> м/с</div>
+            <div><span class="label">Курс:</span> <span class="value" id="heading">0°</span></div>
+            <div><span class="label">Батарея:</span> <span class="value" id="battery">100%</span></div>
             <div id="message"></div>
         </div>
         
         <div id="instructions">
-            <h3>PC Controls</h3>
-            <p><strong>Keyboard:</strong></p>
-            <p>W/S - Throttle Up/Down</p>
-            <p>A/D - Yaw Left/Right</p>
-            <p>↑/↓ - Pitch Forward/Back</p>
-            <p>←/→ - Roll Left/Right</p>
-            <p>Space - Reset Position</p>
+            <h3>Управление на ПК</h3>
+            <p><strong>Клавиатура:</strong></p>
+            <p>W/S - Тяга вверх/вниз</p>
+            <p>A/D - Поворот влево/вправо</p>
+            <p>↑/↓ - Наклон вперёд/назад</p>
+            <p>←/→ - Крен влево/вправо</p>
+            <p>Пробел - Сброс позиции</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
-            <p><strong>Mouse (like on phone):</strong></p>
-            <p>🕹️ Left Joystick - Click & Drag for Throttle/Yaw</p>
-            <p>🕹️ Right Joystick - Click & Drag for Pitch/Roll</p>
+            <p><strong>Мышь (как на телефоне):</strong></p>
+            <p>🕹️ Левый джойстик - Тяга/Поворот</p>
+            <p>🕹️ Правый джойстик - Наклон/Крен</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
-            <p style="color: #ff6b6b; font-weight: bold;">🎯 Land in the RED CIRCLE to advance!</p>
+            <p style="color: #ff6b6b; font-weight: bold;">🎯 Приземлитесь в КРАСНЫЙ КРУГ для перехода!</p>
         </div>
 
-        <button id="modeToggle">🛠️ Editor Mode</button>
+        <button id="modeToggle">🛠️ Режим редактора</button>
         
         <div id="editorPanel">
-            <h3>🎮 Level Editor</h3>
+            <h3>🎮 Редактор уровня</h3>
             <div class="editor-controls">
-                <button class="editor-btn" id="selectLandingZoneBtn">Select Zone</button>
-                <button class="editor-btn" id="selectObjectBtn">Select Object</button>
-                <button class="editor-btn" id="addLandingZoneBtn">+ Add Zone</button>
-                <button class="editor-btn" id="addObjectBtn">+ Add Cube</button>
-                <button class="editor-btn danger" id="removeSelectedBtn">- Remove Selected</button>
-                <button class="editor-btn" id="saveLevelBtn">💾 Save Level</button>
-                <button class="editor-btn" id="loadLevelBtn">📂 Load Level</button>
-                <button class="editor-btn" id="exitEditorBtn">Exit Editor</button>
+                <button class="editor-btn" id="selectLandingZoneBtn">Выбрать зону</button>
+                <button class="editor-btn" id="selectObjectBtn">Выбрать объект</button>
+                <button class="editor-btn" id="addLandingZoneBtn">+ Добавить зону</button>
+                <button class="editor-btn" id="addObjectBtn">+ Добавить куб</button>
+                <button class="editor-btn danger" id="removeSelectedBtn">- Удалить выбранное</button>
+                <button class="editor-btn" id="saveLevelBtn">💾 Сохранить уровень</button>
+                <button class="editor-btn" id="loadLevelBtn">📂 Загрузить уровень</button>
+                <button class="editor-btn" id="exitEditorBtn">Выйти из редактора</button>
             </div>
         </div>
         
         <div id="editorInfo">
-            <div><strong>Editor Mode Active</strong></div>
-            <div id="selectedObjectInfo">No object selected</div>
+            <div><strong>Режим редактора активен</strong></div>
+            <div id="selectedObjectInfo">Объект не выбран</div>
             <div style="margin-top: 10px; font-size: 12px; color: #aaa;">
-                🖱️ Click and drag objects to move them<br>
-                📍 Use arrow keys for precise positioning
+                🖱️ Перетаскивайте объекты мышью<br>
+                📍 Используйте стрелки для точного позиционирования
             </div>
         </div>
 
         <div id="levelComplete">
-            <div>🎉 Level Complete! 🎉</div>
-            <div style="font-size: 18px; margin-top: 10px;">You landed the drone successfully!</div>
-            <button id="continueBtn">Continue to Level 2</button>
+            <div>🎉 Уровень пройден! 🎉</div>
+            <div style="font-size: 18px; margin-top: 10px;">Вы успешно посадили дрон!</div>
+            <button id="continueBtn">Продолжить на уровень 2</button>
         </div>
         
         <div id="controls">
@@ -1193,8 +1193,8 @@
                 }))
             };
             localStorage.setItem('droneGameLevel', JSON.stringify(levelData));
-            showMessage('✅ Level saved!');
-            console.log('Level saved:', levelData);
+            showMessage('✅ Уровень сохранён!');
+            console.log('Уровень сохранён:', levelData);
         }
         
         function loadLevel() {
@@ -1226,11 +1226,11 @@
                         createLandingZone(index);
                     });
                     
-                    showMessage('✅ Level loaded!');
-                    console.log('Level loaded:', levelData);
+                    showMessage('✅ Уровень загружён!');
+                    console.log('Уровень загружён:', levelData);
                 } catch (e) {
-                    console.error('Error loading level:', e);
-                    showMessage('❌ Error loading level');
+                    console.error('Ошибка при загрузке уровня:', e);
+                    showMessage('❌ Ошибка при загрузке уровня');
                 }
             }
         }
@@ -1248,7 +1248,7 @@
                 // Enter editor mode
                 editorPanel.classList.add('active');
                 editorInfo.classList.add('active');
-                modeToggle.textContent = '🎮 Play Mode';
+                modeToggle.textContent = '🎮 Режим игры';
                 modeToggle.style.background = 'linear-gradient(45deg, #00aa00, #008800)';
                 controls.style.display = 'none';
                 instructions.style.display = 'none';
@@ -1285,7 +1285,7 @@
                 
                 editorPanel.classList.remove('active');
                 editorInfo.classList.remove('active');
-                modeToggle.textContent = '🛠️ Editor Mode';
+                modeToggle.textContent = '🛠️ Режим редактора';
                 modeToggle.style.background = 'linear-gradient(45deg, #ff8800, #cc6600)';
                 controls.style.display = 'flex';
                 instructions.style.display = 'block';
@@ -1347,14 +1347,14 @@
             if (editor.selectedIndex >= 0 && state.landingZones[editor.selectedIndex]) {
                 const zone = state.landingZones[editor.selectedIndex];
                 infoEl.innerHTML = `
-                    <div><strong>Landing Zone ${editor.selectedIndex + 1}</strong></div>
+                    <div><strong>Посадочная зона ${editor.selectedIndex + 1}</strong></div>
                     <div style="font-size: 12px; margin-top: 5px;">
-                        Position: (${zone.position.x.toFixed(1)}, ${zone.position.y.toFixed(1)}, ${zone.position.z.toFixed(1)})<br>
-                        Radius: ${zone.radius.toFixed(1)}m
+                        Позиция: (${zone.position.x.toFixed(1)}, ${zone.position.y.toFixed(1)}, ${zone.position.z.toFixed(1)})<br>
+                        Радиус: ${zone.radius.toFixed(1)}м
                     </div>
                 `;
             } else {
-                infoEl.textContent = 'No object selected';
+                infoEl.textContent = 'Объект не выбран';
             }
         }
         
@@ -1379,12 +1379,12 @@
         
         function removeSelectedObject() {
             if (editor.selectedIndex < 0) {
-                alert('Please select an object first');
+                alert('Сначала выберите объект');
                 return;
             }
             
             if (state.landingZones.length <= 1) {
-                alert('Cannot remove the last landing zone');
+                alert('Нельзя удалить последнюю посадочную зону');
                 return;
             }
             
@@ -1455,13 +1455,13 @@
             // Check if drone is within the red circle and landed gently
             if (distance < currentZone.radius && relativeAltitude < 1.0 && speed < 0.5) {
                 currentZone.landed = true;
-                showMessage("✓ Level Complete!");
+                showMessage("✓ Уровень пройден!");
                 showLevelComplete();
             } else if (distance < currentZone.radius) {
                 if (relativeAltitude >= 1.0) {
-                    showMessage("↓ Lower altitude to land");
+                    showMessage("↓ Снизьте высоту для посадки");
                 } else if (speed >= 0.5) {
-                    showMessage("⚠ Slow down to land safely");
+                    showMessage("⚠ Замедлитесь для безопасной посадки");
                 }
             } else {
                 showMessage("");
@@ -1495,10 +1495,10 @@
                 
                 // Update continue button text for level 2
                 if (state.level === 2) {
-                    document.getElementById('continueBtn').textContent = 'Continue to Level 3';
+                    document.getElementById('continueBtn').textContent = 'Продолжить на уровень 3';
                 }
             } else {
-                showMessage("🎉 All levels complete! You're a master pilot!");
+                showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
             }
         }
 
