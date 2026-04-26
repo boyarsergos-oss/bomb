@@ -574,9 +574,22 @@
         }
         updateLandingZoneVisibility();
 
-        // Camera offset for third-person view
-        const cameraOffset = new THREE.Vector3(0, 3, 6);
+        // Camera offset for third-person view - will be adjusted based on orientation
+        let cameraOffset = new THREE.Vector3(0, 3, 6);
         const cameraLookAt = new THREE.Vector3(0, 0, 0);
+
+        // Adjust camera based on orientation
+        function updateCameraForOrientation() {
+            const isLandscape = window.innerWidth > window.innerHeight;
+            
+            if (isLandscape) {
+                // In landscape, bring camera closer for better view
+                cameraOffset.set(0, 2, 4);
+            } else {
+                // In portrait, use default offset
+                cameraOffset.set(0, 3, 6);
+            }
+        }
 
         // Input handling
         const keys = {};
@@ -956,12 +969,15 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Update camera offset for consistent view in all orientations
+            updateCameraForOrientation();
         }
         
         window.addEventListener('resize', handleOrientationChange);
         window.addEventListener('orientationchange', handleOrientationChange);
         
-        // Initial call to set the correct class
+        // Initial call to set the correct class and camera offset
         handleOrientationChange();
 
         // Start the game
