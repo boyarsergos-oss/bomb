@@ -141,9 +141,9 @@
         const gravity = -0.015;
         const jumpStrength = 0.25;
         const birdSpeed = 0.15;
-        const pipeGap = 3.5;
-        const pipeDistance = 12;
-        let lastPipeZ = -20;
+        const pipeGap = 4;
+        const pipeDistance = 18;
+        let nextPipeZ = 35; // Первая труба на расстоянии 35 единиц (около 2-3 секунд полета)
         
         // Элементы UI
         const scoreDisplay = document.getElementById('score-display');
@@ -251,20 +251,20 @@
         
         // Создание трубы
         function createPipe(zPosition) {
-            const pipeGeometry = new THREE.CylinderGeometry(1.5, 1.5, 20, 16);
-            const pipeMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const pipeGeometry = new THREE.CylinderGeometry(2, 2, 15, 16);
+            const pipeMaterial = new THREE.MeshLambertMaterial({ color: 0x2ecc71 });
             
             // Случайная высота зазора
-            const gapY = (Math.random() - 0.5) * 8;
+            const gapY = (Math.random() - 0.5) * 6;
             
             // Верхняя труба
             const topPipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
-            topPipe.position.set(0, gapY + 10 + pipeGap/2, zPosition);
+            topPipe.position.set(0, gapY + 8 + pipeGap/2, zPosition);
             scene.add(topPipe);
             
             // Нижняя труба
             const bottomPipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
-            bottomPipe.position.set(0, gapY - 10 - pipeGap/2, zPosition);
+            bottomPipe.position.set(0, gapY - 8 - pipeGap/2, zPosition);
             scene.add(bottomPipe);
             
             pipes.push({
@@ -338,7 +338,7 @@
                 scene.remove(pipe.bottom);
             }
             pipes = [];
-            lastPipeZ = -20;
+            nextPipeZ = 35; // Сбрасываем позицию следующей трубы
         }
         
         // Перезапуск игры
@@ -378,9 +378,9 @@
                 camera.lookAt(bird.position.x, bird.position.y, bird.position.z + 10);
                 
                 // Генерация труб
-                if (bird.position.z > lastPipeZ + pipeDistance) {
-                    createPipe(lastPipeZ + pipeDistance);
-                    lastPipeZ += pipeDistance;
+                if (bird.position.z > nextPipeZ - pipeDistance) {
+                    createPipe(nextPipeZ);
+                    nextPipeZ += pipeDistance;
                 }
                 
                 // Удаление старых труб и подсчет очков
