@@ -11,26 +11,22 @@ __pycache__/
 *.out
 
 # Dependencies
-.venv/
-venv/
 node_modules/
+venv/
+.venv/
+.env
+.env.local
+.env.*
+
+# Build directories
 dist/
 build/
 target/
-.gradle/
-.mypy_cache/
-.pytest_cache/
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
-*.swo
-
-# Environment
-.env
-.env.local
-*.env.*
 
 # Editors
 .vscode/
@@ -44,6 +40,10 @@ Thumbs.db
 coverage/
 htmlcov/
 .coverage
+
+# Python specific
+.mypy_cache/
+.pytest_cache/
 
 # Compressed files
 *.zip
@@ -68,3 +68,528 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+
+# Gradle
+.gradle/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# C/C++
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+*.exe
+
+# Go
+*.exe
+*.test
+*.prof
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ruby
+*.gem
+*.rbc
+coverage/
+InstalledFiles
+pkg/
+spec/reports/
+test/tmp/
+test/version_tmp/
+tmp/
+
+# Rust
+target/
+*.rs.bk
+*.lock
+
+# Julia
+julia-*/
+
+# Zig
+zig-out/
+zig-cache/
+
+# Elixir
+mix.lock
+erl_crash.dump
+*.ez
+
+# PHP
+vendor/
+composer.phar
+
+# Perl
+perl-*/
+blib/
+pm_to_blib/
+*.tar.gz
+
+# R
+.Rproj.user/
+packrat/lib/
+packrat/src/
+
+# Haskell
+dist-newstyle/
+.cabal-sandbox/
+cabal.sandbox.config
+*.o
+*.hi
+
+# Dart
+.dart_tool/
+.build/
+packages/
+*.dart.js
+
+# Objective-C
+*.dSYM/
+*.plist
+
+# Swift
+*.xcodeproj/
+*.xcworkspace/
+
+# Android
+*.apk
+*.aar
+*.aab
+app/build/
+.gradle/
+local.properties
+
+# Unity
+Library/
+Temp/
+Obj/
+Build/
+Logs/
+UserSettings/
+
+# Unreal Engine
+Binaries/
+Build/
+Saved/
+Intermediate/
+*.uproject.user
+
+# Docker
+.dockerignore
+docker-compose*.yml
+
+# Kubernetes
+.kube/
+
+# Database
+*.db
+*.db-journal
+
+# Cache
+.cache/
+.cargo/
+.npm/
+.yarn/
+
+# Authentication
+id_rsa
+id_rsa.pub
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE specific
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*~
+
+# Sensitive files
+config/secrets.yml
+secrets.yml
+.env
+.env.local
+.env.*
+*.key
+*.pem
+*.crt
+*.cert
+*.cer
+*.jks
+
+# Test coverage
+coverage.xml
+*.lcov
+*.info
+
+# CI/CD
+.drone.yml
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+.github/
+
+# Documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# Package managers
+node_modules/
+bower_components/
+jspm_packages/
+web_modules/
+
+# Framework specific
+public/assets/
+public/dist/
+public/build/
+assets/cache/
+.cache/
+
+# Mobile
+platforms/
+plugins/
+ionic_www/
+resources/
+
+# Web
+dist/
+build/
+coverage/
+node_modules/
+.sass-cache/
+.nyc_output/
+coverage/
+lib-cov/
+*.lcov
+*.info
+
+# Configuration
+config/config.exs
+config/dev.exs
+config/test.exs
+
+# Elm
+elm-stuff/
+*.elmo
+
+# Puppet
+spec/fixtures/
+pkg/
+.rubocop.yml
+
+# Scala
+lib_managed/
+src_managed/
+target/
+.history/
+*.class
+*.jar
+*.war
+*.ear
+dist/
+project/boot/
+project/target/
+project/project/target/
+
+# Erlang
+.erlang.cookie
+.eunit/
+.rebar/
+_rebar/
+rebar.lock
+ebin/
+
+# Fortran
+*.o
+*.mod
+*.smod
+*.il
+*.ils
+*.xil
+*.xl
+
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.idx
+*.ind
+*.lof
+*.lot
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.fls
+*.log
+*.fdb_latexmk
+*.synctex.gz
+
+# MATLAB
+*.fig
+*.mat
+*.mex*
+*.mx3
+*.prj
+*.p
+*.log
+*.slx
+*.sfx
+*.mn
+*.sbproj
+*.sbr
+
+# Octave
+*.oct
+*.o
+*.core
+*.checkpoint
+*.ckpt
+
+# Auto-generated
+*.generated.cs
+*.gen.go
+*.pb.go
+*.pb.rb
+*.pb.erb
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+*.dylib
+*.jar
+*.war
+*.ear
+*.class
+*.gem
+*.rbc
+*.bak
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
+*.tmp
+*.temp
+*.log
+*.cache
+*.cached
+*.bk
+*.bkp
+*.save
+*.autosave
+*.autosave.*
+*.backup
+*.backup.*
+*.bak
+*.bak.*
+*.old
+*.old.*
+*.orig
+*.orig.*
+*.rej
+*.rej.*
+*.orig.*
+*.patch
+*.diff
+*.log
+*.tmp
+*.temp
+*.cache
+*.cached
+*.bk
+*.bkp
+*.save
+*.autosave
+*.autosave.*
+*.backup
+*.backup.*
+*.bak
+*.bak.*
+*.old
+*.old.*
+*.orig
+*.orig.*
+*.rej
+*.rej.*
+*.orig.*
+*.patch
+*.diff
+*.log
+*.tmp
+*.temp
+*.cache
+*.cached
+*.bk
+*.bkp
+*.save
+*.autosave
+*.autosave.*
+*.backup
+*.backup.*
+*.bak
+*.bak.*
+*.old
+*.old.*
+*.orig
+*.orig.*
+*.rej
+*.rej.*
+*.orig.*
+*.patch
+*.diff
+*.log
+*.tmp
+*.temp
+*.cache
+*.cached
+*.bk
+*.bkp
+*.save
+*.autosave
+*.autosave.*
+*.backup
+*.backup.*
+*.bak
+*.bak.*
+*.old
+*.old.*
+*.orig
+*.orig.*
+*.rej
+*.rej.*
+*.orig.*
+*.patch
+*.diff
+*.log
+*.tmp
+*.temp
+*.cache
+*.cached
+*.bk
+*.bkp
+*.save
+*.autosave
+*.autosave.*
+*.backup
+*.backup.*
+*.bak
+*.bak.*
+*.old
+*.old.*
+*.orig
+*.orig.*
+*.rej
+*.rej.*
+*.orig.*
+*.patch
+*.diff
+*.log
+*.tmp
+*.temp
+*.cache
+*.cached
+*.bk
+*.bkp
+*.save
+*.autosave
+*.autosave.*
+*.backup
+*.backup.*
+*.bak
+*.bak.*
+*.old
+*.old.*
+*.orig
+*.orig.*
+*.rej
+*.rej.*
+*.orig.*
+*.patch
+*.diff
+*.log
+*.tmp
+*.temp
+*.cache
+*.cached
+*.bk
+*.bkp
+*.save
+*.autosave
+*.autosave.*
+*.backup
+*.backup.*
+*.bak
+*.bak.*
+*.old
+*.old.*
+*.orig
+*.orig.*
+*.rej
+*.rej.*
+*.orig.*
+*.patch
+*.diff
+*.log
+*.tmp
+*.temp
+*.cache
+*.cached
+*.bk
+*.bkp
+*.save
+*.autosave
+*.autosave.*
+*.backup
+*.backup.*
+*.......
