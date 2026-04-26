@@ -256,6 +256,35 @@ export class LevelManager {
         return true;
     }
     
+    cleanupLevelObjects() {
+        // Remove delivery zone
+        if (this.deliveryZoneMesh) {
+            this.scene.remove(this.deliveryZoneMesh);
+            this.deliveryZoneMesh.geometry.dispose();
+            this.deliveryZoneMesh.material.dispose();
+            this.deliveryZoneMesh = null;
+        }
+
+        // Remove obstacles
+        if (this.obstacleMeshes) {
+            this.obstacleMeshes.forEach(mesh => {
+                this.scene.remove(mesh);
+                mesh.geometry.dispose();
+                mesh.material.dispose();
+            });
+            this.obstacleMeshes = [];
+        }
+
+        if (this.obstacleBodies) {
+            this.obstacleBodies.forEach(body => {
+                this.physicsWorld.removeBody(body);
+            });
+            this.obstacleBodies = [];
+        }
+
+        this.deliveryZone = null;
+    }
+
     cleanup() {
         // Remove delivery zone
         if (this.deliveryZoneMesh) {

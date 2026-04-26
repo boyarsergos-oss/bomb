@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Drone Delivery</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+        body { overflow: hidden; touch-action: none; background: #1a1a2e; font-family: monospace; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        #ui { position: absolute; top: 10px; left: 10px; color: #fff; font-size: 14px; pointer-events: none; z-index: 100; text-shadow: 1px 1px 2px #000; }
+        #level-info { position: absolute; top: 10px; right: 10px; color: #fff; font-size: 16px; text-align: right; pointer-events: none; z-index: 100; text-shadow: 1px 1px 2px #000; }
+        #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-size: 24px; text-align: center; display: none; z-index: 200; text-shadow: 2px 2px 4px #000; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px; }
+        
+        /* Mobile controls */
+        .touch-zone { position: absolute; bottom: 20px; border: 3px solid rgba(255,255,255,0.4); border-radius: 50%; pointer-events: auto; display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
+        .touch-zone::after { content: ''; position: absolute; width: 20px; height: 20px; background: rgba(255,255,255,0.5); border-radius: 50%; pointer-events: none; }
+        .touch-zone.active { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.8); }
+        .touch-zone.active::after { background: rgba(255,255,255,0.9); }
+        
+        #zone-move { left: 20px; width: 140px; height: 140px; }
+        #zone-thrust { right: 20px; width: 140px; height: 140px; }
+        
+        #orientation-warning { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; z-index: 1000; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+        
+        @media (orientation: portrait) {
+            #zone-move { left: 50%; transform: translateX(-50%); bottom: 20px; }
+            #zone-thrust { left: 50%; transform: translateX(-50%); top: 20px; bottom: auto; }
+            .portrait-hint { display: block !important; }
+        }
+        .portrait-hint { display: none; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Speed: <span id="speed">0</span></div>
+        <div>Cargo: <span id="cargo-status">Attached</span></div>
+        <div class="portrait-hint">📱 Portrait: Bottom=Move, Top=Thrust</div>
+    </div>
+    
+    <div id="level-info">
+        <div>Level: <span id="level">1</span>/10</div>
+        <div id="level-desc">Deliver the cargo!</div>
+    </div>
+    
+    <div id="message"></div>
+    
+    <div id="zone-move" class="touch-zone"></div>
+    <div id="zone-thrust" class="touch-zone"></div>
+    
+    <div id="orientation-warning">
+        <h2>🔄 Rotate your device!</h2>
+        <p>Landscape mode recommended for best experience</p>
+        <p style="margin-top: 20px; font-size: 14px; opacity: 0.7;">(Tap to continue in portrait)</p>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Cannon.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    
+    <script>
+    // ============================================
+    // CONSTANTS
+    // ============================================
+    const CONSTANTS = {
+        DRONE_FORCE_Y: 10,
+        DRONE_FORCE_X: 5,
+        DRONE_MASS: 1,
+        CARGO_MASS: 2,
+        ROPE_LENGTH: 3,
+        CAMERA_OFFSET: { x: 0, y: 3, z: -6 },
+        CAMERA_LERP: 0.1,
+        GRAVITY: -9.82,
+        DAMPING: 0.5,
+        ANGULAR_DAMPING: 0.5
+    };
+
+    // ============================================
+    // GAME STATE
+    // ============================================
+    const state = {
+        level: 1,
+        fps: 0,
+        lastTime: performance.now(),
+        frameCount: 0,
+        lastFpsUpdate: performance.now(),
+        inputs: { up: false, down: false, left: false, right: false, stabilize: false },
+        touchMove: { x: 0, y: 0, active: false },
+        touchThrust: { value: 0, active: false },
+        delivered: false
+    };
+
+    // ============================================
+    // THREE.JS SETUP
+    // ============================================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
+    scene.fog = new THREE.Fog(0x1a1a2e, 20, 50);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.camera.left = -20;
+    dirLight.shadow.camera.right = 20;
+    dirLight.shadow.camera.top = 20;
+    dirLight.shadow.camera.bottom = -20;
+    scene.add(dirLight);
+
+    // ============================================
+    // CANNON.JS SETUP
+    // ============================================
+    const world = new CANNON.World();
+    world.gravity.set(0, CONSTANTS.GRAVITY, 0);
+    world.broadphase = new CANNON.NaiveBroadphase();
+    world.solver.iterations = 10;
+
+    // Materials
+    const defaultMaterial = new CANNON.Material('default');
+    const defaultContactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, {
+        friction: 0.3,
+        restitution: 0.3
+    });
+    world.addContactMaterial(defaultContactMaterial);
+
+    // ============================================
+    // GAME OBJECTS
+    // ============================================
+    let droneBody, droneMesh;
+    let cargoBody, cargoMesh;
+    let ropeConstraint;
+    let groundBody, groundMesh;
+    let deliveryZone, deliveryZoneMesh;
+    let obstacles = [];
+
+    function createGround() {
+        // Physics
+        const groundShape = new CANNON.Box(new CANNON.Vec3(50, 0.5, 50));
+        groundBody = new CANNON.Body({ mass: 0, material: defaultMaterial });
+        groundBody.addShape(groundShape);
+        groundBody.position.set(0, -0.5, 0);
+        world.addBody(groundBody);
+
+        // Visual
+        const geometry = new THREE.BoxGeometry(100, 1, 100);
+        const material = new THREE.MeshStandardMaterial({ color: 0x2d4a2d });
+        groundMesh = new THREE.Mesh(geometry, material);
+        groundMesh.position.copy(groundBody.position);
+        groundMesh.receiveShadow = true;
+        scene.add(groundMesh);
+
+        // Grid
+        const gridHelper = new THREE.GridHelper(100, 20, 0x444444, 0x444444);
+        scene.add(gridHelper);
+    }
+
+    function createDrone() {
+        // Physics
+        const droneShape = new CANNON.Box(new CANNON.Vec3(0.5, 0.2, 0.5));
+        droneBody = new CANNON.Body({ 
+            mass: CONSTANTS.DRONE_MASS, 
+            material: defaultMaterial,
+            linearDamping: CONSTANTS.DAMPING,
+            angularDamping: CONSTANTS.ANGULAR_DAMPING
+        });
+        droneBody.addShape(droneShape);
+        droneBody.position.set(0, 2, 0);
+        world.addBody(droneBody);
+
+        // Visual
+        const geometry = new THREE.BoxGeometry(1, 0.4, 1);
+        const material = new THREE.MeshStandardMaterial({ color: 0x3498db });
+        droneMesh = new THREE.Mesh(geometry, material);
+        droneMesh.castShadow = true;
+        scene.add(droneMesh);
+
+        // Propellers
+        const propGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.05, 8);
+        const propMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        
+        const positions = [
+            { x: 0.4, z: 0.4 }, { x: -0.4, z: 0.4 },
+            { x: 0.4, z: -0.4 }, { x: -0.4, z: -0.4 }
+        ];
+        
+        positions.forEach(pos => {
+            const prop = new THREE.Mesh(propGeo, propMat);
+            prop.position.set(pos.x, 0.25, pos.z);
+            prop.rotation.x = Math.PI / 2;
+            droneMesh.add(prop);
+        });
+    }
+
+    function createCargo() {
+        // Physics
+        const cargoShape = new CANNON.Box(new CANNON.Vec3(0.4, 0.4, 0.4));
+        cargoBody = new CANNON.Body({ 
+            mass: CONSTANTS.CARGO_MASS, 
+            material: defaultMaterial,
+            linearDamping: CONSTANTS.DAMPING,
+            angularDamping: CONSTANTS.ANGULAR_DAMPING
+        });
+        cargoBody.addShape(cargoShape);
+        cargoBody.position.set(0, 0.5, 0);
+        world.addBody(cargoBody);
+
+        // Visual
+        const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+        const material = new THREE.MeshStandardMaterial({ color: 0xe74c3c });
+        cargoMesh = new THREE.Mesh(geometry, material);
+        cargoMesh.castShadow = true;
+        scene.add(cargoMesh);
+
+        // Rope constraint
+        const pivotDrone = new CANNON.Vec3(0, -0.3, 0);
+        const pivotCargo = new CANNON.Vec3(0, 0.4, 0);
+        
+        ropeConstraint = new CANNON.DistanceConstraint(
+            droneBody, 
+            cargoBody, 
+            pivotDrone, 
+            pivotCargo, 
+            CONSTANTS.ROPE_LENGTH,
+            0.1
+        );
+        world.addConstraint(ropeConstraint);
+    }
+
+    function createDeliveryZone(x, z, size = 3) {
+        if (deliveryZoneMesh) {
+            scene.remove(deliveryZoneMesh);
+        }
+        
+        // Visual zone
+        const geometry = new THREE.RingGeometry(size * 0.8, size, 32);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0x2ecc71, 
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.5
+        });
+        deliveryZoneMesh = new THREE.Mesh(geometry, material);
+        deliveryZoneMesh.rotation.x = -Math.PI / 2;
+        deliveryZoneMesh.position.set(x, 0.05, z);
+        scene.add(deliveryZoneMesh);
+
+        deliveryZone = { x, z, size };
+    }
+
+    function createObstacles(type) {
+        // Clear old obstacles
+        obstacles.forEach(obs => {
+            scene.remove(obs.mesh);
+            world.removeBody(obs.body);
+        });
+        obstacles = [];
+
+        const boxGeo = new THREE.BoxGeometry(1, 2, 1);
+        const boxMat = new THREE.MeshStandardMaterial({ color: 0x8e44ad });
+        const shape = new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5));
+
+        // Level-specific obstacles
+        const configs = {
+            5: [{ x: -2, z: 5 }, { x: 2, z: 5 }], // Narrow passage
+            6: [{ x: -3, z: 3 }, { x: 3, z: 3 }, { x: 0, z: 6 }],
+            8: [{ x: 0, z: 4 }], // Gap obstacle
+            10: [{ x: -2, z: 3 }, { x: 2, z: 3 }, { x: 0, z: 6 }, { x: -3, z: 8 }, { x: 3, z: 8 }]
+        };
+
+        const positions = configs[type] || [];
+        positions.forEach(pos => {
+            const mesh = new THREE.Mesh(boxGeo, boxMat);
+            mesh.position.set(pos.x, 1, pos.z);
+            mesh.castShadow = true;
+            scene.add(mesh);
+
+            const body = new CANNON.Body({ mass: 0, material: defaultMaterial });
+            body.addShape(shape);
+            body.position.set(pos.x, 1, pos.z);
+            world.addBody(body);
+
+            obstacles.push({ mesh, body });
+        });
+    }
+
+    function loadLevel(level) {
+        state.level = level;
+        state.delivered = false;
+        
+        // Reset positions
+        droneBody.position.set(0, 2 + level * 0.5, 0);
+        droneBody.velocity.set(0, 0, 0);
+        droneBody.angularVelocity.set(0, 0, 0);
+        
+        cargoBody.position.set(0, 0.5, 0);
+        cargoBody.velocity.set(0, 0, 0);
+        cargoBody.angularVelocity.set(0, 0, 0);
+
+        // Level config
+        const levelConfigs = {
+            1: { target: { x: 0, z: -8 }, desc: "First delivery!" },
+            2: { target: { x: 0, z: -15 }, desc: "Further away" },
+            3: { target: { x: 0, z: -10 }, desc: "Fly higher!" },
+            4: { target: { x: 0, z: -12 }, desc: "Low flight" },
+            5: { target: { x: 0, z: -15 }, desc: "Narrow passage" },
+            6: { target: { x: 0, z: -18 }, desc: "Obstacles ahead" },
+            7: { target: { x: 0, z: -20 }, desc: "Long rope challenge" },
+            8: { target: { x: 0, z: -22 }, desc: "Cross the gap" },
+            9: { target: { x: 0, z: -15 }, desc: "Precision required" },
+            10: { target: { x: 0, z: -25 }, desc: "Final challenge!" }
+        };
+
+        const config = levelConfigs[level] || levelConfigs[1];
+        
+        // Adjust rope for level 7
+        if (level === 7) {
+            world.removeConstraint(ropeConstraint);
+            ropeConstraint = new CANNON.DistanceConstraint(
+                droneBody, cargoBody, 
+                new CANNON.Vec3(0, -0.3, 0), 
+                new CANNON.Vec3(0, 0.4, 0), 
+                5, 0.1
+            );
+            world.addConstraint(ropeConstraint);
+        } else {
+            world.removeConstraint(ropeConstraint);
+            ropeConstraint = new CANNON.DistanceConstraint(
+                droneBody, cargoBody, 
+                new CANNON.Vec3(0, -0.3, 0), 
+                new CANNON.Vec3(0, 0.4, 0), 
+                CONSTANTS.ROPE_LENGTH, 0.1
+            );
+            world.addConstraint(ropeConstraint);
+        }
+
+        createDeliveryZone(config.target.x, config.target.z, level >= 9 ? 2 : 3);
+        createObstacles(level);
+
+        // Update UI
+        document.getElementById('level').textContent = level;
+        document.getElementById('level-desc').textContent = config.desc;
+        showMessage(`Level ${level}\n${config.desc}`, 2000);
+    }
+
+    function showMessage(text, duration = 0) {
+        const msgEl = document.getElementById('message');
+        msgEl.textContent = text.replace(/\n/g, '\n');
+        msgEl.style.display = 'block';
+        msgEl.style.whiteSpace = 'pre-line';
+        
+        if (duration > 0) {
+            setTimeout(() => {
+                msgEl.style.display = 'none';
+            }, duration);
+        }
+    }
+
+    function checkDelivery() {
+        if (state.delivered) return;
+
+        const dx = cargoBody.position.x - deliveryZone.x;
+        const dz = cargoBody.position.z - deliveryZone.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+
+        // Check if cargo is in zone and slow enough
+        if (dist < deliveryZone.size * 0.7 && cargoBody.position.y < 1.5) {
+            const speed = Math.sqrt(
+                cargoBody.velocity.x ** 2 + 
+                cargoBody.velocity.y ** 2 + 
+                cargoBody.velocity.z ** 2
+            );
+
+            if (speed < 3) {
+                state.delivered = true;
+                showMessage("✅ Delivered!\nNext level...", 2000);
+                
+                setTimeout(() => {
+                    if (state.level < 10) {
+                        loadLevel(state.level + 1);
+                    } else {
+                        showMessage("🎉 ALL LEVELS COMPLETE! 🎉\nYou're a master pilot!");
+                    }
+                }, 2000);
+            }
+        }
+    }
+
+    // ============================================
+    // CONTROLS
+    // ============================================
+    function handleKeyboard(e) {
+        const isDown = e.type === 'keydown';
+        
+        switch(e.code) {
+            case 'KeyW': state.inputs.up = isDown; break;
+            case 'KeyS': state.inputs.down = isDown; break;
+            case 'KeyA': state.inputs.left = isDown; break;
+            case 'KeyD': state.inputs.right = isDown; break;
+            case 'Space': state.inputs.stabilize = isDown; break;
+        }
+    }
+
+    function setupTouchControls() {
+        const zoneMove = document.getElementById('zone-move');
+        const zoneThrust = document.getElementById('zone-thrust');
+
+        function handleTouch(e, zone, isMove) {
+            e.preventDefault();
+            const rect = zone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            if (isMove) {
+                state.touchMove.active = e.touches.length > 0;
+                state.touchMove.x = 0;
+                state.touchMove.y = 0;
+
+                for (let i = 0; i < e.touches.length; i++) {
+                    const touch = e.touches[i];
+                    const dx = touch.clientX - centerX;
+                    const dy = touch.clientY - centerY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const maxDist = rect.width / 2;
+
+                    if (dist < maxDist) {
+                        state.touchMove.x += dx / maxDist;
+                        state.touchMove.y += dy / maxDist;
+                    }
+                }
+
+                // Normalize
+                const total = Math.sqrt(state.touchMove.x ** 2 + state.touchMove.y ** 2);
+                if (total > 1) {
+                    state.touchMove.x /= total;
+                    state.touchMove.y /= total;
+                }
+
+                zone.classList.toggle('active', state.touchMove.active);
+            } else {
+                state.touchThrust.active = e.touches.length > 0;
+                state.touchThrust.value = 0;
+
+                for (let i = 0; i < e.touches.length; i++) {
+                    const touch = e.touches[i];
+                    const dy = centerY - touch.clientY; // Up is positive
+                    const maxDist = rect.height / 2;
+                    
+                    if (dy > 0) {
+                        state.touchThrust.value += Math.min(dy / maxDist, 1);
+                    }
+                }
+
+                state.touchThrust.value = Math.min(state.touchThrust.value, 1);
+                zone.classList.toggle('active', state.touchThrust.active);
+            }
+        }
+
+        ['touchstart', 'touchmove', 'touchend'].forEach(eventType => {
+            zoneMove.addEventListener(eventType, e => handleTouch(e, zoneMove, true), { passive: false });
+            zoneThrust.addEventListener(eventType, e => handleTouch(e, zoneThrust, false), { passive: false });
+        });
+    }
+
+    // ============================================
+    // UPDATE LOOP
+    // ============================================
+    function updatePhysics() {
+        // Apply forces to drone
+        let forceY = 0;
+        let forceX = 0;
+        let forceZ = 0;
+
+        // Keyboard
+        if (state.inputs.up) forceY += CONSTANTS.DRONE_FORCE_Y;
+        if (state.inputs.down) forceY -= CONSTANTS.DRONE_FORCE_Y * 0.5;
+        if (state.inputs.left) forceX -= CONSTANTS.DRONE_FORCE_X;
+        if (state.inputs.right) forceX += CONSTANTS.DRONE_FORCE_X;
+        if (state.inputs.stabilize) {
+            droneBody.angularVelocity.set(0, 0, 0);
+            droneBody.velocity.x *= 0.95;
+            droneBody.velocity.z *= 0.95;
+        }
+
+        // Touch
+        if (state.touchMove.active) {
+            forceX += state.touchMove.x * CONSTANTS.DRONE_FORCE_X;
+            forceZ += state.touchMove.y * CONSTANTS.DRONE_FORCE_X;
+        }
+        if (state.touchThrust.active) {
+            forceY += state.touchThrust.value * CONSTANTS.DRONE_FORCE_Y;
+        }
+
+        // Apply force in drone's local space (simplified: world space for now)
+        droneBody.applyForce(new CANNON.Vec3(forceX, forceY, forceZ), droneBody.position);
+
+        // Step physics
+        world.step(1 / 60);
+
+        // Sync visuals
+        droneMesh.position.copy(droneBody.position);
+        droneMesh.quaternion.copy(droneBody.quaternion);
+        
+        cargoMesh.position.copy(cargoBody.position);
+        cargoMesh.quaternion.copy(cargoBody.quaternion);
+
+        // Keep drone rotated flat
+        droneMesh.rotation.x = 0;
+        droneMesh.rotation.z = 0;
+    }
+
+    function updateCamera() {
+        const targetPos = new THREE.Vector3(
+            droneMesh.position.x + CONSTANTS.CAMERA_OFFSET.x,
+            droneMesh.position.y + CONSTANTS.CAMERA_OFFSET.y,
+            droneMesh.position.z + CONSTANTS.CAMERA_OFFSET.z
+        );
+        
+        camera.position.lerp(targetPos, CONSTANTS.CAMERA_LERP);
+        camera.lookAt(droneMesh.position);
+    }
+
+    function updateUI() {
+        // FPS
+        state.frameCount++;
+        const now = performance.now();
+        if (now - state.lastFpsUpdate >= 1000) {
+            state.fps = state.frameCount;
+            state.frameCount = 0;
+            state.lastFpsUpdate = now;
+            document.getElementById('fps').textContent = state.fps;
+        }
+
+        // Speed
+        const speed = Math.sqrt(
+            droneBody.velocity.x ** 2 + 
+            droneBody.velocity.y ** 2 + 
+            droneBody.velocity.z ** 2
+        ).toFixed(1);
+        document.getElementById('speed').textContent = speed;
+
+        // Cargo status
+        const dist = cargoBody.position.distanceTo(droneBody.position);
+        document.getElementById('cargo-status').textContent = dist < 4 ? "Attached" : "Swinging!";
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        updatePhysics();
+        updateCamera();
+        updateUI();
+        checkDelivery();
+        
+        renderer.render(scene, camera);
+    }
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    function init() {
+        createGround();
+        createDrone();
+        createCargo();
+        loadLevel(1);
+        
+        setupTouchControls();
+        window.addEventListener('keydown', handleKeyboard);
+        window.addEventListener('keyup', handleKeyboard);
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Orientation warning
+        const warningEl = document.getElementById('orientation-warning');
+        function checkOrientation() {
+            if (window.innerWidth < window.innerHeight && window.innerWidth < 600) {
+                warningEl.style.display = 'flex';
+            } else {
+                warningEl.style.display = 'none';
+            }
+        }
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', checkOrientation);
+        warningEl.addEventListener('click', () => {
+            warningEl.style.display = 'none';
+        });
+        checkOrientation();
+
+        // Start
+        animate();
+        showMessage("🚁 Drone Delivery\n\nPC: WASD + Space\nMobile: Use touch zones", 3000);
+    }
+
+    // Wait for libraries to load
+    if (typeof THREE !== 'undefined' && typeof CANNON !== 'undefined') {
+        init();
+    } else {
+        window.addEventListener('load', init);
+    }
+    </script>
+</body>
+</html>
