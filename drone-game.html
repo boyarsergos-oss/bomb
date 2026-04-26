@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>3D Drone Simulator</title>
     <style>
         * {
@@ -16,6 +18,15 @@
             touch-action: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #000;
+        }
+        
+        /* Orientation-specific body classes */
+        body.landscape {
+            /* Landscape mode styles */
+        }
+        
+        body.portrait {
+            /* Portrait mode styles */
         }
         
         #gameCanvas {
@@ -36,10 +47,12 @@
         #controls {
             position: absolute;
             bottom: 20px;
+            left: 0;
             width: 100%;
             height: 200px;
             display: flex;
             justify-content: space-between;
+            align-items: flex-end;
             padding: 0 40px;
             pointer-events: auto;
         }
@@ -52,6 +65,55 @@
             border-radius: 50%;
             position: relative;
             backdrop-filter: blur(5px);
+            flex-shrink: 0;
+        }
+        
+        /* Landscape orientation - adjust controls for wider screen */
+        @media (orientation: landscape) {
+            #controls {
+                bottom: 10px;
+                height: 120px;
+                padding: 0 20px;
+            }
+            
+            .joystick-zone {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .joystick {
+                width: 40px;
+                height: 40px;
+            }
+            
+            #info {
+                top: 10px;
+                left: 10px;
+                padding: 10px;
+                font-size: 12px;
+            }
+            
+            #info .value {
+                font-size: 14px;
+            }
+        }
+        
+        /* Portrait orientation on mobile */
+        @media (orientation: portrait) {
+            #controls {
+                bottom: 10px;
+                padding: 0 20px;
+            }
+            
+            .joystick-zone {
+                width: 120px;
+                height: 120px;
+            }
+            
+            .joystick {
+                width: 50px;
+                height: 50px;
+            }
         }
         
         .joystick {
@@ -171,8 +233,40 @@
             background: linear-gradient(45deg, #00ff00, #00cc00);
         }
         
+        /* Responsive modal for level complete */
+        @media (orientation: landscape) {
+            #levelComplete {
+                padding: 20px 30px;
+                font-size: 18px;
+            }
+            
+            #continueBtn {
+                padding: 12px 24px;
+                font-size: 16px;
+            }
+        }
+        
+        @media (orientation: portrait) and (max-width: 767px) {
+            #levelComplete {
+                padding: 20px 30px;
+                font-size: 18px;
+                max-width: 90%;
+            }
+            
+            #continueBtn {
+                padding: 12px 24px;
+                font-size: 16px;
+            }
+        }
+        
         @media (max-width: 767px) {
             #instructions {
+                display: none;
+            }
+            
+            /* Hide instructions in both orientations on mobile */
+            .landscape #instructions,
+            .portrait #instructions {
                 display: none;
             }
         }
@@ -558,7 +652,7 @@
             const touch = e.changedTouches[0];
             leftTouch = touch.identifier;
             handleTouch(touch, leftZone, leftJoystick, true);
-        });
+        }, { passive: false });
 
         leftZone.addEventListener('touchmove', (e) => {
             e.preventDefault();
@@ -568,7 +662,7 @@
                     break;
                 }
             }
-        });
+        }, { passive: false });
 
         leftZone.addEventListener('touchend', (e) => {
             e.preventDefault();
@@ -579,14 +673,20 @@
                     break;
                 }
             }
-        });
+        }, { passive: false });
+        
+        leftZone.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            leftTouch = null;
+            resetJoystick(leftJoystick, true);
+        }, { passive: false });
 
         rightZone.addEventListener('touchstart', (e) => {
             e.preventDefault();
             const touch = e.changedTouches[0];
             rightTouch = touch.identifier;
             handleTouch(touch, rightZone, rightJoystick, false);
-        });
+        }, { passive: false });
 
         rightZone.addEventListener('touchmove', (e) => {
             e.preventDefault();
@@ -596,7 +696,7 @@
                     break;
                 }
             }
-        });
+        }, { passive: false });
 
         rightZone.addEventListener('touchend', (e) => {
             e.preventDefault();
@@ -607,7 +707,13 @@
                     break;
                 }
             }
-        });
+        }, { passive: false });
+        
+        rightZone.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            rightTouch = null;
+            resetJoystick(rightJoystick, false);
+        }, { passive: false });
 
         function resetDrone() {
             state.drone.position.set(0, 2, 0);
@@ -841,12 +947,22 @@
             renderer.render(scene, camera);
         }
 
-        // Handle window resize
-        window.addEventListener('resize', () => {
+        // Handle window resize and orientation change
+        function handleOrientationChange() {
+            const isLandscape = window.innerWidth > window.innerHeight;
+            document.body.classList.toggle('landscape', isLandscape);
+            document.body.classList.toggle('portrait', !isLandscape);
+            
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        }
+        
+        window.addEventListener('resize', handleOrientationChange);
+        window.addEventListener('orientationchange', handleOrientationChange);
+        
+        // Initial call to set the correct class
+        handleOrientationChange();
 
         // Start the game
         animate();
