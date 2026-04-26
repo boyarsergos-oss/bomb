@@ -472,7 +472,8 @@
                 drag: 10.0,
                 angularDrag: 2.0,
                 maxThrust: 22.0,
-                maxTilt: Math.PI / 4 * 10,
+                maxTilt: Math.PI / 4,
+                horizontalForce: 150.0,
                 motorResponse: 8.0,
                 gyroStability: 8.0
             },
@@ -2457,6 +2458,14 @@
                 .add(thrustForce)
                 .add(gravityForce)
                 .add(dragForce);
+
+            // Add horizontal force based on pitch and roll for faster horizontal movement
+            const horizontalForce = new THREE.Vector3(
+                -drone.pitch * phys.horizontalForce,
+                0,
+                -drone.roll * phys.horizontalForce
+            );
+            totalForce.add(horizontalForce);
 
             // Acceleration and velocity
             const acceleration = totalForce.divideScalar(phys.mass);
