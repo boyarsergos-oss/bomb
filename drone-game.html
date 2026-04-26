@@ -731,14 +731,16 @@
             if (!obj) return;
             
             let geometry;
-            if (obj.type === 'cube') {
+            if (obj.width !== undefined && obj.height !== undefined && obj.depth !== undefined) {
+                geometry = new THREE.BoxGeometry(obj.width, obj.height, obj.depth);
+            } else if (obj.size) {
                 geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
             } else {
                 geometry = new THREE.BoxGeometry(2, 2, 2);
             }
             
             const material = new THREE.MeshStandardMaterial({ 
-                color: obj.color,
+                color: obj.color || 0x888888,
                 roughness: 0.5,
                 metalness: 0.3
             });
@@ -1855,6 +1857,13 @@
                     radius: zone.radius,
                     landed: zone.landed
                 })),
+                objects: state.objects.map(obj => ({
+                    position: { x: obj.position.x, y: obj.position.y, z: obj.position.z },
+                    width: obj.width,
+                    height: obj.height,
+                    depth: obj.depth,
+                    color: obj.color
+                })),
                 houses: state.houses.map(house => ({
                     position: { x: house.position.x, y: house.position.y, z: house.position.z }
                 }))
@@ -1879,19 +1888,45 @@
                     markerGroups = [];
                     state.landingZones = [];
                     
+                    // Clear existing objects
+                    objectMeshes.forEach(mesh => scene.remove(mesh));
+                    objectMeshes = [];
+                    state.objects = [];
+                    
                     // Load saved zones
-                    levelData.landingZones.forEach((zoneData, index) => {
-                        state.landingZones.push({
-                            position: new THREE.Vector3(
-                                zoneData.position.x,
-                                zoneData.position.y,
-                                zoneData.position.z
-                            ),
-                            radius: zoneData.radius,
-                            landed: zoneData.landed
+                    if (levelData.landingZones) {
+                        levelData.landingZones.forEach((zoneData, index) => {
+                            state.landingZones.push({
+                                position: new THREE.Vector3(
+                                    zoneData.position.x,
+                                    zoneData.position.y,
+                                    zoneData.position.z
+                                ),
+                                radius: zoneData.radius,
+                                landed: zoneData.landed
+                            });
+                            createLandingZone(index);
                         });
-                        createLandingZone(index);
-                    });
+                    }
+                    
+                    // Load saved objects
+                    if (levelData.objects) {
+                        levelData.objects.forEach((objData) => {
+                            state.objects.push({
+                                position: new THREE.Vector3(
+                                    objData.position.x,
+                                    objData.position.y,
+                                    objData.position.z
+                                ),
+                                width: objData.width,
+                                height: objData.height,
+                                depth: objData.depth,
+                                color: objData.color
+                            });
+                        });
+                        // Create meshes for loaded objects
+                        state.objects.forEach((_, index) => createObjectMesh(index));
+                    }
                     
                     showMessage('✅ Уровень загружён!');
                     console.log('Уровень загружён:', levelData);
@@ -2078,7 +2113,7 @@
                         <div><strong>Объект ${editor.selectedIndex + 1}</strong></div>
                         <div style="font-size: 12px; margin-top: 5px;">
                             Позиция: (${obj.position.x.toFixed(1)}, ${obj.position.y.toFixed(1)}, ${obj.position.z.toFixed(1)})<br>
-                            Размер: (${obj.size.x.toFixed(1)}, ${obj.size.y.toFixed(1)}, ${obj.size.z.toFixed(1)})
+                            Размер: (${obj.width || obj.size?.x || 2}, ${obj.height || obj.size?.y || 2}, ${obj.depth || obj.size?.z || 2})
                         </div>
                     `;
                 } else if (editor.selectedType === 'house' && state.houses[editor.selectedIndex]) {
@@ -2127,6 +2162,9 @@
             state.objects.push({
                 type: 'cube',
                 position: newPosition,
+                width: 3,
+                height: 4,
+                depth: 3,
                 size: new THREE.Vector3(3, 4, 3),
                 color: Math.random() > 0.5 ? 0x8B4513 : 0x808080
             });
@@ -2196,6 +2234,23 @@
                 houseCollisionBoxes.splice(editor.selectedIndex, 1);
                 houseMeshes.splice(editor.selectedIndex, 1);
                 state.houses.splice(editor.selectedIndex, 1);
+                
+                // Reset indices
+                editor.selectedIndex = -1;
+                editor.selectedObject = null;
+                editor.selectedType = 'landingZone';
+                updateSelectedObjectInfo();
+                return;
+            }
+            
+            // Handle object (cube) removal
+            if (editor.selectedType === 'object' && state.objects[editor.selectedIndex]) {
+                // Remove from scene
+                scene.remove(objectMeshes[editor.selectedIndex]);
+                
+                // Remove from arrays
+                objectMeshes.splice(editor.selectedIndex, 1);
+                state.objects.splice(editor.selectedIndex, 1);
                 
                 // Reset indices
                 editor.selectedIndex = -1;
