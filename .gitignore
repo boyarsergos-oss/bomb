@@ -1,1 +1,1 @@
-Nothing needs to be added to .gitignore since the only change is adding a single HTML file (`house-model.html`) which is a source file and should not be ignored.
+# No changes needed - only HTML file modified, no build artifacts or dependencies detected

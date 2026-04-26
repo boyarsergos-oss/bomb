@@ -255,13 +255,25 @@
         createWindow(-3, 2, houseDepth / 2 + 0.05);
         createWindow(3, 2, houseDepth / 2 + 0.05);
 
-        // Задние окна
+        // Передние окна (второй этаж)
+        createWindow(-3, 4.5, houseDepth / 2 + 0.05);
+        createWindow(3, 4.5, houseDepth / 2 + 0.05);
+
+        // Задние окна (первый этаж)
         createWindow(-3, 2, -houseDepth / 2 - 0.05, Math.PI);
         createWindow(3, 2, -houseDepth / 2 - 0.05, Math.PI);
 
-        // Боковые окна
+        // Задние окна (второй этаж)
+        createWindow(-3, 4.5, -houseDepth / 2 - 0.05, Math.PI);
+        createWindow(3, 4.5, -houseDepth / 2 - 0.05, Math.PI);
+
+        // Боковые окна (первый этаж)
         createWindow(-houseWidth / 2 - 0.05, 2, -2, Math.PI / 2);
         createWindow(houseWidth / 2 + 0.05, 2, 2, -Math.PI / 2);
+
+        // Боковые окна (второй этаж)
+        createWindow(-houseWidth / 2 - 0.05, 4.5, -2, Math.PI / 2);
+        createWindow(houseWidth / 2 + 0.05, 4.5, 2, -Math.PI / 2);
 
         // Дверь
         const doorWidth = 1.8;
