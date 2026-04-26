@@ -231,7 +231,7 @@
             });
             const ground = new THREE.Mesh(groundGeometry, groundMaterial);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -3;
+            ground.position.y = -5;
             ground.receiveShadow = true;
             scene.add(ground);
             
@@ -377,8 +377,8 @@
                 bird.rotation.z = Math.max(-0.5, Math.min(1.0, -birdVelocity * 0.15));
                 
                 // Проверка столкновения с землей
-                if (bird.position.y < -2.5) {
-                    bird.position.y = -2.5;
+                if (bird.position.y < -4.5) {
+                    bird.position.y = -4.5;
                     gameOver();
                 }
                 
