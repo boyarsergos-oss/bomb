@@ -384,6 +384,7 @@
             <p style="color: #ff6b6b; font-weight: bold;">🎯 Land in the RED CIRCLE to advance!</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p style="color: #ffd700; font-weight: bold;">✏️ Hold SHIFT to edit level position (Top-Down View)</p>
+            <p style="color: #6af; font-weight: bold;">↩️ Press ENTER to exit edit mode</p>
         </div>
 
         <div id="mobileEditHint">👆 Long press to edit • Tap to move zone</div>
@@ -716,6 +717,15 @@
                 document.body.classList.add('edit-mode');
                 canvas.style.cursor = 'move';
                 updateCameraForOrientation();
+            }
+            if (e.code === 'Enter' && editMode) {
+                editMode = false;
+                topDownView = false;
+                topDownBtn.classList.remove('active');
+                topDownBtn.textContent = '🔍 Top-Down View';
+                document.body.classList.remove('edit-mode');
+                canvas.style.cursor = 'default';
+                showMessage('✅ Edit mode exited');
             }
         });
         
