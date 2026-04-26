@@ -2422,21 +2422,48 @@
             // Check collision with house collision boxes (precise geometry-based colliders)
             for (let i = 0; i < houseCollisionBoxes.length; i++) {
                 const houseColliders = houseCollisionBoxes[i];
+                const housePosition = houseMeshes[i].position;
+                
                 for (let j = 0; j < houseColliders.length; j++) {
                     const collider = houseColliders[j];
-                    const localDronePos = drone.position.clone().sub(houseMeshes[i].position);
-                    if (localDronePos.x >= collider.min.x && localDronePos.x <= collider.max.x &&
-                        localDronePos.y >= collider.min.y && localDronePos.y <= collider.max.y &&
-                        localDronePos.z >= collider.min.z && localDronePos.z <= collider.max.z) {
-                        // Simple collision response: push drone away
-                        const worldColliderMin = collider.min.clone().add(houseMeshes[i].position);
-                        const worldColliderMax = collider.max.clone().add(houseMeshes[i].position);
-                        const center = new THREE.Vector3().addVectors(worldColliderMin, worldColliderMax).multiplyScalar(0.5);
-                        const direction = drone.position.clone().sub(center).normalize();
-                        if (direction.length() > 0) {
-                            drone.position.add(direction.multiplyScalar(0.1));
-                            drone.velocity.multiplyScalar(0.5);
+                    
+                    // Create world-space AABB for this house part
+                    const worldColliderMin = collider.min.clone().add(housePosition);
+                    const worldColliderMax = collider.max.clone().add(housePosition);
+                    const housePartBox = new THREE.Box3(worldColliderMin, worldColliderMax);
+                    
+                    if (droneBox.intersectsBox(housePartBox)) {
+                        // Collision response: push drone away from the closest face
+                        const droneCenter = drone.position.clone();
+                        const housePartCenter = new THREE.Vector3().addVectors(worldColliderMin, worldColliderMax).multiplyScalar(0.5);
+                        
+                        // Calculate overlap on each axis
+                        const overlapX = Math.min(droneBox.max.x - worldColliderMin.x, worldColliderMax.x - droneBox.min.x);
+                        const overlapY = Math.min(droneBox.max.y - worldColliderMin.y, worldColliderMax.y - droneBox.min.y);
+                        const overlapZ = Math.min(droneBox.max.z - worldColliderMin.z, worldColliderMax.z - droneBox.min.z);
+                        
+                        // Find the axis with minimum overlap and push out along that axis
+                        const minOverlap = Math.min(overlapX, overlapY, overlapZ);
+                        
+                        if (minOverlap === overlapX) {
+                            // Push out along X axis
+                            const direction = droneCenter.x < housePartCenter.x ? -1 : 1;
+                            drone.position.x += direction * overlapX;
+                        } else if (minOverlap === overlapY) {
+                            // Push out along Y axis
+                            const direction = droneCenter.y < housePartCenter.y ? -1 : 1;
+                            drone.position.y += direction * overlapY;
+                        } else {
+                            // Push out along Z axis
+                            const direction = droneCenter.z < housePartCenter.z ? -1 : 1;
+                            drone.position.z += direction * overlapZ;
                         }
+                        
+                        // Recalculate drone box after position adjustment
+                        droneBox.setFromCenterAndSize(drone.position, droneSize);
+                        
+                        // Dampen velocity
+                        drone.velocity.multiplyScalar(0.3);
                     }
                 }
             }
