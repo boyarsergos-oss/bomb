@@ -1377,9 +1377,9 @@
             updateSelectedObjectInfo();
         }
         
-        function removeLandingZone() {
+        function removeSelectedObject() {
             if (editor.selectedIndex < 0) {
-                alert('Please select a landing zone first');
+                alert('Please select an object first');
                 return;
             }
             
@@ -1519,7 +1519,7 @@
             }
         });
         document.getElementById('addLandingZoneBtn').addEventListener('click', addLandingZone);
-        document.getElementById('removeLandingZoneBtn').addEventListener('click', removeLandingZone);
+        document.getElementById('removeSelectedBtn').addEventListener('click', removeSelectedObject);
         document.getElementById('saveLevelBtn').addEventListener('click', saveLevel);
         document.getElementById('loadLevelBtn').addEventListener('click', loadLevel);
         document.getElementById('exitEditorBtn').addEventListener('click', () => {
