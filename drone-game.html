@@ -2440,7 +2440,7 @@
             const hoverThrust = phys.gravity * phys.mass;
             
             // Прямое управление вертикальной скоростью (максимум 400 м/с)
-            const maxVerticalSpeed = 400.0;
+            const maxVerticalSpeed = 40.0;
             const targetVerticalSpeed = drone.throttle * maxVerticalSpeed;
             const verticalSpeedError = targetVerticalSpeed - drone.velocity.y;
             const verticalCorrectionForce = verticalSpeedError * phys.mass * 5.0; // Коэффициент коррекции
@@ -2463,7 +2463,7 @@
             const horizontalThrustFactor = Math.sqrt(thrustDirection.x * thrustDirection.x + thrustDirection.z * thrustDirection.z);
             
             // Прямое управление горизонтальной скоростью (максимум 400 м/с)
-            const maxHorizontalSpeed = 400.0;
+            const maxHorizontalSpeed = 40.0;
             const targetPitchSpeed = -drone.pitch * maxHorizontalSpeed; // Вперёд/назад
             const targetRollSpeed = drone.roll * maxHorizontalSpeed;    // Влево/вправо
             
