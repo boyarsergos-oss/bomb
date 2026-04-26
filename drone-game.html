@@ -353,7 +353,7 @@
             level: 1,
             landingZones: [
                 { position: new THREE.Vector3(0, 0, -20), radius: 3, landed: false },
-                { position: new THREE.Vector3(-20, 0, 20), radius: 2.5, landed: false }
+                { position: new THREE.Vector3(-20, 8, 20), radius: 2.5, landed: false }
             ]
         };
 
@@ -536,7 +536,7 @@
             const landingZone = new THREE.Mesh(landingZoneGeometry, landingZoneMaterial);
             landingZone.rotation.x = -Math.PI / 2;
             landingZone.position.copy(zone.position);
-            landingZone.position.y = 0.05;
+            landingZone.position.y = zone.position.y + 0.05;
             scene.add(landingZone);
             landingZoneMeshes.push(landingZone);
 
@@ -552,7 +552,7 @@
             const landingGlow = new THREE.Mesh(glowGeometry, glowMaterial);
             landingGlow.rotation.x = -Math.PI / 2;
             landingGlow.position.copy(zone.position);
-            landingGlow.position.y = -0.5;
+            landingGlow.position.y = zone.position.y - 0.1;
             scene.add(landingGlow);
             landingGlowMeshes.push(landingGlow);
 
@@ -565,7 +565,7 @@
                 const angle = (i / 4) * Math.PI * 2;
                 marker.position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
                 marker.position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
-                marker.position.y = 0.5;
+                marker.position.y = zone.position.y + 0.5;
                 scene.add(marker);
                 markers.push(marker);
             }
@@ -575,6 +575,77 @@
         // Create landing zones for all levels
         state.landingZones.forEach((_, index) => createLandingZone(index));
 
+        // Building/Platform for Level 2
+        const buildingGroup = new THREE.Group();
+        
+        function createBuilding() {
+            // Main building body (rectangular structure)
+            const buildingGeometry = new THREE.BoxGeometry(10, 8, 10);
+            const buildingMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x5a6b7c,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+            const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+            building.position.set(-20, 4, 20);
+            building.castShadow = true;
+            building.receiveShadow = true;
+            buildingGroup.add(building);
+            
+            // Windows on the building
+            const windowGeometry = new THREE.PlaneGeometry(1.5, 1.5);
+            const windowMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x87ceeb,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            // Add windows on each side
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 2; j++) {
+                    // Front windows
+                    const windowFront = new THREE.Mesh(windowGeometry, windowMaterial);
+                    windowFront.position.set(-20 + (i - 1) * 2.5, 5 + j * 2.5, 25.01);
+                    buildingGroup.add(windowFront);
+                    
+                    // Back windows
+                    const windowBack = new THREE.Mesh(windowGeometry, windowMaterial);
+                    windowBack.position.set(-20 + (i - 1) * 2.5, 5 + j * 2.5, 14.99);
+                    windowBack.rotation.y = Math.PI;
+                    buildingGroup.add(windowBack);
+                    
+                    // Left windows
+                    const windowLeft = new THREE.Mesh(windowGeometry, windowMaterial);
+                    windowLeft.position.set(-25.01, 5 + j * 2.5, 20 + (i - 1) * 2.5);
+                    windowLeft.rotation.y = -Math.PI / 2;
+                    buildingGroup.add(windowLeft);
+                    
+                    // Right windows
+                    const windowRight = new THREE.Mesh(windowGeometry, windowMaterial);
+                    windowRight.position.set(-14.99, 5 + j * 2.5, 20 + (i - 1) * 2.5);
+                    windowRight.rotation.y = Math.PI / 2;
+                    buildingGroup.add(windowRight);
+                }
+            }
+            
+            // Roof platform (landing surface)
+            const roofGeometry = new THREE.BoxGeometry(10, 0.3, 10);
+            const roofMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3a4b5c,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.set(-20, 8, 20);
+            roof.castShadow = true;
+            roof.receiveShadow = true;
+            buildingGroup.add(roof);
+            
+            scene.add(buildingGroup);
+        }
+        
+        createBuilding();
+
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
             landingZoneMeshes.forEach((mesh, index) => {
@@ -583,6 +654,11 @@
                 landingGlowMeshes[index].visible = visible;
                 markerGroups[index].forEach(m => m.visible = visible);
             });
+            
+            // Show/hide building based on level
+            if (buildingGroup) {
+                buildingGroup.visible = state.level >= 2;
+            }
         }
         updateLandingZoneVisibility();
 
@@ -814,16 +890,17 @@
             const dz = state.drone.position.z - currentZone.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
             
-            const altitude = state.drone.position.y;
+            // Calculate relative altitude to the landing zone height
+            const relativeAltitude = state.drone.position.y - currentZone.position.y;
             const speed = state.drone.velocity.length();
 
             // Check if drone is within the red circle and landed gently
-            if (distance < currentZone.radius && altitude < 1.0 && speed < 0.5) {
+            if (distance < currentZone.radius && relativeAltitude < 1.0 && speed < 0.5) {
                 currentZone.landed = true;
                 showMessage("✓ Level Complete!");
                 showLevelComplete();
             } else if (distance < currentZone.radius) {
-                if (altitude >= 1.0) {
+                if (relativeAltitude >= 1.0) {
                     showMessage("↓ Lower altitude to land");
                 } else if (speed >= 0.5) {
                     showMessage("⚠ Slow down to land safely");
@@ -857,6 +934,11 @@
                 hideLevelComplete();
                 showMessage("");
                 document.getElementById('level').textContent = state.level;
+                
+                // Update continue button text for level 2
+                if (state.level === 2) {
+                    document.getElementById('continueBtn').textContent = 'Continue to Level 3';
+                }
             } else {
                 showMessage("🎉 All levels complete! You're a master pilot!");
             }
