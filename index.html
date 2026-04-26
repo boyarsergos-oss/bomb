@@ -325,6 +325,9 @@
             // Сброс таймера создания труб - устанавливаем время в будущее, 
             // чтобы первая труба появилась только через pipeSpawnInterval
             lastPipeTime = Date.now() + pipeSpawnInterval;
+            
+            // Принудительно обновляем матрицы птицы для корректного расчета коллизий
+            bird.updateMatrixWorld(true);
         }
         
         function gameOver() {
