@@ -480,7 +480,8 @@
                 { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false }
             ],
             objects: [],
-            houses: []
+            houses: [],
+            houseMeshesCreated: []  // Track which meshes belong to which level
         };
 
         // Three.js Setup
@@ -1275,28 +1276,51 @@
         function createLevel2House() {
             if (level2HouseCreated) return;
             const housePosition = new THREE.Vector3(0, 0, -50);
+            
+            // Store the starting index of meshes before creating the house
+            const startMeshIndex = houseMeshes.length;
+            
             createHouseModel(housePosition);
+            
+            // Mark these meshes as belonging to level 2
+            for (let i = startMeshIndex; i < houseMeshes.length; i++) {
+                state.houseMeshesCreated.push({ meshIndex: i, level: 2 });
+                // Hide all house meshes initially for level 2
+                houseMeshes[i].visible = false;
+            }
+            
             level2HouseCreated = true;
         }
         
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
             landingZoneMeshes.forEach((mesh, index) => {
-                const visible = index === state.level - 1 || state.landingZones[index].landed;
-                mesh.visible = visible;
-                landingGlowMeshes[index].visible = visible;
-                landingBeamMeshes[index].visible = visible;
-                landingArrowMeshes[index].visible = visible;
-                markerGroups[index].forEach(m => m.visible = visible);
+                // Show only the current level's landing zone, or completed zones from previous levels
+                const isCurrentLevel = index === state.level - 1;
+                const isPreviousLevelCompleted = index < state.level - 1 && state.landingZones[index].landed;
+                
+                // For level 2+, hide level 1's zone even if completed (to avoid confusion)
+                const shouldShow = isCurrentLevel || (isPreviousLevelCompleted && state.level === 1);
+                
+                mesh.visible = shouldShow;
+                landingGlowMeshes[index].visible = shouldShow;
+                landingBeamMeshes[index].visible = shouldShow;
+                landingArrowMeshes[index].visible = shouldShow;
+                markerGroups[index].forEach(m => m.visible = shouldShow);
             });
             
-            // Show/hide house based on level
-            if (state.level >= 2 && level2HouseCreated) {
-                // House is already created and visible
-            } else if (state.level < 2) {
-                // Hide house meshes if going back to level 1 (not typical but for safety)
-                // This would require tracking house meshes, which we don't do currently
-            }
+            // Show/hide house meshes based on level
+            houseMeshes.forEach((mesh, index) => {
+                // Check if this mesh belongs to the current level
+                const meshInfo = state.houseMeshesCreated.find(m => m.meshIndex === index);
+                if (meshInfo) {
+                    // This mesh belongs to a specific level
+                    mesh.visible = (state.level === meshInfo.level);
+                } else {
+                    // Default behavior: show if on level 2+
+                    mesh.visible = false;
+                }
+            });
         }
         updateLandingZoneVisibility();
 
@@ -2625,6 +2649,9 @@
             for (let i = 0; i < houseCollisionBoxes.length; i++) {
                 const houseColliders = houseCollisionBoxes[i];
                 const housePosition = houseMeshes[i].position;
+                
+                // Skip collision check if the house mesh is not visible (e.g., on wrong level)
+                if (!houseMeshes[i].visible) continue;
                 
                 for (let j = 0; j < houseColliders.length; j++) {
                     const collider = houseColliders[j];
