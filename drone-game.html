@@ -415,6 +415,7 @@
                 <button class="editor-btn danger" id="removeSelectedBtn">- Удалить выбранное</button>
                 <button class="editor-btn" id="saveLevelBtn">💾 Сохранить уровень</button>
                 <button class="editor-btn" id="loadLevelBtn">📂 Загрузить уровень</button>
+                <button class="editor-btn danger" id="resetDefaultsBtn">🔄 Сброс к стандарту</button>
                 <button class="editor-btn" id="exitEditorBtn">Выйти из редактора</button>
             </div>
         </div>
@@ -722,8 +723,11 @@
             markerGroups.push(markers);
         }
 
-        // Create landing zones for all levels (default) - отключено для очистки сцены
-        // state.landingZones.forEach((_, index) => createLandingZone(index));
+        // Create landing zones for all levels (default)
+        state.landingZones.forEach((_, index) => createLandingZone(index));
+        
+        // Update visibility to show only current level zone
+        updateLandingZoneVisibility();
         
         // Function to create editable object mesh
         function createObjectMesh(index) {
@@ -1234,7 +1238,7 @@
             scene.add(buildingGroup);
         }
         
-        // createBuilding(); - отключено для очистки сцены
+        createBuilding();
 
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
@@ -1245,12 +1249,11 @@
                 markerGroups[index].forEach(m => m.visible = visible);
             });
             
-            // Show/hide building based on level (отключено - здание удалено)
-            // if (buildingGroup) {
-            //     buildingGroup.visible = state.level >= 2;
-            // }
+            // Show/hide building based on level
+            if (buildingGroup) {
+                buildingGroup.visible = state.level >= 2;
+            }
         }
-        // updateLandingZoneVisibility(); - отключено, так как зоны посадки удалены
 
         // Camera offset for third-person view - will be adjusted based on orientation
         let cameraOffset = new THREE.Vector3(0, 3, 6);
@@ -1899,7 +1902,46 @@
                     console.error('Ошибка при загрузке уровня:', e);
                     showMessage('❌ Ошибка при загрузке уровня');
                 }
+            } else {
+                showMessage('❌ Нет сохранённого уровня');
             }
+        }
+        
+        function resetToDefaults() {
+            if (!confirm('Вы уверены, что хотите сбросить уровень к стандартным настройкам?')) {
+                return;
+            }
+            
+            // Clear localStorage
+            localStorage.removeItem('droneGameLevel');
+            
+            // Clear existing zones from scene
+            landingZoneMeshes.forEach(mesh => scene.remove(mesh));
+            landingGlowMeshes.forEach(mesh => scene.remove(mesh));
+            markerGroups.forEach(group => group.forEach(m => scene.remove(m)));
+            landingZoneMeshes = [];
+            landingGlowMeshes = [];
+            markerGroups = [];
+            
+            // Reset state to defaults
+            state.landingZones = [
+                { position: new THREE.Vector3(0, 0, -20), radius: 3, landed: false },
+                { position: new THREE.Vector3(-15, 0, 15), radius: 2.5, landed: false },
+                { position: new THREE.Vector3(20, 0, -30), radius: 2, landed: false }
+            ];
+            
+            // Recreate landing zones
+            state.landingZones.forEach((_, index) => createLandingZone(index));
+            
+            // Update visibility
+            updateLandingZoneVisibility();
+            
+            // Reset level
+            state.level = 1;
+            document.getElementById('level').textContent = '1';
+            
+            showMessage('✅ Уровень сброшен к стандартным настройкам!');
+            console.log('Уровень сброшен к стандартным настройкам');
         }
         
         function toggleEditorMode() {
@@ -1947,8 +1989,8 @@
                 cameraLookAt.copy(editor.originalCameraTarget);
                 editor.cameraMode = 'third';
                 
-                // Restore visibility based on level (отключено - зоны посадки удалены)
-                // updateLandingZoneVisibility();
+                // Restore visibility based on level
+                updateLandingZoneVisibility();
                 
                 // Deselect any selected object
                 deselectObject();
@@ -2383,6 +2425,7 @@
         document.getElementById('removeSelectedBtn').addEventListener('click', removeSelectedObject);
         document.getElementById('saveLevelBtn').addEventListener('click', saveLevel);
         document.getElementById('loadLevelBtn').addEventListener('click', loadLevel);
+        document.getElementById('resetDefaultsBtn').addEventListener('click', resetToDefaults);
         document.getElementById('exitEditorBtn').addEventListener('click', () => {
             if (editor.active) {
                 toggleEditorMode();
