@@ -469,12 +469,13 @@
             physics: {
                 gravity: 9.81,
                 mass: 1.5,
-                drag: 5.0,
+                drag: 0.3,
                 angularDrag: 2.0,
                 maxThrust: 22.0,
                 maxTilt: Math.PI / 4,
                 motorResponse: 8.0,
-                gyroStability: 8.0
+                gyroStability: 8.0,
+                instantStop: true
             },
             battery: 100,
             time: 0,
@@ -2450,7 +2451,15 @@
             const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude);
 
             // Drag force (сопротивление воздуха)
-            const dragForce = drone.velocity.clone().multiplyScalar(-phys.drag);
+            let dragCoefficient = phys.drag;
+            if (phys.instantStop && 
+                Math.abs(state.controls.throttle) < 0.1 && 
+                Math.abs(state.controls.pitch) < 0.1 && 
+                Math.abs(state.controls.roll) < 0.1 && 
+                Math.abs(state.controls.yaw) < 0.1) {
+                dragCoefficient = 50.0;
+            }
+            const dragForce = drone.velocity.clone().multiplyScalar(-dragCoefficient);
 
             // Total force
             const totalForce = new THREE.Vector3()
