@@ -429,7 +429,7 @@
         <div id="levelComplete">
             <div>🎉 Уровень пройден! 🎉</div>
             <div style="font-size: 18px; margin-top: 10px;">Вы успешно посадили дрон!</div>
-            <div style="font-size: 14px; margin-top: 5px; opacity: 0.8;">Игра завершена!</div>
+            <div style="font-size: 14px; margin-top: 5px; opacity: 0.8;" id="levelCompleteSubtext">Игра завершена!</div>
             <button id="continueBtn">Завершить игру</button>
         </div>
         
@@ -477,7 +477,8 @@
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false }
+                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false },
+                { position: new THREE.Vector3(0, 6.15, -50), radius: 3, landed: false }
             ],
             objects: [],
             houses: []
@@ -1268,6 +1269,14 @@
         }
         
         // createBuilding(); - отключено для очистки сцены
+        
+        // Create house for Level 2 at z=-50 with landing zone on roof
+        function createLevel2House() {
+            const housePosition = new THREE.Vector3(0, 0, -50);
+            createHouseModel(housePosition);
+        }
+        
+        createLevel2House();
 
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
@@ -1882,6 +1891,14 @@
             state.battery = 100;
         }
         
+        function resetDroneForLevel() {
+            // Reset drone position for the new level
+            state.drone.position.set(0, 2, 0);
+            state.drone.velocity.set(0, 0, 0);
+            state.drone.rotation.set(0, 0, 0);
+            state.drone.angularVelocity.set(0, 0, 0);
+        }
+        
         // Editor Functions
         function saveLevel() {
             const levelData = {
@@ -2352,9 +2369,22 @@
             // Check if drone is within the red circle and landed gently
             if (distance < currentZone.radius && relativeAltitude < 1.0 && speed < 0.5) {
                 currentZone.landed = true;
-                showMessage("✓ Уровень пройден!");
-                showLevelComplete();
-                showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+                
+                // Check if there's a next level
+                if (state.level < state.landingZones.length) {
+                    // Go to next level
+                    state.level++;
+                    showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
+                    resetDroneForLevel();
+                    updateLandingZoneVisibility();
+                    document.getElementById('level').textContent = state.level;
+                } else {
+                    // All levels complete
+                    showMessage("✓ Уровень пройден!");
+                    showLevelComplete();
+                    document.getElementById('levelCompleteSubtext').textContent = 'Все уровни пройдены!';
+                    document.querySelector('#continueBtn').textContent = 'Завершить игру';
+                }
             } else if (distance < currentZone.radius) {
                 if (relativeAltitude >= 1.0) {
                     showMessage("↓ Снизьте высоту для посадки");
