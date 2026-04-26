@@ -204,7 +204,7 @@
             time: 0,
             level: 1,
             landed: false,
-            targetPosition: new THREE.Vector3(10, 0, 10)
+            targetPosition: new THREE.Vector3(5, 0, 0)
         };
 
         // Three.js Setup
@@ -526,7 +526,7 @@
         function updateTargetPosition() {
             // Move target to new random position for each level
             const angle = (state.level - 1) * Math.PI / 4;
-            const radius = 10 + (state.level - 1) * 5;
+            const radius = 5 + (state.level - 1) * 3;
             state.targetPosition.x = Math.cos(angle) * radius;
             state.targetPosition.z = Math.sin(angle) * radius;
             
