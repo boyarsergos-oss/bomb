@@ -145,6 +145,11 @@
         const pipeDistance = 18;
         let nextPipeZ = 35; // Первая труба на расстоянии 35 единиц (около 2-3 секунд полета)
         
+        // Границы уровня
+        const GROUND_Y = -6;    // Уровень земли
+        const CEILING_Y = 10;   // Уровень потолка
+        const PLAYABLE_HEIGHT = CEILING_Y - GROUND_Y; // Высота игровой зоны (16 единиц)
+        
         // Элементы UI
         const scoreDisplay = document.getElementById('score-display');
         const startScreen = document.getElementById('start-screen');
@@ -182,14 +187,23 @@
             // Создаем птицу
             createBird();
             
-            // Земля
+            // Земля (визуальная)
             const groundGeometry = new THREE.PlaneGeometry(200, 1000);
             const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
             const ground = new THREE.Mesh(groundGeometry, groundMaterial);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -8;
+            ground.position.y = GROUND_Y;
             ground.position.z = 400;
             scene.add(ground);
+            
+            // Потолок (визуальный)
+            const ceilingGeometry = new THREE.PlaneGeometry(200, 1000);
+            const ceilingMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+            const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.y = CEILING_Y;
+            ceiling.position.z = 400;
+            scene.add(ceiling);
             
             // Обработчики событий
             window.addEventListener('resize', onWindowResize);
@@ -254,24 +268,41 @@
             const pipeGeometry = new THREE.CylinderGeometry(1.5, 1.5, 20, 16);
             const pipeMaterial = new THREE.MeshLambertMaterial({ color: 0x2ecc71 });
             
-            // Случайная высота зазора (от -3 до 3)
-            const gapY = (Math.random() - 0.5) * 6;
+            // Вычисляем допустимый диапазон для центра зазора
+            // Труба имеет высоту 20 (половина = 10), зазор = 4 (половина = 2)
+            // Центр зазора = gapY
+            // Верхняя труба: центр на gapY + 10 + pipeGap/2, её верхний край на gapY + 10 + pipeGap/2 + 10 = gapY + 20 + pipeGap/2
+            // Нижняя труба: центр на gapY - 10 - pipeGap/2, её нижний край на gapY - 10 - pipeGap/2 - 10 = gapY - 20 - pipeGap/2
+            // Чтобы верхняя труба не выходила за потолок: gapY + 20 + pipeGap/2 <= CEILING_Y
+            // Чтобы нижняя труба не выходила за землю: gapY - 20 - pipeGap/2 >= GROUND_Y
+            
+            const halfPipeLength = 10; // Половина длины трубы
+            const halfGap = pipeGap / 2; // Половина зазора
+            
+            // Максимальная позиция gapY, при которой верхняя труба не выходит за потолок
+            const maxGapY = CEILING_Y - halfPipeLength - halfGap;
+            // Минимальная позиция gapY, при которой нижняя труба не выходит за землю
+            const minGapY = GROUND_Y + halfPipeLength + halfGap;
+            
+            // Случайная высота зазора в допустимых пределах
+            const gapY = minGapY + Math.random() * (maxGapY - minGapY);
             
             // Верхняя труба
             const topPipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
-            topPipe.position.set(0, gapY + 10 + pipeGap/2, zPosition);
+            topPipe.position.set(0, gapY + halfPipeLength + halfGap, zPosition);
             scene.add(topPipe);
             
             // Нижняя труба
             const bottomPipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
-            bottomPipe.position.set(0, gapY - 10 - pipeGap/2, zPosition);
+            bottomPipe.position.set(0, gapY - halfPipeLength - halfGap, zPosition);
             scene.add(bottomPipe);
             
             pipes.push({
                 top: topPipe,
                 bottom: bottomPipe,
                 passed: false,
-                zPosition: zPosition
+                zPosition: zPosition,
+                gapY: gapY
             });
         }
         
@@ -304,11 +335,15 @@
         
         // Проверка столкновений
         function checkCollision() {
-            // Получаем точную позицию и размер птицы
             const birdRadius = 0.8; // Радиус тела птицы
             const birdX = bird.position.x;
             const birdY = bird.position.y;
             const birdZ = bird.position.z;
+            
+            // Проверка столкновения с землей и потолком
+            if (birdY - birdRadius <= GROUND_Y || birdY + birdRadius >= CEILING_Y) {
+                return true;
+            }
             
             for (const pipe of pipes) {
                 const pipeX = pipe.top.position.x;
@@ -321,34 +356,30 @@
                 const dz = Math.abs(birdZ - pipeZ);
                 
                 // Проверяем, находится ли птица в зоне трубы по оси Z
-                // Труба имеет радиус 1.5, птица имеет радиус 0.8
                 const zThreshold = pipeRadius + birdRadius;
                 
                 if (dz < zThreshold) {
                     // Птица находится в зоне трубы по Z, проверяем Y
-                    const gapY = (pipe.top.position.y + pipe.bottom.position.y) / 2;
-                    const topPipeBottom = gapY + pipeGap / 2; // Низ верхней трубы
-                    const bottomPipeTop = gapY - pipeGap / 2; // Верх нижней трубы
+                    const gapY = pipe.gapY; // Используем сохранённое значение gapY
+                    const topPipeBottom = gapY + pipeGap / 2; // Низ верхней трубы (верхний край зазора)
+                    const bottomPipeTop = gapY - pipeGap / 2; // Верх нижней трубы (нижний край зазора)
                     
                     // Проверяем столкновение с верхней трубой
-                    if (birdY + birdRadius > topPipeBottom - pipeRadius && birdY - birdRadius < topPipeBottom + 10) {
+                    // Столкновение если: низ птицы выше нижнего края верхней трубы И верх птицы ниже верхнего края верхней трубы
+                    if (birdY + birdRadius > topPipeBottom && birdY < pipe.top.position.y + 10) {
                         if (dx < pipeRadius + birdRadius) {
                             return true;
                         }
                     }
                     
                     // Проверяем столкновение с нижней трубой
-                    if (birdY - birdRadius < bottomPipeTop + pipeRadius && birdY + birdRadius > bottomPipeTop - 10) {
+                    // Столкновение если: верх птицы ниже верхнего края нижней трубы И низ птицы выше нижнего края нижней трубы
+                    if (birdY - birdRadius < bottomPipeTop && birdY > pipe.bottom.position.y - 10) {
                         if (dx < pipeRadius + birdRadius) {
                             return true;
                         }
                     }
                 }
-            }
-            
-            // Проверка столкновения с землей или потолком
-            if (bird.position.y < -7 || bird.position.y > 12) {
-                return true;
             }
             
             return false;
