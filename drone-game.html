@@ -478,7 +478,7 @@
             level: 1,
             landingZones: [
                 { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false },
-                { position: new THREE.Vector3(0, 12, 0), radius: 3.5, landed: false }
+                { position: new THREE.Vector3(0, 7, 0), radius: 2.5, landed: false }
             ],
             objects: [],
             houses: []
@@ -1274,6 +1274,232 @@
         }
         
         // createBuilding(); - отключено для очистки сцены
+        
+        // Создаём дом для уровня 2
+        let houseForLevel2 = null;
+        const houseForLevel2CollisionBoxes = [];
+        
+        function createHouseForLevel2() {
+            if (houseForLevel2) return; // Уже создан
+            
+            const houseGroup = new THREE.Group();
+            const houseColliders = [];
+            
+            // Основание дома (фундамент)
+            const foundationGeometry = new THREE.BoxGeometry(10.5, 0.5, 8.5);
+            const foundationMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x4a4a4a,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const foundation = new THREE.Mesh(foundationGeometry, foundationMaterial);
+            foundation.position.set(0, 0.25, 0);
+            foundation.castShadow = true;
+            foundation.receiveShadow = true;
+            houseGroup.add(foundation);
+            
+            // Коллизия фундамента
+            houseColliders.push({
+                min: new THREE.Vector3(-10.5/2, 0, -8.5/2),
+                max: new THREE.Vector3(10.5/2, 0.5, 8.5/2)
+            });
+            
+            // Основное здание
+            const buildingGeometry = new THREE.BoxGeometry(10, 6, 8);
+            const buildingMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x8b7355,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+            building.position.set(0, 3.5, 0);
+            building.castShadow = true;
+            building.receiveShadow = true;
+            houseGroup.add(building);
+            
+            // Коллизия здания
+            houseColliders.push({
+                min: new THREE.Vector3(-10/2, 0.5, -8/2),
+                max: new THREE.Vector3(10/2, 6.5, 8/2)
+            });
+            
+            // Крыша (плоская с парапетом)
+            const roofGeometry = new THREE.BoxGeometry(10.5, 0.3, 8.5);
+            const roofMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3a3a3a,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.set(0, 6.65, 0);
+            roof.castShadow = true;
+            roof.receiveShadow = true;
+            houseGroup.add(roof);
+            
+            // Коллизия крыши
+            houseColliders.push({
+                min: new THREE.Vector3(-10.5/2, 6.5, -8.5/2),
+                max: new THREE.Vector3(10.5/2, 6.95, 8.5/2)
+            });
+            
+            // Парапет по периметру крыши (посадочная зона)
+            const parapetHeight = 0.5;
+            const parapetThickness = 0.3;
+            
+            // Передний парапет
+            const frontParapet = new THREE.Mesh(
+                new THREE.BoxGeometry(10.5, parapetHeight, parapetThickness),
+                roofMaterial
+            );
+            frontParapet.position.set(0, 6.65 + 0.15 + parapetHeight / 2, 4.25 + parapetThickness / 2);
+            houseGroup.add(frontParapet);
+            
+            // Коллизия переднего парапета
+            houseColliders.push({
+                min: new THREE.Vector3(-10.5/2, 6.8, 4.25),
+                max: new THREE.Vector3(10.5/2, 7.3, 4.25 + parapetThickness)
+            });
+            
+            // Задний парапет
+            const backParapet = new THREE.Mesh(
+                new THREE.BoxGeometry(10.5, parapetHeight, parapetThickness),
+                roofMaterial
+            );
+            backParapet.position.set(0, 6.65 + 0.15 + parapetHeight / 2, -4.25 - parapetThickness / 2);
+            houseGroup.add(backParapet);
+            
+            // Коллизия заднего парапета
+            houseColliders.push({
+                min: new THREE.Vector3(-10.5/2, 6.8, -4.25 - parapetThickness),
+                max: new THREE.Vector3(10.5/2, 7.3, -4.25)
+            });
+            
+            // Левый парапет
+            const leftParapet = new THREE.Mesh(
+                new THREE.BoxGeometry(parapetThickness, parapetHeight, 8.5),
+                roofMaterial
+            );
+            leftParapet.position.set(-5.25 - parapetThickness / 2, 6.65 + 0.15 + parapetHeight / 2, 0);
+            houseGroup.add(leftParapet);
+            
+            // Коллизия левого парапета
+            houseColliders.push({
+                min: new THREE.Vector3(-5.25 - parapetThickness, 6.8, -8.5/2),
+                max: new THREE.Vector3(-5.25, 7.3, 8.5/2)
+            });
+            
+            // Правый парапет
+            const rightParapet = new THREE.Mesh(
+                new THREE.BoxGeometry(parapetThickness, parapetHeight, 8.5),
+                roofMaterial
+            );
+            rightParapet.position.set(5.25 + parapetThickness / 2, 6.65 + 0.15 + parapetHeight / 2, 0);
+            houseGroup.add(rightParapet);
+            
+            // Коллизия правого парапета
+            houseColliders.push({
+                min: new THREE.Vector3(5.25, 6.8, -8.5/2),
+                max: new THREE.Vector3(5.25 + parapetThickness, 7.3, 8.5/2)
+            });
+            
+            // Посадочная площадка на крыше (маркировка "H")
+            const helipadGeometry = new THREE.CircleGeometry(2.5, 32);
+            const helipadMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.8
+            });
+            const helipad = new THREE.Mesh(helipadGeometry, helipadMaterial);
+            helipad.rotation.x = -Math.PI / 2;
+            helipad.position.set(0, 7.0, 0);
+            houseGroup.add(helipad);
+            
+            // Буква "H" на посадочной площадке
+            const hShape = new THREE.Shape();
+            const hWidth = 0.4;
+            const hHeight = 2.0;
+            const hBarWidth = 1.2;
+            const hBarHeight = 0.4;
+            
+            // Левая вертикальная линия
+            hShape.moveTo(-hBarWidth/2 - hWidth/2, -hHeight/2);
+            hShape.lineTo(-hBarWidth/2 + hWidth/2, -hHeight/2);
+            hShape.lineTo(-hBarWidth/2 + hWidth/2, hHeight/2);
+            hShape.lineTo(-hBarWidth/2 - hWidth/2, hHeight/2);
+            hShape.closePath();
+            
+            // Правая вертикальная линия
+            hShape.moveTo(hBarWidth/2 - hWidth/2, -hHeight/2);
+            hShape.lineTo(hBarWidth/2 + hWidth/2, -hHeight/2);
+            hShape.lineTo(hBarWidth/2 + hWidth/2, hHeight/2);
+            hShape.lineTo(hBarWidth/2 - hWidth/2, hHeight/2);
+            hShape.closePath();
+            
+            // Горизонтальная перекладина
+            hShape.moveTo(-hBarWidth/2, -hBarHeight/2);
+            hShape.lineTo(hBarWidth/2, -hBarHeight/2);
+            hShape.lineTo(hBarWidth/2, hBarHeight/2);
+            hShape.lineTo(-hBarWidth/2, hBarHeight/2);
+            hShape.closePath();
+            
+            const hGeometry = new THREE.ExtrudeGeometry(hShape, { depth: 0.1, bevelEnabled: false });
+            const hMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const hLetter = new THREE.Mesh(hGeometry, hMaterial);
+            hLetter.rotation.x = Math.PI / 2;
+            hLetter.position.set(0, 7.05, 0);
+            houseGroup.add(hLetter);
+            
+            // Окна на доме
+            const windowGeometry = new THREE.PlaneGeometry(1.2, 1.5);
+            const windowMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x87ceeb,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            function createWindow(x, y, z, rotY = 0) {
+                const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
+                windowMesh.position.set(x, y, z);
+                windowMesh.rotation.y = rotY;
+                houseGroup.add(windowMesh);
+                
+                // Рама окна
+                const frameThickness = 0.1;
+                const frameGeometry = new THREE.BoxGeometry(1.4, 1.7, frameThickness);
+                const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 });
+                const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+                frame.position.set(x, y, z + (rotY === 0 ? 0.05 : 0));
+                if (rotY !== 0) {
+                    frame.rotation.y = rotY;
+                }
+                houseGroup.add(frame);
+            }
+            
+            // Окна спереди
+            createWindow(-2.5, 3.5, 4.05);
+            createWindow(2.5, 3.5, 4.05);
+            
+            // Окна сзади
+            createWindow(-2.5, 3.5, -4.05, Math.PI);
+            createWindow(2.5, 3.5, -4.05, Math.PI);
+            
+            // Окна слева
+            createWindow(-5.05, 3.5, -2, -Math.PI / 2);
+            createWindow(-5.05, 3.5, 2, -Math.PI / 2);
+            
+            // Окна справа
+            createWindow(5.05, 3.5, -2, Math.PI / 2);
+            createWindow(5.05, 3.5, 2, Math.PI / 2);
+            
+            houseGroup.position.set(0, 0, 0);
+            houseGroup.castShadow = true;
+            houseGroup.receiveShadow = true;
+            
+            scene.add(houseGroup);
+            houseForLevel2 = houseGroup;
+            houseCollisionBoxes.push(houseColliders);
+        }
+
 
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
@@ -1286,12 +1512,15 @@
                 markerGroups[index].forEach(m => m.visible = visible);
             });
             
-            // Show/hide building based on level (отключено - здание удалено)
-            // if (buildingGroup) {
-            //     buildingGroup.visible = state.level >= 2;
-            // }
+            // Показываем дом только на уровне 2
+            if (houseForLevel2) {
+                houseForLevel2.visible = state.level === 2;
+            }
         }
         updateLandingZoneVisibility();
+        
+        // Создаём дом при инициализации
+        createHouseForLevel2();
 
         // Camera offset for third-person view - will be adjusted based on orientation
         let cameraOffset = new THREE.Vector3(0, 3, 6);
@@ -2394,7 +2623,12 @@
                 document.getElementById('level').textContent = state.level;
                 
                 // Reset drone position for new level
-                state.drone.position.set(0, 2 + state.level * 5, 0);
+                if (state.level === 2) {
+                    // На уровне 2 стартуем рядом с домом
+                    state.drone.position.set(0, 15, -20);
+                } else {
+                    state.drone.position.set(0, 2 + state.level * 5, 0);
+                }
                 state.drone.velocity.set(0, 0, 0);
                 state.drone.rotation.set(0, 0, 0);
                 state.drone.angularVelocity.set(0, 0, 0);
