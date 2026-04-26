@@ -115,8 +115,9 @@
         let score = 0;
         let gameActive = false;
         let birdVelocity = 0;
-        const gravity = -0.015;
-        const jumpStrength = 0.25;
+        // Физика точно как в Flappy Bird
+        const gravity = 0.25;
+        const jumpStrength = -6.0;
         const pipeSpeed = 0.08;
         const pipeSpawnInterval = 1500;
         let lastPipeTime = 0;
@@ -368,12 +369,12 @@
             requestAnimationFrame(animate);
             
             if (gameActive) {
-                // Физика птицы
-                birdVelocity += gravity;
+                // Физика птицы (точно как в Flappy Bird)
+                birdVelocity -= gravity;
                 bird.position.y += birdVelocity;
                 
                 // Вращение птицы в зависимости от скорости
-                bird.rotation.z = Math.max(-0.5, Math.min(0.5, birdVelocity * 2));
+                bird.rotation.z = Math.max(-0.5, Math.min(1.0, -birdVelocity * 0.15));
                 
                 // Проверка столкновения с землей
                 if (bird.position.y < -2.5) {
