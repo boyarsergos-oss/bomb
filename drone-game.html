@@ -321,60 +321,82 @@
         body.castShadow = true;
         droneGroup.add(body);
 
-        // Arms
-        const armGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8);
+        // Arms - 4 cylinders extending from center
+        const armGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8);
         const armMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x34495e,
             roughness: 0.4,
             metalness: 0.6
         });
 
-        const arm1 = new THREE.Mesh(armGeometry, armMaterial);
-        arm1.rotation.z = Math.PI / 2;
-        arm1.rotation.y = Math.PI / 4;
-        arm1.castShadow = true;
-        droneGroup.add(arm1);
+        const armPositions = [
+            { rotation: Math.PI / 4, x: 0.25, z: 0.25 },
+            { rotation: -Math.PI / 4, x: -0.25, z: 0.25 },
+            { rotation: Math.PI * 3 / 4, x: 0.25, z: -0.25 },
+            { rotation: -Math.PI * 3 / 4, x: -0.25, z: -0.25 }
+        ];
 
-        const arm2 = new THREE.Mesh(armGeometry, armMaterial);
-        arm2.rotation.z = Math.PI / 2;
-        arm2.rotation.y = -Math.PI / 4;
-        arm2.castShadow = true;
-        droneGroup.add(arm2);
+        const arms = [];
 
-        // Motors
-        const motorGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 16);
-        const motorMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0xe74c3c,
-            roughness: 0.2,
-            metalness: 0.8
+        armPositions.forEach((pos) => {
+            const arm = new THREE.Mesh(armGeometry, armMaterial);
+            arm.rotation.z = Math.PI / 2;
+            arm.rotation.y = pos.rotation;
+            arm.position.set(pos.x / 2, 0, pos.z / 2);
+            arm.castShadow = true;
+            droneGroup.add(arm);
+            arms.push(arm);
+        });
+
+        // Motor mounts (cylinders on top of arms)
+        const mountGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.15, 16);
+        const mountMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2c3e50,
+            roughness: 0.3,
+            metalness: 0.7
         });
 
         const motorPositions = [
-            { x: 0.3, z: 0.3 },
-            { x: -0.3, z: 0.3 },
-            { x: 0.3, z: -0.3 },
-            { x: -0.3, z: -0.3 }
+            { x: 0.25, z: 0.25 },
+            { x: -0.25, z: 0.25 },
+            { x: 0.25, z: -0.25 },
+            { x: -0.25, z: -0.25 }
         ];
 
         const motors = [];
         const propellers = [];
+        const motorMounts = [];
 
         motorPositions.forEach((pos, index) => {
+            // Motor mount cylinder
+            const mount = new THREE.Mesh(mountGeometry, mountMaterial);
+            mount.position.set(pos.x, 0.075, pos.z);
+            mount.castShadow = true;
+            droneGroup.add(mount);
+            motorMounts.push(mount);
+
+            // Motor on top of mount
+            const motorGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.08, 16);
+            const motorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xe74c3c,
+                roughness: 0.2,
+                metalness: 0.8
+            });
             const motor = new THREE.Mesh(motorGeometry, motorMaterial);
-            motor.position.set(pos.x, 0.05, pos.z);
+            motor.position.set(pos.x, 0.14, pos.z);
             motor.castShadow = true;
             droneGroup.add(motor);
             motors.push(motor);
 
-            // Propeller
-            const propGeometry = new THREE.BoxGeometry(0.5, 0.01, 0.05);
+            // Propeller on top of motor
+            const propGeometry = new THREE.BoxGeometry(0.4, 0.01, 0.04);
             const propMaterial = new THREE.MeshStandardMaterial({ 
                 color: 0x3498db,
                 transparent: true,
                 opacity: 0.8
             });
             const propeller = new THREE.Mesh(propGeometry, propMaterial);
-            propeller.position.y = 0.1;
+            propeller.position.set(pos.x, 0.2, pos.z);
             droneGroup.add(propeller);
             propellers.push(propeller);
         });
