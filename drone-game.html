@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Drone Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            touch-action: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            height: 200px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 40px;
+            pointer-events: auto;
+        }
+        
+        .joystick-zone {
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            position: relative;
+            backdrop-filter: blur(5px);
+        }
+        
+        .joystick {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, rgba(100, 200, 255, 0.8), rgba(50, 100, 200, 0.9));
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 20px rgba(100, 200, 255, 0.5);
+            transition: all 0.1s ease;
+        }
+        
+        .joystick.active {
+            background: radial-gradient(circle, rgba(150, 220, 255, 1), rgba(80, 150, 255, 1));
+            box-shadow: 0 0 30px rgba(100, 200, 255, 0.8);
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #info div {
+            margin: 5px 0;
+        }
+        
+        .label {
+            color: #aaa;
+            font-size: 12px;
+        }
+        
+        .value {
+            color: #fff;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        #instructions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 12px;
+            text-align: right;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        #instructions h3 {
+            margin-bottom: 10px;
+            color: #6af;
+        }
+        
+        #instructions p {
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+        
+        @media (min-width: 768px) {
+            #controls {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 767px) {
+            #instructions {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div id="info">
+            <div><span class="label">Altitude:</span> <span class="value" id="altitude">0.0</span> m</div>
+            <div><span class="label">Speed:</span> <span class="value" id="speed">0.0</span> m/s</div>
+            <div><span class="label">Heading:</span> <span class="value" id="heading">0°</span></div>
+            <div><span class="label">Battery:</span> <span class="value" id="battery">100%</span></div>
+        </div>
+        
+        <div id="instructions">
+            <h3>PC Controls</h3>
+            <p>W/S - Throttle Up/Down</p>
+            <p>A/D - Yaw Left/Right</p>
+            <p>↑/↓ - Pitch Forward/Back</p>
+            <p>←/→ - Roll Left/Right</p>
+            <p>Space - Reset Position</p>
+        </div>
+        
+        <div id="controls">
+            <div class="joystick-zone" id="leftZone">
+                <div class="joystick" id="leftJoystick"></div>
+            </div>
+            <div class="joystick-zone" id="rightZone">
+                <div class="joystick" id="rightJoystick"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game State
+        const state = {
+            drone: {
+                position: new THREE.Vector3(0, 2, 0),
+                velocity: new THREE.Vector3(0, 0, 0),
+                rotation: new THREE.Euler(0, 0, 0, 'YXZ'),
+                angularVelocity: new THREE.Vector3(0, 0, 0),
+                throttle: 0,
+                pitch: 0,
+                roll: 0,
+                yaw: 0
+            },
+            controls: {
+                throttle: 0,
+                pitch: 0,
+                roll: 0,
+                yaw: 0
+            },
+            physics: {
+                gravity: 9.81,
+                mass: 1.5,
+                drag: 0.5,
+                angularDrag: 2.0,
+                maxThrust: 25.0,
+                maxTilt: Math.PI / 6,
+                motorResponse: 5.0,
+                gyroStability: 8.0
+            },
+            battery: 100,
+            time: 0
+        };
+
+        // Three.js Setup
+        const canvas = document.getElementById('gameCanvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 50, 200);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+        sunLight.position.set(50, 100, 50);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 500;
+        sunLight.shadow.camera.left = -50;
+        sunLight.shadow.camera.right = 50;
+        sunLight.shadow.camera.top = 50;
+        sunLight.shadow.camera.bottom = -50;
+        scene.add(sunLight);
+
+        // Ground
+        const groundGeometry = new THREE.PlaneGeometry(200, 200, 50, 50);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x3a7d3a,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Grid helper
+        const gridHelper = new THREE.GridHelper(200, 20, 0x000000, 0x000000);
+        gridHelper.position.y = 0.01;
+        gridHelper.material.opacity = 0.2;
+        gridHelper.material.transparent = true;
+        scene.add(gridHelper);
+
+        // Obstacles
+        function createObstacle(x, z, width, height, depth) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x8b4513,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+            const obstacle = new THREE.Mesh(geometry, material);
+            obstacle.position.set(x, height / 2, z);
+            obstacle.castShadow = true;
+            obstacle.receiveShadow = true;
+            scene.add(obstacle);
+            return obstacle;
+        }
+
+        const obstacles = [];
+        for (let i = 0; i < 15; i++) {
+            const x = (Math.random() - 0.5) * 150;
+            const z = (Math.random() - 0.5) * 150;
+            const width = 2 + Math.random() * 4;
+            const height = 5 + Math.random() * 15;
+            const depth = 2 + Math.random() * 4;
+            
+            if (Math.abs(x) > 10 || Math.abs(z) > 10) {
+                obstacles.push(createObstacle(x, z, width, height, depth));
+            }
+        }
+
+        // Drone Model
+        const droneGroup = new THREE.Group();
+        
+        // Main body
+        const bodyGeometry = new THREE.BoxGeometry(0.4, 0.15, 0.4);
+        const bodyMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x2c3e50,
+            roughness: 0.3,
+            metalness: 0.7
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.castShadow = true;
+        droneGroup.add(body);
+
+        // Arms
+        const armGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.6, 8);
+        const armMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x34495e,
+            roughness: 0.4,
+            metalness: 0.6
+        });
+
+        const arm1 = new THREE.Mesh(armGeometry, armMaterial);
+        arm1.rotation.z = Math.PI / 2;
+        arm1.rotation.y = Math.PI / 4;
+        arm1.castShadow = true;
+        droneGroup.add(arm1);
+
+        const arm2 = new THREE.Mesh(armGeometry, armMaterial);
+        arm2.rotation.z = Math.PI / 2;
+        arm2.rotation.y = -Math.PI / 4;
+        arm2.castShadow = true;
+        droneGroup.add(arm2);
+
+        // Motors
+        const motorGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 16);
+        const motorMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xe74c3c,
+            roughness: 0.2,
+            metalness: 0.8
+        });
+
+        const motorPositions = [
+            { x: 0.3, z: 0.3 },
+            { x: -0.3, z: 0.3 },
+            { x: 0.3, z: -0.3 },
+            { x: -0.3, z: -0.3 }
+        ];
+
+        const motors = [];
+        const propellers = [];
+
+        motorPositions.forEach((pos, index) => {
+            const motor = new THREE.Mesh(motorGeometry, motorMaterial);
+            motor.position.set(pos.x, 0.05, pos.z);
+            motor.castShadow = true;
+            droneGroup.add(motor);
+            motors.push(motor);
+
+            // Propeller
+            const propGeometry = new THREE.BoxGeometry(0.5, 0.01, 0.05);
+            const propMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3498db,
+                transparent: true,
+                opacity: 0.8
+            });
+            const propeller = new THREE.Mesh(propGeometry, propMaterial);
+            propeller.position.y = 0.1;
+            droneGroup.add(propeller);
+            propellers.push(propeller);
+        });
+
+        // LED indicator
+        const ledGeometry = new THREE.SphereGeometry(0.03, 8, 8);
+        const ledMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const ledFront = new THREE.Mesh(ledGeometry, ledMaterial);
+        ledFront.position.set(0, 0.08, -0.2);
+        droneGroup.add(ledFront);
+
+        const ledBack = new THREE.Mesh(ledGeometry, new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+        ledBack.position.set(0, 0.08, 0.2);
+        droneGroup.add(ledBack);
+
+        scene.add(droneGroup);
+
+        // Camera offset for third-person view
+        const cameraOffset = new THREE.Vector3(0, 3, 6);
+        const cameraLookAt = new THREE.Vector3(0, 0, 0);
+
+        // Input handling
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space') {
+                resetDrone();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // Touch controls
+        const leftZone = document.getElementById('leftZone');
+        const rightZone = document.getElementById('rightZone');
+        const leftJoystick = document.getElementById('leftJoystick');
+        const rightJoystick = document.getElementById('rightJoystick');
+
+        let leftTouch = null;
+        let rightTouch = null;
+        let leftStartPos = { x: 0, y: 0 };
+        let rightStartPos = { x: 0, y: 0 };
+
+        function handleTouch(touch, zone, joystick, isLeft) {
+            const rect = zone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const maxDistance = rect.width / 2 - 30;
+
+            let dx = touch.clientX - centerX;
+            let dy = touch.clientY - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > maxDistance) {
+                const angle = Math.atan2(dy, dx);
+                dx = Math.cos(angle) * maxDistance;
+                dy = Math.sin(angle) * maxDistance;
+            }
+
+            joystick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            joystick.classList.add('active');
+
+            const normalizedX = dx / maxDistance;
+            const normalizedY = dy / maxDistance;
+
+            if (isLeft) {
+                state.controls.throttle = -normalizedY;
+                state.controls.yaw = normalizedX;
+            } else {
+                state.controls.pitch = -normalizedY;
+                state.controls.roll = normalizedX;
+            }
+        }
+
+        function resetJoystick(joystick, isLeft) {
+            joystick.style.transform = 'translate(-50%, -50%)';
+            joystick.classList.remove('active');
+            
+            if (isLeft) {
+                state.controls.throttle = 0;
+                state.controls.yaw = 0;
+            } else {
+                state.controls.pitch = 0;
+                state.controls.roll = 0;
+            }
+        }
+
+        leftZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            leftTouch = touch.identifier;
+            handleTouch(touch, leftZone, leftJoystick, true);
+        });
+
+        leftZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === leftTouch) {
+                    handleTouch(e.changedTouches[i], leftZone, leftJoystick, true);
+                    break;
+                }
+            }
+        });
+
+        leftZone.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === leftTouch) {
+                    leftTouch = null;
+                    resetJoystick(leftJoystick, true);
+                    break;
+                }
+            }
+        });
+
+        rightZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            rightTouch = touch.identifier;
+            handleTouch(touch, rightZone, rightJoystick, false);
+        });
+
+        rightZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === rightTouch) {
+                    handleTouch(e.changedTouches[i], rightZone, rightJoystick, false);
+                    break;
+                }
+            }
+        });
+
+        rightZone.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === rightTouch) {
+                    rightTouch = null;
+                    resetJoystick(rightJoystick, false);
+                    break;
+                }
+            }
+        });
+
+        function resetDrone() {
+            state.drone.position.set(0, 2, 0);
+            state.drone.velocity.set(0, 0, 0);
+            state.drone.rotation.set(0, 0, 0);
+            state.drone.angularVelocity.set(0, 0, 0);
+            state.battery = 100;
+        }
+
+        function updatePhysics(deltaTime) {
+            const phys = state.physics;
+            const drone = state.drone;
+            const controls = state.controls;
+
+            // Get keyboard input
+            let keyboardThrottle = 0;
+            let keyboardYaw = 0;
+            let keyboardPitch = 0;
+            let keyboardRoll = 0;
+
+            if (keys['KeyW']) keyboardThrottle = 1;
+            if (keys['KeyS']) keyboardThrottle = -1;
+            if (keys['KeyA']) keyboardYaw = -1;
+            if (keys['KeyD']) keyboardYaw = 1;
+            if (keys['ArrowUp']) keyboardPitch = 1;
+            if (keys['ArrowDown']) keyboardPitch = -1;
+            if (keys['ArrowLeft']) keyboardRoll = -1;
+            if (keys['ArrowRight']) keyboardRoll = 1;
+
+            // Combine inputs (touch + keyboard)
+            const targetThrottle = controls.throttle + keyboardThrottle * 0.5;
+            const targetYaw = controls.yaw + keyboardYaw * 0.5;
+            const targetPitch = controls.pitch + keyboardPitch * 0.5;
+            const targetRoll = controls.roll + keyboardRoll * 0.5;
+
+            // Smooth input response
+            const responseSpeed = phys.motorResponse * deltaTime;
+            drone.throttle += (targetThrottle - drone.throttle) * responseSpeed;
+            drone.yaw += (targetYaw - drone.yaw) * responseSpeed;
+            drone.pitch += (targetPitch - drone.pitch) * responseSpeed;
+            drone.roll += (targetRoll - drone.roll) * responseSpeed;
+
+            // Calculate thrust force
+            const thrustMagnitude = (1 + drone.throttle) * phys.maxThrust;
+            const thrustDirection = new THREE.Vector3(0, 1, 0);
+            thrustDirection.applyEuler(drone.rotation);
+            const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude);
+
+            // Gravity
+            const gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass, 0);
+
+            // Drag force
+            const dragForce = drone.velocity.clone().multiplyScalar(-phys.drag);
+
+            // Total force
+            const totalForce = new THREE.Vector3()
+                .add(thrustForce)
+                .add(gravityForce)
+                .add(dragForce);
+
+            // Acceleration and velocity
+            const acceleration = totalForce.divideScalar(phys.mass);
+            drone.velocity.add(acceleration.multiplyScalar(deltaTime));
+
+            // Update position
+            drone.position.add(drone.velocity.clone().multiplyScalar(deltaTime));
+
+            // Ground collision
+            if (drone.position.y < 0.3) {
+                drone.position.y = 0.3;
+                drone.velocity.y = Math.max(0, drone.velocity.y);
+                drone.velocity.x *= 0.5;
+                drone.velocity.z *= 0.5;
+            }
+
+            // Ceiling collision
+            if (drone.position.y > 49) {
+                drone.position.y = 49;
+                drone.velocity.y = Math.min(0, drone.velocity.y);
+            }
+
+            // Angular physics
+            const targetAngularVelocity = new THREE.Vector3(
+                drone.pitch * phys.maxTilt,
+                drone.yaw * 2,
+                drone.roll * phys.maxTilt
+            );
+
+            const angularAcceleration = targetAngularVelocity
+                .clone()
+                .sub(drone.angularVelocity)
+                .multiplyScalar(phys.gyroStability);
+
+            drone.angularVelocity.add(angularAcceleration.multiplyScalar(deltaTime));
+            drone.angularVelocity.multiplyScalar(1 - phys.angularDrag * deltaTime);
+
+            // Update rotation
+            drone.rotation.x += drone.angularVelocity.x * deltaTime;
+            drone.rotation.y += drone.angularVelocity.y * deltaTime;
+            drone.rotation.z += drone.angularVelocity.z * deltaTime;
+
+            // Auto-leveling
+            drone.rotation.x *= (1 - 2 * deltaTime);
+            drone.rotation.z *= (1 - 2 * deltaTime);
+
+            // Battery drain
+            const thrustUsage = Math.abs(drone.throttle) * 0.5 + 0.1;
+            state.battery = Math.max(0, state.battery - thrustUsage * deltaTime * 0.1);
+
+            // Update drone model
+            droneGroup.position.copy(drone.position);
+            droneGroup.rotation.copy(drone.rotation);
+
+            // Animate propellers
+            const propellerSpeed = 20 + drone.throttle * 10;
+            propellers.forEach((prop, i) => {
+                prop.rotation.y += propellerSpeed * deltaTime * (i % 2 === 0 ? 1 : -1);
+            });
+
+            // Update camera
+            const cameraTargetPosition = drone.position.clone().add(cameraOffset);
+            camera.position.lerp(cameraTargetPosition, 5 * deltaTime);
+            
+            const lookAtTarget = drone.position.clone().add(new THREE.Vector3(0, 0, 0));
+            cameraLookAt.lerp(lookAtTarget, 10 * deltaTime);
+            camera.lookAt(cameraLookAt);
+
+            // Boundary constraints
+            drone.position.x = THREE.MathUtils.clamp(drone.position.x, -99, 99);
+            drone.position.z = THREE.MathUtils.clamp(drone.position.z, -99, 99);
+        }
+
+        function updateUI() {
+            document.getElementById('altitude').textContent = state.drone.position.y.toFixed(1);
+            document.getElementById('speed').textContent = state.drone.velocity.length().toFixed(1);
+            document.getElementById('heading').textContent = Math.round(THREE.MathUtils.radToDeg(state.drone.rotation.y) % 360) + '°';
+            document.getElementById('battery').textContent = Math.round(state.battery) + '%';
+            
+            // Battery color warning
+            const batteryElement = document.getElementById('battery');
+            if (state.battery < 20) {
+                batteryElement.style.color = '#ff4444';
+            } else if (state.battery < 50) {
+                batteryElement.style.color = '#ffaa00';
+            } else {
+                batteryElement.style.color = '#fff';
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = Math.min(0.05, 1 / 60);
+            state.time += deltaTime;
+
+            updatePhysics(deltaTime);
+            updateUI();
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start the game
+        animate();
+    </script>
+</body>
+</html>
