@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Модель Дома с Плоской Крышей</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 300px;
+        }
+        #info h2 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        #info p {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>🏠 3D Модель Дома</h2>
+        <p><strong>Управление:</strong></p>
+        <p>🖱️ Левая кнопка - Вращение</p>
+        <p>🖱️ Правая кнопка - Перемещение</p>
+        <p>🖱️ Колесо - Масштаб</p>
+        <p><strong>Параметры:</strong></p>
+        <p>Ширина: 10 ед.</p>
+        <p>Высота: 6 ед.</p>
+        <p>Глубина: 8 ед.</p>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Сцена
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb); // Небо
+
+        // Камера
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(15, 12, 15);
+
+        // Рендерер
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Контролы орбиты
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 5;
+        controls.maxDistance = 50;
+
+        // Освещение
+        // Фоновый свет
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        // Основной источник света (солнце)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(20, 30, 20);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 100;
+        directionalLight.shadow.camera.left = -20;
+        directionalLight.shadow.camera.right = 20;
+        directionalLight.shadow.camera.top = 20;
+        directionalLight.shadow.camera.bottom = -20;
+        scene.add(directionalLight);
+
+        // Дополнительный заполняющий свет
+        const fillLight = new THREE.DirectionalLight(0xffeedd, 0.3);
+        fillLight.position.set(-10, 10, -10);
+        scene.add(fillLight);
+
+        // Группа для дома
+        const houseGroup = new THREE.Group();
+
+        // Материалы
+        const wallMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xf5f5dc, // Бежевый
+            roughness: 0.8,
+            metalness: 0.1
+        });
+
+        const roofMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x4a4a4a, // Темно-серый
+            roughness: 0.7,
+            metalness: 0.2
+        });
+
+        const windowMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x87ceeb, // Голубой
+            roughness: 0.1,
+            metalness: 0.8,
+            transparent: true,
+            opacity: 0.7
+        });
+
+        const doorMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x8b4513, // Коричневый
+            roughness: 0.6,
+            metalness: 0.1
+        });
+
+        const foundationMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x696969, // Серый
+            roughness: 0.9,
+            metalness: 0.1
+        });
+
+        // Размеры дома
+        const houseWidth = 10;
+        const houseHeight = 6;
+        const houseDepth = 8;
+        const wallThickness = 0.3;
+
+        // Фундамент
+        const foundationGeometry = new THREE.BoxGeometry(houseWidth + 0.5, 0.5, houseDepth + 0.5);
+        const foundation = new THREE.Mesh(foundationGeometry, foundationMaterial);
+        foundation.position.y = 0.25;
+        foundation.receiveShadow = true;
+        houseGroup.add(foundation);
+
+        // Основное здание (коробка)
+        const buildingGeometry = new THREE.BoxGeometry(houseWidth, houseHeight, houseDepth);
+        const building = new THREE.Mesh(buildingGeometry, wallMaterial);
+        building.position.y = houseHeight / 2 + 0.5;
+        building.castShadow = true;
+        building.receiveShadow = true;
+        houseGroup.add(building);
+
+        // Плоская крыша
+        const roofOverhang = 0.4;
+        const roofThickness = 0.3;
+        const roofGeometry = new THREE.BoxGeometry(
+            houseWidth + roofOverhang * 2, 
+            roofThickness, 
+            houseDepth + roofOverhang * 2
+        );
+        const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+        roof.position.y = houseHeight + 0.5 + roofThickness / 2;
+        roof.castShadow = true;
+        roof.receiveShadow = true;
+        houseGroup.add(roof);
+
+        // Парапет на крыше (декоративный элемент)
+        const parapetHeight = 0.4;
+        const parapetThickness = 0.15;
+        
+        // Передний парапет
+        const frontParapet = new THREE.Mesh(
+            new THREE.BoxGeometry(houseWidth + roofOverhang * 2, parapetHeight, parapetThickness),
+            roofMaterial
+        );
+        frontParapet.position.set(0, houseHeight + 0.5 + roofThickness + parapetHeight / 2, houseDepth / 2 + roofOverhang);
+        frontParapet.castShadow = true;
+        houseGroup.add(frontParapet);
+
+        // Задний парапет
+        const backParapet = new THREE.Mesh(
+            new THREE.BoxGeometry(houseWidth + roofOverhang * 2, parapetHeight, parapetThickness),
+            roofMaterial
+        );
+        backParapet.position.set(0, houseHeight + 0.5 + roofThickness + parapetHeight / 2, -houseDepth / 2 - roofOverhang);
+        backParapet.castShadow = true;
+        houseGroup.add(backParapet);
+
+        // Левый парапет
+        const leftParapet = new THREE.Mesh(
+            new THREE.BoxGeometry(parapetThickness, parapetHeight, houseDepth),
+            roofMaterial
+        );
+        leftParapet.position.set(-houseWidth / 2 - roofOverhang, houseHeight + 0.5 + roofThickness + parapetHeight / 2, 0);
+        leftParapet.castShadow = true;
+        houseGroup.add(leftParapet);
+
+        // Правый парапет
+        const rightParapet = new THREE.Mesh(
+            new THREE.BoxGeometry(parapetThickness, parapetHeight, houseDepth),
+            roofMaterial
+        );
+        rightParapet.position.set(houseWidth / 2 + roofOverhang, houseHeight + 0.5 + roofThickness + parapetHeight / 2, 0);
+        rightParapet.castShadow = true;
+        houseGroup.add(rightParapet);
+
+        // Окна
+        const windowWidth = 1.5;
+        const windowHeight = 1.8;
+        const windowDepth = 0.1;
+
+        function createWindow(x, y, z, rotateY = 0) {
+            const windowMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(windowWidth, windowHeight, windowDepth),
+                windowMaterial
+            );
+            windowMesh.position.set(x, y, z);
+            windowMesh.rotation.y = rotateY;
+            windowMesh.castShadow = true;
+            houseGroup.add(windowMesh);
+
+            // Рама окна
+            const frameThickness = 0.05;
+            const frameMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+            
+            // Верхняя рама
+            const topFrame = new THREE.Mesh(
+                new THREE.BoxGeometry(windowWidth + 0.1, frameThickness, windowDepth + 0.05),
+                frameMaterial
+            );
+            topFrame.position.set(x, y + windowHeight / 2, z);
+            topFrame.rotation.y = rotateY;
+            houseGroup.add(topFrame);
+
+            // Нижняя рама
+            const bottomFrame = new THREE.Mesh(
+                new THREE.BoxGeometry(windowWidth + 0.1, frameThickness, windowDepth + 0.05),
+                frameMaterial
+            );
+            bottomFrame.position.set(x, y - windowHeight / 2, z);
+            bottomFrame.rotation.y = rotateY;
+            houseGroup.add(bottomFrame);
+        }
+
+        // Передние окна (первый этаж)
+        createWindow(-3, 2, houseDepth / 2 + 0.05);
+        createWindow(3, 2, houseDepth / 2 + 0.05);
+
+        // Задние окна
+        createWindow(-3, 2, -houseDepth / 2 - 0.05, Math.PI);
+        createWindow(3, 2, -houseDepth / 2 - 0.05, Math.PI);
+
+        // Боковые окна
+        createWindow(-houseWidth / 2 - 0.05, 2, -2, Math.PI / 2);
+        createWindow(houseWidth / 2 + 0.05, 2, 2, -Math.PI / 2);
+
+        // Дверь
+        const doorWidth = 1.8;
+        const doorHeight = 2.5;
+        const doorDepth = 0.15;
+
+        const door = new THREE.Mesh(
+            new THREE.BoxGeometry(doorWidth, doorHeight, doorDepth),
+            doorMaterial
+        );
+        door.position.set(0, doorHeight / 2, houseDepth / 2 + 0.05);
+        door.castShadow = true;
+        houseGroup.add(door);
+
+        // Дверная рама
+        const doorFrameMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+        const doorFrameTop = new THREE.Mesh(
+            new THREE.BoxGeometry(doorWidth + 0.2, 0.1, doorDepth + 0.05),
+            doorFrameMaterial
+        );
+        doorFrameTop.position.set(0, doorHeight, houseDepth / 2 + 0.05);
+        houseGroup.add(doorFrameTop);
+
+        const doorFrameLeft = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, doorHeight, doorDepth + 0.05),
+            doorFrameMaterial
+        );
+        doorFrameLeft.position.set(-doorWidth / 2 - 0.05, doorHeight / 2, houseDepth / 2 + 0.05);
+        houseGroup.add(doorFrameLeft);
+
+        const doorFrameRight = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, doorHeight, doorDepth + 0.05),
+            doorFrameMaterial
+        );
+        doorFrameRight.position.set(doorWidth / 2 + 0.05, doorHeight / 2, houseDepth / 2 + 0.05);
+        houseGroup.add(doorFrameRight);
+
+        // Дверная ручка
+        const handleGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+        const handleMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+        
+        const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+        handle.position.set(0.6, doorHeight / 2, houseDepth / 2 + 0.15);
+        houseGroup.add(handle);
+
+        // Труба на крыше
+        const chimneyWidth = 0.8;
+        const chimneyHeight = 2;
+        const chimneyDepth = 0.8;
+
+        const chimney = new THREE.Mesh(
+            new THREE.BoxGeometry(chimneyWidth, chimneyHeight, chimneyDepth),
+            new THREE.MeshStandardMaterial({ color: 0x8b0000, roughness: 0.7 }) // Кирпичный цвет
+        );
+        chimney.position.set(3, houseHeight + 0.5 + roofThickness + chimneyHeight / 2, -2);
+        chimney.castShadow = true;
+        houseGroup.add(chimney);
+
+        // Крышка трубы
+        const chimneyCap = new THREE.Mesh(
+            new THREE.BoxGeometry(chimneyWidth + 0.2, 0.15, chimneyDepth + 0.2),
+            roofMaterial
+        );
+        chimneyCap.position.set(3, houseHeight + 0.5 + roofThickness + chimneyHeight + 0.075, -2);
+        chimneyCap.castShadow = true;
+        houseGroup.add(chimneyCap);
+
+        // Земля/трава
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x228b22, // Зеленый
+            roughness: 0.9
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Добавляем дом на сцену
+        scene.add(houseGroup);
+
+        // Несколько деревьев для декора
+        function createTree(x, z) {
+            const treeGroup = new THREE.Group();
+
+            // Ствол
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 2, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.8 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 1;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            // Крона
+            const leavesGeometry = new THREE.SphereGeometry(2, 8, 8);
+            const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22, roughness: 0.8 });
+            const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+            leaves.position.y = 3.5;
+            leaves.castShadow = true;
+            treeGroup.add(leaves);
+
+            treeGroup.position.set(x, 0, z);
+            return treeGroup;
+        }
+
+        // Добавляем деревья вокруг дома
+        scene.add(createTree(-12, -8));
+        scene.add(createTree(12, -10));
+        scene.add(createTree(-10, 10));
+        scene.add(createTree(14, 8));
+        scene.add(createTree(-15, 0));
+
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
