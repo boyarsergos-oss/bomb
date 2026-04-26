@@ -422,9 +422,9 @@
                     }
                 }
                 
-                // Камера следует за птицей (вид сзади по оси Z)
+                // Камера следует за птицей (вид сзади и чуть выше)
                 camera.position.x = bird.position.x - 3;
-                camera.position.y = bird.position.y;
+                camera.position.y = bird.position.y + 1.5;
                 camera.lookAt(bird.position.x + 2, bird.position.y, 0);
             }
             
