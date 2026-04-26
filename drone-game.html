@@ -722,8 +722,8 @@
             markerGroups.push(markers);
         }
 
-        // Create landing zones for all levels (default) - отключено для очистки сцены
-        // state.landingZones.forEach((_, index) => createLandingZone(index));
+        // Create landing zones for all levels (default)
+        state.landingZones.forEach((_, index) => createLandingZone(index));
         
         // Function to create editable object mesh
         function createObjectMesh(index) {
@@ -1250,7 +1250,7 @@
             //     buildingGroup.visible = state.level >= 2;
             // }
         }
-        // updateLandingZoneVisibility(); - отключено, так как зоны посадки удалены
+        updateLandingZoneVisibility();
 
         // Camera offset for third-person view - will be adjusted based on orientation
         let cameraOffset = new THREE.Vector3(0, 3, 6);
@@ -1947,8 +1947,8 @@
                 cameraLookAt.copy(editor.originalCameraTarget);
                 editor.cameraMode = 'third';
                 
-                // Restore visibility based on level (отключено - зоны посадки удалены)
-                // updateLandingZoneVisibility();
+                // Restore visibility based on level
+                updateLandingZoneVisibility();
                 
                 // Deselect any selected object
                 deselectObject();
