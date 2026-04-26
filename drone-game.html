@@ -1387,7 +1387,7 @@
             const intersectionPoint = new THREE.Vector3();
             raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
             
-            // Check if clicking on landing zone or object
+            // Check if clicking on landing zone, object, or house
             if (editor.selectedType === 'landingZone') {
                 const zone = state.landingZones[editor.selectedIndex];
                 if (zone) {
@@ -1404,6 +1404,16 @@
                     const dz = intersectionPoint.z - obj.position.z;
                     const size = Math.max(obj.size.x, obj.size.z);
                     if (Math.abs(dx) < size / 2 + 1 && Math.abs(dz) < size / 2 + 1) {
+                        isDraggingObject = true;
+                    }
+                }
+            } else if (editor.selectedType === 'house') {
+                const house = state.houses[editor.selectedIndex];
+                if (house) {
+                    const dx = intersectionPoint.x - house.position.x;
+                    const dz = intersectionPoint.z - house.position.z;
+                    // House dimensions are approximately 10x8, so use half-size + margin
+                    if (Math.abs(dx) < 6 && Math.abs(dz) < 5) {
                         isDraggingObject = true;
                     }
                 }
@@ -1461,6 +1471,31 @@
                     const mesh = objectMeshes[editor.selectedIndex];
                     mesh.position.x = intersectionPoint.x;
                     mesh.position.z = intersectionPoint.z;
+                } else if (editor.selectedType === 'house') {
+                    moveSelectedObject(
+                        intersectionPoint.x - state.houses[editor.selectedIndex].position.x,
+                        0,
+                        intersectionPoint.z - state.houses[editor.selectedIndex].position.z
+                    );
+                    // Reset position to the intersection point
+                    state.houses[editor.selectedIndex].position.x = intersectionPoint.x;
+                    state.houses[editor.selectedIndex].position.z = intersectionPoint.z;
+                    
+                    // Update mesh position directly
+                    const mesh = houseMeshes[editor.selectedIndex];
+                    mesh.position.x = intersectionPoint.x;
+                    mesh.position.z = intersectionPoint.z;
+                    
+                    // Recreate collision box with new position
+                    const totalHeight = 6 + 0.5 + 0.3 + 0.5 + 1.5; // houseHeight + foundation + roofThickness + parapetHeight + chimneyHeight
+                    const houseWidth = 10;
+                    const houseDepth = 8;
+                    const roofOverhang = 0.5;
+                    houseCollisionBoxes[editor.selectedIndex] = new THREE.Box3();
+                    houseCollisionBoxes[editor.selectedIndex].setFromCenterAndSize(
+                        new THREE.Vector3(intersectionPoint.x, totalHeight / 2, intersectionPoint.z),
+                        new THREE.Vector3(houseWidth + roofOverhang * 2, totalHeight, houseDepth + roofOverhang * 2)
+                    );
                 }
                 
                 updateSelectedObjectInfo();
@@ -1610,6 +1645,7 @@
             
             editor.selectedIndex = index;
             editor.selectedObject = landingZoneMeshes[index];
+            editor.selectedType = 'landingZone';
             
             // Highlight selected zone
             const mesh = landingZoneMeshes[index];
@@ -1626,8 +1662,37 @@
             updateSelectedObjectInfo();
         }
         
+        function selectObject(index) {
+            deselectObject();
+            
+            if (index < 0 || index >= state.objects.length) return;
+            
+            editor.selectedIndex = index;
+            editor.selectedObject = objectMeshes[index];
+            editor.selectedType = 'object';
+            
+            // Highlight selected object with a bounding box helper
+            const mesh = objectMeshes[index];
+            const box = new THREE.Box3().setFromObject(mesh);
+            const helper = new THREE.Box3Helper(box, 0x00ff00);
+            scene.add(helper);
+            
+            // Store reference to helper for cleanup
+            if (!editor.selectionHelpers) editor.selectionHelpers = [];
+            editor.selectionHelpers.push(helper);
+            
+            // Center camera on selected object
+            const center = new THREE.Vector3();
+            box.getCenter(center);
+            camera.position.set(center.x, center.y + 20, center.z + 20);
+            camera.lookAt(center);
+            cameraLookAt.copy(center);
+            
+            updateSelectedObjectInfo();
+        }
+        
         function deselectObject() {
-            if (editor.selectedIndex >= 0 && landingZoneMeshes[editor.selectedIndex]) {
+            if (editor.selectedIndex >= 0 && landingZoneMeshes[editor.selectedIndex] && editor.selectedType === 'landingZone') {
                 const mesh = landingZoneMeshes[editor.selectedIndex];
                 mesh.material.dispose();
                 mesh.material = new THREE.MeshBasicMaterial({ 
@@ -1640,8 +1705,18 @@
                     polygonOffsetUnits: -1
                 });
             }
+            
+            // Remove selection helpers
+            if (editor.selectionHelpers) {
+                for (const helper of editor.selectionHelpers) {
+                    scene.remove(helper);
+                }
+                editor.selectionHelpers = [];
+            }
+            
             editor.selectedObject = null;
             editor.selectedIndex = -1;
+            editor.selectedType = 'landingZone';
             updateSelectedObjectInfo();
             
             // Restore camera to follow drone when deselecting
@@ -1655,15 +1730,36 @@
         
         function updateSelectedObjectInfo() {
             const infoEl = document.getElementById('selectedObjectInfo');
-            if (editor.selectedIndex >= 0 && state.landingZones[editor.selectedIndex]) {
-                const zone = state.landingZones[editor.selectedIndex];
-                infoEl.innerHTML = `
-                    <div><strong>Посадочная зона ${editor.selectedIndex + 1}</strong></div>
-                    <div style="font-size: 12px; margin-top: 5px;">
-                        Позиция: (${zone.position.x.toFixed(1)}, ${zone.position.y.toFixed(1)}, ${zone.position.z.toFixed(1)})<br>
-                        Радиус: ${zone.radius.toFixed(1)}м
-                    </div>
-                `;
+            if (editor.selectedIndex >= 0) {
+                if (editor.selectedType === 'landingZone' && state.landingZones[editor.selectedIndex]) {
+                    const zone = state.landingZones[editor.selectedIndex];
+                    infoEl.innerHTML = `
+                        <div><strong>Посадочная зона ${editor.selectedIndex + 1}</strong></div>
+                        <div style="font-size: 12px; margin-top: 5px;">
+                            Позиция: (${zone.position.x.toFixed(1)}, ${zone.position.y.toFixed(1)}, ${zone.position.z.toFixed(1)})<br>
+                            Радиус: ${zone.radius.toFixed(1)}м
+                        </div>
+                    `;
+                } else if (editor.selectedType === 'object' && state.objects[editor.selectedIndex]) {
+                    const obj = state.objects[editor.selectedIndex];
+                    infoEl.innerHTML = `
+                        <div><strong>Объект ${editor.selectedIndex + 1}</strong></div>
+                        <div style="font-size: 12px; margin-top: 5px;">
+                            Позиция: (${obj.position.x.toFixed(1)}, ${obj.position.y.toFixed(1)}, ${obj.position.z.toFixed(1)})<br>
+                            Размер: (${obj.size.x.toFixed(1)}, ${obj.size.y.toFixed(1)}, ${obj.size.z.toFixed(1)})
+                        </div>
+                    `;
+                } else if (editor.selectedType === 'house' && state.houses[editor.selectedIndex]) {
+                    const house = state.houses[editor.selectedIndex];
+                    infoEl.innerHTML = `
+                        <div><strong>Дом ${editor.selectedIndex + 1}</strong></div>
+                        <div style="font-size: 12px; margin-top: 5px;">
+                            Позиция: (${house.position.x.toFixed(1)}, ${house.position.y.toFixed(1)}, ${house.position.z.toFixed(1)})
+                        </div>
+                    `;
+                } else {
+                    infoEl.textContent = 'Объект не выбран';
+                }
             } else {
                 infoEl.textContent = 'Объект не выбран';
             }
@@ -1903,6 +1999,11 @@
                 selectLandingZone(0);
             }
         });
+        document.getElementById('selectObjectBtn').addEventListener('click', () => {
+            if (state.objects.length > 0) {
+                selectObject(0);
+            }
+        });
         document.getElementById('addLandingZoneBtn').addEventListener('click', addLandingZone);
         document.getElementById('addHouseBtn').addEventListener('click', addHouse);
         document.getElementById('removeSelectedBtn').addEventListener('click', removeSelectedObject);
@@ -2053,6 +2154,40 @@
             // Boundary constraints
             drone.position.x = THREE.MathUtils.clamp(drone.position.x, -99, 99);
             drone.position.z = THREE.MathUtils.clamp(drone.position.z, -99, 99);
+            
+            // Collision with objects and houses
+            const droneBox = new THREE.Box3();
+            const droneSize = new THREE.Vector3(0.5, 0.5, 0.5);
+            droneBox.setFromCenterAndSize(drone.position, droneSize);
+            
+            // Check collision with object meshes
+            for (let i = 0; i < objectMeshes.length; i++) {
+                const objBox = new THREE.Box3().setFromObject(objectMeshes[i]);
+                if (droneBox.intersectsBox(objBox)) {
+                    // Simple collision response: push drone away
+                    const center = new THREE.Vector3();
+                    objBox.getCenter(center);
+                    const direction = drone.position.clone().sub(center).normalize();
+                    if (direction.length() > 0) {
+                        drone.position.add(direction.multiplyScalar(0.1));
+                        drone.velocity.multiplyScalar(0.5);
+                    }
+                }
+            }
+            
+            // Check collision with house collision boxes
+            for (let i = 0; i < houseCollisionBoxes.length; i++) {
+                if (droneBox.intersectsBox(houseCollisionBoxes[i])) {
+                    // Simple collision response: push drone away
+                    const center = new THREE.Vector3();
+                    houseCollisionBoxes[i].getCenter(center);
+                    const direction = drone.position.clone().sub(center).normalize();
+                    if (direction.length() > 0) {
+                        drone.position.add(direction.multiplyScalar(0.1));
+                        drone.velocity.multiplyScalar(0.5);
+                    }
+                }
+            }
         }
 
         function updateUI() {
