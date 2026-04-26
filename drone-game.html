@@ -427,10 +427,10 @@
         </div>
 
         <div id="levelComplete">
-            <div>🎉 Уровень пройден! 🎉</div>
+            <div id="levelCompleteTitle">🎉 Уровень пройден! 🎉</div>
             <div style="font-size: 18px; margin-top: 10px;">Вы успешно посадили дрон!</div>
-            <div style="font-size: 14px; margin-top: 5px; opacity: 0.8;">Игра завершена!</div>
-            <button id="continueBtn">Завершить игру</button>
+            <div style="font-size: 14px; margin-top: 5px; opacity: 0.8;" id="levelCompleteSubtitle">Игра завершена!</div>
+            <button id="continueBtn">Продолжить</button>
         </div>
         
         <div id="controls">
@@ -477,7 +477,8 @@
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false }
+                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false },
+                { position: new THREE.Vector3(0, 12, 0), radius: 3.5, landed: false }
             ],
             objects: [],
             houses: []
@@ -1031,6 +1032,11 @@
             houseGroup.position.copy(position);
 
             scene.add(houseGroup);
+            
+            // Store reference to the house group in the mesh array
+            const houseIndex = houseMeshes.length;
+            houseMeshes.push(houseGroup);
+            houseCollisionBoxes.push([]);
 
             // Create precise collision boxes for each part of the house (matching exact geometry)
             const houseColliders = [];
@@ -2371,6 +2377,10 @@
         }
 
         function showLevelComplete() {
+            const isLastLevel = state.level >= state.landingZones.length;
+            document.getElementById('levelCompleteTitle').textContent = isLastLevel ? '🎉 Все уровни пройдены! 🎉' : '🎉 Уровень пройден! 🎉';
+            document.getElementById('levelCompleteSubtitle').textContent = isLastLevel ? 'Игра завершена!' : 'Переход на следующий уровень...';
+            document.getElementById('continueBtn').textContent = isLastLevel ? 'Завершить игру' : 'Следующий уровень';
             document.getElementById('levelComplete').style.display = 'block';
         }
 
@@ -2379,20 +2389,43 @@
         }
 
         function nextLevel() {
-            showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+            if (state.level < state.landingZones.length) {
+                state.level++;
+                document.getElementById('level').textContent = state.level;
+                
+                // Reset drone position for new level
+                state.drone.position.set(0, 2 + state.level * 5, 0);
+                state.drone.velocity.set(0, 0, 0);
+                state.drone.rotation.set(0, 0, 0);
+                state.drone.angularVelocity.set(0, 0, 0);
+                
+                updateLandingZoneVisibility();
+                hideLevelComplete();
+                showMessage(`Уровень ${state.level}: Найдите посадочную зону!`);
+            } else {
+                showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+            }
         }
 
         // Continue button event listener - support both click and touch
         const continueBtn = document.getElementById('continueBtn');
         continueBtn.addEventListener('click', () => {
-            hideLevelComplete();
-            showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+            if (state.level < state.landingZones.length) {
+                nextLevel();
+            } else {
+                hideLevelComplete();
+                showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+            }
         });
         continueBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            hideLevelComplete();
-            showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+            if (state.level < state.landingZones.length) {
+                nextLevel();
+            } else {
+                hideLevelComplete();
+                showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+            }
         }, { passive: false });
         
         // Editor mode button listeners
