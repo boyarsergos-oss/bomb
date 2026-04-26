@@ -13,6 +13,9 @@ export class Renderer {
             1000
         );
         
+        // Set initial camera position (will be overridden by CameraController)
+        this.camera.position.set(0, 10, -10);
+        
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));

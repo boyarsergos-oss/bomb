@@ -18,38 +18,43 @@ class Game {
     }
     
     init() {
-        // Initialize renderer (Stage 1)
-        this.renderer = new Renderer();
-        
-        // Initialize physics world (Stage 2)
-        this.physicsWorld = new PhysicsWorld();
-        
-        // Initialize controls
-        this.controls = new Controls();
-        
-        // Initialize camera controller (Stage 7)
-        this.cameraController = new CameraController(
-            this.renderer.camera,
-            this.renderer.scene
-        );
-        
-        // Initialize level manager
-        this.levelManager = new LevelManager(
-            this.physicsWorld,
-            this.renderer.scene
-        );
-        
-        // Create ground
-        this.levelManager.createGround();
-        
-        // Load first level
-        this.loadLevel(1);
-        
-        // Start game loop
-        this.animate(0);
-        
-        console.log('Game initialized successfully');
-        this.debugLog('Game started');
+        try {
+            // Initialize renderer (Stage 1)
+            this.renderer = new Renderer();
+            
+            // Initialize physics world (Stage 2)
+            this.physicsWorld = new PhysicsWorld();
+            
+            // Initialize controls
+            this.controls = new Controls();
+            
+            // Initialize camera controller (Stage 7)
+            this.cameraController = new CameraController(
+                this.renderer.camera,
+                this.renderer.scene
+            );
+            
+            // Initialize level manager
+            this.levelManager = new LevelManager(
+                this.physicsWorld,
+                this.renderer.scene
+            );
+            
+            // Create ground
+            this.levelManager.createGround();
+            
+            // Load first level
+            this.loadLevel(1);
+            
+            // Start game loop
+            this.animate(0);
+            
+            console.log('Game initialized successfully');
+            this.debugLog('Game started');
+        } catch (error) {
+            console.error('Fatal error during initialization:', error);
+            document.getElementById('ui').innerHTML = `<div style="color: red; font-size: 18px;">ERROR: ${error.message}</div><div style="color: yellow;">Check browser console for details</div>`;
+        }
     }
     
     loadLevel(levelIndex) {

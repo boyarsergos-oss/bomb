@@ -113,7 +113,7 @@ export class LevelManager {
         }
         
         // Clean up previous level
-        this.cleanup();
+        this.cleanupLevelObjects();
         
         // Create delivery zone
         this.createDeliveryZone(level.deliveryZone);
@@ -299,6 +299,6 @@ export class LevelManager {
     }
     
     dispose() {
-        this.cleanup();
+        this.cleanupLevelObjects();
     }
 }
