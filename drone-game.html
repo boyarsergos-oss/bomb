@@ -468,14 +468,14 @@
             },
             physics: {
                 gravity: 9.81,
-                mass: 1.8,
-                drag: 0.12,
-                angularDrag: 8.0,
-                maxThrust: 55.0,
-                maxTilt: Math.PI / 4,
-                motorResponse: 18.0,
-                gyroStability: 20.0,
-                autoLevelStrength: 6.0
+                mass: 1.2,
+                drag: 0.02,
+                angularDrag: 15.0,
+                maxThrust: 80.0,
+                maxTilt: Math.PI / 3,
+                motorResponse: 35.0,
+                gyroStability: 50.0,
+                autoLevelStrength: 12.0
             },
             battery: 100,
             time: 0,
@@ -2453,10 +2453,10 @@
             thrustDirection.applyEuler(drone.rotation);
             const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude);
 
-            // Drag force (сопротивление воздуха) - более реалистичное с квадратом скорости
+            // Drag force (сопротивление воздуха) - более реалистичное с квадратом скорости + линейная компонента для быстрой остановки
             const speed = drone.velocity.length();
             const dragDirection = drone.velocity.clone().normalize();
-            const dragMagnitude = phys.drag * speed * speed;
+            const dragMagnitude = phys.drag * speed * speed + 2.5 * speed; // Добавлена линейная компонента для мгновенной остановки
             const dragForce = dragDirection.multiplyScalar(-dragMagnitude);
 
             // Total force
@@ -2481,8 +2481,8 @@
                 } else {
                     drone.velocity.y = Math.max(0, drone.velocity.y);
                 }
-                drone.velocity.x *= 0.25; // Трение о землю для быстрой остановки
-                drone.velocity.z *= 0.25;
+                drone.velocity.x *= 0.15; // Сильное трение о землю для мгновенной остановки
+                drone.velocity.z *= 0.15;
             }
 
             // Ceiling collision
@@ -2493,9 +2493,9 @@
             
             // Мгновенное гашение горизонтальной скорости при отпускании стиков (как у реального дрона с GPS hold)
             const horizontalSpeed = new THREE.Vector2(drone.velocity.x, drone.velocity.z).length();
-            if (horizontalSpeed > 0.1 && Math.abs(state.controls.pitch) < 0.1 && Math.abs(state.controls.roll) < 0.1) {
-                drone.velocity.x *= 0.92; // Быстрое замедление
-                drone.velocity.z *= 0.92;
+            if (horizontalSpeed > 0.05 && Math.abs(state.controls.pitch) < 0.05 && Math.abs(state.controls.roll) < 0.05) {
+                drone.velocity.x *= 0.85; // Очень быстрое замедление
+                drone.velocity.z *= 0.85;
             }
 
             // Angular physics
