@@ -407,9 +407,13 @@
         <div id="editorPanel">
             <h3>🎮 Level Editor</h3>
             <div class="editor-controls">
-                <button class="editor-btn" id="selectLandingZoneBtn">Select Landing Zone</button>
+                <button class="editor-btn" id="selectLandingZoneBtn">Select Zone</button>
+                <button class="editor-btn" id="selectObjectBtn">Select Object</button>
                 <button class="editor-btn" id="addLandingZoneBtn">+ Add Zone</button>
-                <button class="editor-btn danger" id="removeLandingZoneBtn">- Remove Zone</button>
+                <button class="editor-btn" id="addObjectBtn">+ Add Cube</button>
+                <button class="editor-btn danger" id="removeSelectedBtn">- Remove Selected</button>
+                <button class="editor-btn" id="saveLevelBtn">💾 Save Level</button>
+                <button class="editor-btn" id="loadLevelBtn">📂 Load Level</button>
                 <button class="editor-btn" id="exitEditorBtn">Exit Editor</button>
             </div>
         </div>
@@ -473,8 +477,12 @@
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, -20), radius: 3, landed: false },
-                { position: new THREE.Vector3(-20, 8, 20), radius: 2.5, landed: false }
+                { position: new THREE.Vector3(0, 0, -20), radius: 3, landed: false }
+            ],
+            objects: [
+                { type: 'cube', position: new THREE.Vector3(-10, 5, -10), size: new THREE.Vector3(3, 10, 3), color: 0x8B4513 },
+                { type: 'cube', position: new THREE.Vector3(10, 3, -15), size: new THREE.Vector3(2, 6, 2), color: 0x808080 },
+                { type: 'cube', position: new THREE.Vector3(-15, 4, 10), size: new THREE.Vector3(4, 8, 4), color: 0x2F4F4F }
             ]
         };
 
@@ -640,11 +648,15 @@
         const landingGlowMeshes = [];
         const markerGroups = [];
         
+        // Editable objects (cubes, etc.)
+        const objectMeshes = [];
+        
         // Editor state
         const editor = {
             active: false,
             selectedObject: null,
             selectedIndex: -1,
+            selectedType: 'landingZone', // 'landingZone' or 'object'
             cameraMode: 'top',
             originalCameraPosition: new THREE.Vector3(),
             originalCameraTarget: new THREE.Vector3()
@@ -703,8 +715,43 @@
             markerGroups.push(markers);
         }
 
-        // Create landing zones for all levels
+        // Create landing zones for all levels (default)
         state.landingZones.forEach((_, index) => createLandingZone(index));
+        
+        // Function to create editable object mesh
+        function createObjectMesh(index) {
+            const obj = state.objects[index];
+            if (!obj) return;
+            
+            let geometry;
+            if (obj.type === 'cube') {
+                geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
+            } else {
+                geometry = new THREE.BoxGeometry(2, 2, 2);
+            }
+            
+            const material = new THREE.MeshStandardMaterial({ 
+                color: obj.color,
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(obj.position);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            objectMeshes.push(mesh);
+        }
+        
+        // Create initial objects
+        state.objects.forEach((_, index) => createObjectMesh(index));
+        
+        // Try to load saved level on startup (will override defaults if save exists)
+        const savedLevelExists = localStorage.getItem('droneGameLevel');
+        if (savedLevelExists) {
+            loadLevel();
+        }
 
         // Building/Platform for Level 2
         const buildingGroup = new THREE.Group();
@@ -1040,12 +1087,25 @@
             const intersectionPoint = new THREE.Vector3();
             raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
             
-            const zone = state.landingZones[editor.selectedIndex];
-            if (zone) {
-                const dx = intersectionPoint.x - zone.position.x;
-                const dz = intersectionPoint.z - zone.position.z;
-                if (Math.sqrt(dx * dx + dz * dz) < zone.radius + 1) {
-                    isDraggingObject = true;
+            // Check if clicking on landing zone or object
+            if (editor.selectedType === 'landingZone') {
+                const zone = state.landingZones[editor.selectedIndex];
+                if (zone) {
+                    const dx = intersectionPoint.x - zone.position.x;
+                    const dz = intersectionPoint.z - zone.position.z;
+                    if (Math.sqrt(dx * dx + dz * dz) < zone.radius + 1) {
+                        isDraggingObject = true;
+                    }
+                }
+            } else if (editor.selectedType === 'object') {
+                const obj = state.objects[editor.selectedIndex];
+                if (obj) {
+                    const dx = intersectionPoint.x - obj.position.x;
+                    const dz = intersectionPoint.z - obj.position.z;
+                    const size = Math.max(obj.size.x, obj.size.z);
+                    if (Math.abs(dx) < size / 2 + 1 && Math.abs(dz) < size / 2 + 1) {
+                        isDraggingObject = true;
+                    }
                 }
             }
         });
@@ -1060,31 +1120,47 @@
             const intersectionPoint = new THREE.Vector3();
             
             if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) {
-                moveSelectedObject(
-                    intersectionPoint.x - state.landingZones[editor.selectedIndex].position.x,
-                    0,
-                    intersectionPoint.z - state.landingZones[editor.selectedIndex].position.z
-                );
-                // Reset position to the intersection point
-                state.landingZones[editor.selectedIndex].position.x = intersectionPoint.x;
-                state.landingZones[editor.selectedIndex].position.z = intersectionPoint.z;
-                
-                // Update mesh positions directly
-                const mesh = landingZoneMeshes[editor.selectedIndex];
-                mesh.position.x = intersectionPoint.x;
-                mesh.position.z = intersectionPoint.z;
-                
-                const glow = landingGlowMeshes[editor.selectedIndex];
-                glow.position.x = intersectionPoint.x;
-                glow.position.z = intersectionPoint.z;
-                
-                // Update markers
-                const markers = markerGroups[editor.selectedIndex];
-                const zone = state.landingZones[editor.selectedIndex];
-                for (let i = 0; i < 4; i++) {
-                    const angle = (i / 4) * Math.PI * 2;
-                    markers[i].position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
-                    markers[i].position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
+                if (editor.selectedType === 'landingZone') {
+                    moveSelectedObject(
+                        intersectionPoint.x - state.landingZones[editor.selectedIndex].position.x,
+                        0,
+                        intersectionPoint.z - state.landingZones[editor.selectedIndex].position.z
+                    );
+                    // Reset position to the intersection point
+                    state.landingZones[editor.selectedIndex].position.x = intersectionPoint.x;
+                    state.landingZones[editor.selectedIndex].position.z = intersectionPoint.z;
+                    
+                    // Update mesh positions directly
+                    const mesh = landingZoneMeshes[editor.selectedIndex];
+                    mesh.position.x = intersectionPoint.x;
+                    mesh.position.z = intersectionPoint.z;
+                    
+                    const glow = landingGlowMeshes[editor.selectedIndex];
+                    glow.position.x = intersectionPoint.x;
+                    glow.position.z = intersectionPoint.z;
+                    
+                    // Update markers
+                    const markers = markerGroups[editor.selectedIndex];
+                    const zone = state.landingZones[editor.selectedIndex];
+                    for (let i = 0; i < 4; i++) {
+                        const angle = (i / 4) * Math.PI * 2;
+                        markers[i].position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
+                        markers[i].position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
+                    }
+                } else if (editor.selectedType === 'object') {
+                    moveSelectedObject(
+                        intersectionPoint.x - state.objects[editor.selectedIndex].position.x,
+                        0,
+                        intersectionPoint.z - state.objects[editor.selectedIndex].position.z
+                    );
+                    // Reset position to the intersection point
+                    state.objects[editor.selectedIndex].position.x = intersectionPoint.x;
+                    state.objects[editor.selectedIndex].position.z = intersectionPoint.z;
+                    
+                    // Update mesh position directly
+                    const mesh = objectMeshes[editor.selectedIndex];
+                    mesh.position.x = intersectionPoint.x;
+                    mesh.position.z = intersectionPoint.z;
                 }
                 
                 updateSelectedObjectInfo();
@@ -1108,6 +1184,57 @@
         }
         
         // Editor Functions
+        function saveLevel() {
+            const levelData = {
+                landingZones: state.landingZones.map(zone => ({
+                    position: { x: zone.position.x, y: zone.position.y, z: zone.position.z },
+                    radius: zone.radius,
+                    landed: zone.landed
+                }))
+            };
+            localStorage.setItem('droneGameLevel', JSON.stringify(levelData));
+            showMessage('✅ Level saved!');
+            console.log('Level saved:', levelData);
+        }
+        
+        function loadLevel() {
+            const savedData = localStorage.getItem('droneGameLevel');
+            if (savedData) {
+                try {
+                    const levelData = JSON.parse(savedData);
+                    
+                    // Clear existing zones
+                    landingZoneMeshes.forEach(mesh => scene.remove(mesh));
+                    landingGlowMeshes.forEach(mesh => scene.remove(mesh));
+                    markerGroups.forEach(group => group.forEach(m => scene.remove(m)));
+                    landingZoneMeshes = [];
+                    landingGlowMeshes = [];
+                    markerGroups = [];
+                    state.landingZones = [];
+                    
+                    // Load saved zones
+                    levelData.landingZones.forEach((zoneData, index) => {
+                        state.landingZones.push({
+                            position: new THREE.Vector3(
+                                zoneData.position.x,
+                                zoneData.position.y,
+                                zoneData.position.z
+                            ),
+                            radius: zoneData.radius,
+                            landed: zoneData.landed
+                        });
+                        createLandingZone(index);
+                    });
+                    
+                    showMessage('✅ Level loaded!');
+                    console.log('Level loaded:', levelData);
+                } catch (e) {
+                    console.error('Error loading level:', e);
+                    showMessage('❌ Error loading level');
+                }
+            }
+        }
+        
         function toggleEditorMode() {
             editor.active = !editor.active;
             
@@ -1142,13 +1269,8 @@
                 state.drone.velocity.set(0, 0, 0);
                 state.drone.angularVelocity.set(0, 0, 0);
             } else {
-                // Exit editor mode
-                editorPanel.classList.remove('active');
-                editorInfo.classList.remove('active');
-                modeToggle.textContent = '🛠️ Editor Mode';
-                modeToggle.style.background = 'linear-gradient(45deg, #ff8800, #cc6600)';
-                controls.style.display = 'flex';
-                instructions.style.display = 'block';
+                // Exit editor mode - auto save
+                saveLevel();
                 
                 // Restore camera
                 camera.position.copy(editor.originalCameraPosition);
@@ -1160,6 +1282,13 @@
                 
                 // Deselect any selected object
                 deselectObject();
+                
+                editorPanel.classList.remove('active');
+                editorInfo.classList.remove('active');
+                modeToggle.textContent = '🛠️ Editor Mode';
+                modeToggle.style.background = 'linear-gradient(45deg, #ff8800, #cc6600)';
+                controls.style.display = 'flex';
+                instructions.style.display = 'block';
             }
         }
         
@@ -1391,6 +1520,8 @@
         });
         document.getElementById('addLandingZoneBtn').addEventListener('click', addLandingZone);
         document.getElementById('removeLandingZoneBtn').addEventListener('click', removeLandingZone);
+        document.getElementById('saveLevelBtn').addEventListener('click', saveLevel);
+        document.getElementById('loadLevelBtn').addEventListener('click', loadLevel);
         document.getElementById('exitEditorBtn').addEventListener('click', () => {
             if (editor.active) {
                 toggleEditorMode();
