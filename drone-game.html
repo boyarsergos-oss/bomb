@@ -616,11 +616,15 @@
                 color: 0xff0000,
                 transparent: true,
                 opacity: 0.8,
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1
             });
             const landingZone = new THREE.Mesh(landingZoneGeometry, landingZoneMaterial);
             landingZone.rotation.x = -Math.PI / 2;
             landingZone.position.copy(zone.position);
+            landingZone.position.y = 0.05;
             scene.add(landingZone);
             landingZoneMeshes.push(landingZone);
 
@@ -630,12 +634,13 @@
                 color: 0xff0000,
                 transparent: true,
                 opacity: 0.3,
-                depthWrite: false
+                depthWrite: false,
+                depthTest: true
             });
             const landingGlow = new THREE.Mesh(glowGeometry, glowMaterial);
             landingGlow.rotation.x = -Math.PI / 2;
             landingGlow.position.copy(zone.position);
-            landingGlow.position.y = -0.1;
+            landingGlow.position.y = -0.5;
             scene.add(landingGlow);
             landingGlowMeshes.push(landingGlow);
 
