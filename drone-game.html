@@ -2439,11 +2439,17 @@
             // Базовая тяга для зависания (компенсирует гравитацию)
             const hoverThrust = phys.gravity * phys.mass;
             
+            // Прямое управление вертикальной скоростью (максимум 4 м/с)
+            const maxVerticalSpeed = 4.0;
+            const targetVerticalSpeed = drone.throttle * maxVerticalSpeed;
+            const verticalSpeedError = targetVerticalSpeed - drone.velocity.y;
+            const verticalCorrectionForce = verticalSpeedError * phys.mass * 5.0; // Коэффициент коррекции
+            
             // Добавочная тяга от управления с ограничением по максимальной тяге
             // throttle > 0 -> подъем (тяга > веса)
             // throttle < 0 -> снижение (тяга < веса)
             const thrustFactor = Math.min(Math.max(drone.throttle, -1), 1);
-            const thrustMagnitude = hoverThrust + (thrustFactor * hoverThrust * 1.2);
+            const thrustMagnitude = hoverThrust + (thrustFactor * hoverThrust * 1.2) + verticalCorrectionForce;
             
             // Гравитация ВСЕГДА действует полностью
             const gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass, 0);
@@ -2451,7 +2457,34 @@
             // Тяга двигателей (направлена вверх относительно дрона)
             const thrustDirection = new THREE.Vector3(0, 1, 0);
             thrustDirection.applyEuler(drone.rotation);
-            const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude);
+            
+            // Разделяем тягу на вертикальную и горизонтальную компоненты
+            const verticalThrust = thrustDirection.y * thrustMagnitude;
+            const horizontalThrustFactor = Math.sqrt(thrustDirection.x * thrustDirection.x + thrustDirection.z * thrustDirection.z);
+            
+            // Прямое управление горизонтальной скоростью (максимум 4 м/с)
+            const maxHorizontalSpeed = 4.0;
+            const targetPitchSpeed = -drone.pitch * maxHorizontalSpeed; // Вперёд/назад
+            const targetRollSpeed = drone.roll * maxHorizontalSpeed;    // Влево/вправо
+            
+            // Преобразуем в мировые координаты с учётом поворота дрона (yaw)
+            const yawAngle = drone.rotation.y;
+            const cosYaw = Math.cos(yawAngle);
+            const sinYaw = Math.sin(yawAngle);
+            
+            // Целевая скорость в мировых координатах
+            const targetWorldVelX = targetPitchSpeed * sinYaw + targetRollSpeed * cosYaw;
+            const targetWorldVelZ = targetPitchSpeed * -cosYaw + targetRollSpeed * sinYaw;
+            
+            // Применяем коррекцию скорости
+            const velCorrectionFactor = 8.0; // Коэффициент коррекции горизонтальной скорости
+            const horizontalCorrectionX = (targetWorldVelX - drone.velocity.x) * velCorrectionFactor;
+            const horizontalCorrectionZ = (targetWorldVelZ - drone.velocity.z) * velCorrectionFactor;
+            
+            // Добавляем корректирующую силу к горизонтальному движению
+            const horizontalCorrectionForce = new THREE.Vector3(horizontalCorrectionX * phys.mass, 0, horizontalCorrectionZ * phys.mass);
+            
+            const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude).add(horizontalCorrectionForce);
 
             // Drag force (сопротивление воздуха) - более реалистичное с квадратом скорости + линейная компонента для быстрой остановки
             const speed = drone.velocity.length();
@@ -2494,14 +2527,14 @@
             // Мгновенное гашение горизонтальной скорости при отпускании стиков (как у реального дрона с GPS hold)
             const horizontalSpeed = new THREE.Vector2(drone.velocity.x, drone.velocity.z).length();
             if (horizontalSpeed > 0.05 && Math.abs(state.controls.pitch) < 0.05 && Math.abs(state.controls.roll) < 0.05) {
-                drone.velocity.x *= 0.85; // Мгновенная остановка по горизонтали
-                drone.velocity.z *= 0.85;
+                drone.velocity.x *= 0.15; // Мгновенная остановка по горизонтали
+                drone.velocity.z *= 0.15;
             }
             
             // Мгновенное гашение вертикальной скорости при отпускании стика тяги
             const verticalSpeed = Math.abs(drone.velocity.y);
             if (verticalSpeed > 0.05 && Math.abs(state.controls.throttle) < 0.05) {
-                drone.velocity.y *= 0.85; // Мгновенная остановка по вертикали
+                drone.velocity.y *= 0.15; // Мгновенная остановка по вертикали
             }
 
             // Angular physics
