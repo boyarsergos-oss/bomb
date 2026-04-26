@@ -1,1 +1,5 @@
-Nothing should be ignored based on the provided file changes. The only modified file is `drone-game.html`, which is a source code file and should not be added to .gitignore.
+(drone-game.html is a source file, so no ignores needed)
+
+```gitignore
+
+```

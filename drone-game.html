@@ -1012,10 +1012,33 @@
                 max: new THREE.Vector3(((houseWidth + 0.5) / 2), 0.5, ((houseDepth + 0.5) / 2))
             });
             
-            // Main building collider
+            // Main building walls colliders (hollow box - 4 separate walls)
+            const halfWidth = houseWidth / 2;
+            const halfDepth = houseDepth / 2;
+            const wallHalfThick = wallThickness / 2;
+            
+            // Front wall
             houseColliders.push({
-                min: new THREE.Vector3(-(houseWidth / 2), 0.5, -(houseDepth / 2)),
-                max: new THREE.Vector3((houseWidth / 2), houseHeight + 0.5, (houseDepth / 2))
+                min: new THREE.Vector3(-halfWidth, 0.5, halfDepth - wallHalfThick),
+                max: new THREE.Vector3(halfWidth, houseHeight + 0.5, halfDepth + wallHalfThick)
+            });
+            
+            // Back wall
+            houseColliders.push({
+                min: new THREE.Vector3(-halfWidth, 0.5, -halfDepth - wallHalfThick),
+                max: new THREE.Vector3(halfWidth, houseHeight + 0.5, -halfDepth + wallHalfThick)
+            });
+            
+            // Left wall
+            houseColliders.push({
+                min: new THREE.Vector3(-halfWidth - wallHalfThick, 0.5, -halfDepth),
+                max: new THREE.Vector3(-halfWidth + wallHalfThick, houseHeight + 0.5, halfDepth)
+            });
+            
+            // Right wall
+            houseColliders.push({
+                min: new THREE.Vector3(halfWidth - wallHalfThick, 0.5, -halfDepth),
+                max: new THREE.Vector3(halfWidth + wallHalfThick, houseHeight + 0.5, halfDepth)
             });
             
             // Roof collider
@@ -1048,10 +1071,27 @@
                 max: new THREE.Vector3((houseWidth / 2 + roofOverhang) + (parapetThickness / 2), houseHeight + 0.5 + roofThickness + parapetHeight, (houseDepth / 2))
             });
             
-            // Door collider
+            // Door frame colliders
+            const doorFrameDepth = 0.15;
+            const doorFrameTopY = 2.5;
+            const doorFrameHalfWidth = 0.1 / 2;
+            
+            // Door top frame
             houseColliders.push({
-                min: new THREE.Vector3(-(doorWidth / 2), 0.5, (houseDepth / 2 + 0.05) - (doorDepth / 2)),
-                max: new THREE.Vector3((doorWidth / 2), doorHeight + 0.5, (houseDepth / 2 + 0.05) + (doorDepth / 2))
+                min: new THREE.Vector3(-(doorWidth + 0.2) / 2, doorFrameTopY - 0.05, halfDepth + 0.05 - doorFrameDepth/2),
+                max: new THREE.Vector3((doorWidth + 0.2) / 2, doorFrameTopY + 0.05, halfDepth + 0.05 + doorFrameDepth/2)
+            });
+            
+            // Door left frame
+            houseColliders.push({
+                min: new THREE.Vector3(-doorWidth / 2 - 0.1, 0.5, halfDepth + 0.05 - doorFrameDepth/2),
+                max: new THREE.Vector3(-doorWidth / 2, doorFrameTopY, halfDepth + 0.05 + doorFrameDepth/2)
+            });
+            
+            // Door right frame
+            houseColliders.push({
+                min: new THREE.Vector3(doorWidth / 2, 0.5, halfDepth + 0.05 - doorFrameDepth/2),
+                max: new THREE.Vector3(doorWidth / 2 + 0.1, doorFrameTopY, halfDepth + 0.05 + doorFrameDepth/2)
             });
             
             // Chimney collider
@@ -1066,26 +1106,53 @@
                 max: new THREE.Vector3(3 + ((chimneyWidth + 0.2) / 2), houseHeight + 0.5 + roofThickness + chimneyHeight + 0.15, -2 + ((chimneyDepth + 0.2) / 2))
             });
             
-            // Windows colliders (all windows)
+            // Window frames colliders (all windows with their frames)
+            const windowFrameHalfThick = 0.05 / 2;
+            const windowFrameExtra = 0.05;
             const windowPositions = [
-                { x: -3, y: 2, z: houseDepth / 2 + 0.05 },
-                { x: 3, y: 2, z: houseDepth / 2 + 0.05 },
-                { x: -3, y: 4.5, z: houseDepth / 2 + 0.05 },
-                { x: 3, y: 4.5, z: houseDepth / 2 + 0.05 },
-                { x: -3, y: 2, z: -houseDepth / 2 - 0.05 },
-                { x: 3, y: 2, z: -houseDepth / 2 - 0.05 },
-                { x: -3, y: 4.5, z: -houseDepth / 2 - 0.05 },
-                { x: 3, y: 4.5, z: -houseDepth / 2 - 0.05 },
-                { x: -houseWidth / 2 - 0.05, y: 2, z: -2 },
-                { x: houseWidth / 2 + 0.05, y: 2, z: 2 },
-                { x: -houseWidth / 2 - 0.05, y: 4.5, z: -2 },
-                { x: houseWidth / 2 + 0.05, y: 4.5, z: 2 }
+                { x: -3, y: 2, z: halfDepth + 0.05 },
+                { x: 3, y: 2, z: halfDepth + 0.05 },
+                { x: -3, y: 4.5, z: halfDepth + 0.05 },
+                { x: 3, y: 4.5, z: halfDepth + 0.05 },
+                { x: -3, y: 2, z: -halfDepth - 0.05 },
+                { x: 3, y: 2, z: -halfDepth - 0.05 },
+                { x: -3, y: 4.5, z: -halfDepth - 0.05 },
+                { x: 3, y: 4.5, z: -halfDepth - 0.05 },
+                { x: -halfWidth - 0.05, y: 2, z: -2 },
+                { x: halfWidth + 0.05, y: 2, z: 2 },
+                { x: -halfWidth - 0.05, y: 4.5, z: -2 },
+                { x: halfWidth + 0.05, y: 4.5, z: 2 }
             ];
             
             windowPositions.forEach(wp => {
+                // Window glass
                 houseColliders.push({
                     min: new THREE.Vector3(wp.x - (windowWidth / 2), wp.y - (windowHeight / 2), wp.z - (windowDepth / 2)),
                     max: new THREE.Vector3(wp.x + (windowWidth / 2), wp.y + (windowHeight / 2), wp.z + (windowDepth / 2))
+                });
+                
+                // Window top frame
+                houseColliders.push({
+                    min: new THREE.Vector3(wp.x - (windowWidth + windowFrameExtra) / 2, wp.y + windowHeight / 2, wp.z - (windowDepth + windowFrameExtra) / 2),
+                    max: new THREE.Vector3(wp.x + (windowWidth + windowFrameExtra) / 2, wp.y + windowHeight / 2 + windowFrameHalfThick, wp.z + (windowDepth + windowFrameExtra) / 2)
+                });
+                
+                // Window bottom frame
+                houseColliders.push({
+                    min: new THREE.Vector3(wp.x - (windowWidth + windowFrameExtra) / 2, wp.y - windowHeight / 2 - windowFrameHalfThick, wp.z - (windowDepth + windowFrameExtra) / 2),
+                    max: new THREE.Vector3(wp.x + (windowWidth + windowFrameExtra) / 2, wp.y - windowHeight / 2, wp.z + (windowDepth + windowFrameExtra) / 2)
+                });
+                
+                // Window left frame
+                houseColliders.push({
+                    min: new THREE.Vector3(wp.x - (windowWidth + windowFrameExtra) / 2, wp.y - windowHeight / 2, wp.z - (windowDepth + windowFrameExtra) / 2),
+                    max: new THREE.Vector3(wp.x - (windowWidth + windowFrameExtra) / 2 + windowFrameHalfThick, wp.y + windowHeight / 2, wp.z + (windowDepth + windowFrameExtra) / 2)
+                });
+                
+                // Window right frame
+                houseColliders.push({
+                    min: new THREE.Vector3(wp.x + (windowWidth + windowFrameExtra) / 2 - windowFrameHalfThick, wp.y - windowHeight / 2, wp.z - (windowDepth + windowFrameExtra) / 2),
+                    max: new THREE.Vector3(wp.x + (windowWidth + windowFrameExtra) / 2, wp.y + windowHeight / 2, wp.z + (windowDepth + windowFrameExtra) / 2)
                 });
             });
 
