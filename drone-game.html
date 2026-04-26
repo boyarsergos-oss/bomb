@@ -271,88 +271,6 @@
                 display: none;
             }
         }
-            
-            /* Mobile edit mode hint */
-            #mobileEditHint {
-                position: absolute;
-                bottom: 180px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(255, 215, 0, 0.9);
-                color: #000;
-                padding: 10px 20px;
-                border-radius: 10px;
-                font-size: 14px;
-                font-weight: bold;
-                display: none;
-                pointer-events: none;
-                text-align: center;
-                z-index: 1000;
-            }
-            
-            .edit-mode #mobileEditHint {
-                display: block;
-            }
-        }
-        
-        /* Top-down view button */
-        #topDownBtn {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(100, 150, 255, 0.9);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            display: none;
-            pointer-events: auto;
-            box-shadow: 0 4px 15px rgba(0, 100, 255, 0.4);
-            z-index: 1001;
-            transition: all 0.3s ease;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-        }
-        
-        #topDownBtn:active {
-            background: rgba(80, 130, 230, 1);
-            transform: translateX(-50%) scale(0.95);
-        }
-        
-        #topDownBtn:hover {
-            background: rgba(100, 180, 255, 1);
-            transform: translateX(-50%) scale(1.05);
-        }
-        
-        #topDownBtn.active {
-            background: rgba(255, 150, 50, 0.9);
-        }
-        
-        .edit-mode #topDownBtn {
-            display: block;
-        }
-        
-        @media (orientation: landscape) {
-            #topDownBtn {
-                top: 10px;
-                padding: 10px 20px;
-                font-size: 14px;
-            }
-        }
-        
-        @media (max-width: 767px) {
-            #topDownBtn {
-                padding: 14px 28px;
-                font-size: 18px;
-                top: 15px;
-            }
-        }
     </style>
 </head>
 <body>
@@ -382,14 +300,7 @@
             <p>🕹️ Right Joystick - Click & Drag for Pitch/Roll</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p style="color: #ff6b6b; font-weight: bold;">🎯 Land in the RED CIRCLE to advance!</p>
-            <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
-            <p style="color: #ffd700; font-weight: bold;">✏️ Hold SHIFT to edit level position (Top-Down View)</p>
-            <p style="color: #6af; font-weight: bold;">↩️ Press ENTER to exit edit mode</p>
         </div>
-
-        <div id="mobileEditHint">👆 Long press to edit • Tap to move zone</div>
-
-        <button id="topDownBtn">🔍 Top-Down View</button>
 
         <div id="levelComplete">
             <div>🎉 Level Complete! 🎉</div>
@@ -678,165 +589,33 @@
         // Camera offset for third-person view - will be adjusted based on orientation
         let cameraOffset = new THREE.Vector3(0, 3, 6);
         const cameraLookAt = new THREE.Vector3(0, 0, 0);
-        let topDownView = false;
 
         // Adjust camera based on orientation
         function updateCameraForOrientation() {
-            if (topDownView) {
-                // Top-down view: camera directly above, looking straight down
-                cameraOffset.set(0, 50, 0);
+            const isLandscape = window.innerWidth > window.innerHeight;
+            
+            if (isLandscape) {
+                // In landscape, bring camera closer for better view
+                cameraOffset.set(0, 2, 4);
             } else {
-                const isLandscape = window.innerWidth > window.innerHeight;
-                
-                if (isLandscape) {
-                    // In landscape, bring camera closer for better view
-                    cameraOffset.set(0, 2, 4);
-                } else {
-                    // In portrait, use default offset
-                    cameraOffset.set(0, 3, 6);
-                }
+                // In portrait, use default offset
+                cameraOffset.set(0, 3, 6);
             }
         }
 
         // Input handling
         const keys = {};
-        let editMode = false;
-                document.body.classList.remove('edit-mode');
-                canvas.style.cursor = 'default';
         
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
             if (e.code === 'Space') {
                 resetDrone();
             }
-            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-                editMode = true;
-                topDownView = true;
-                topDownBtn.classList.add('active');
-                topDownBtn.textContent = '🔍 Normal View';
-                document.body.classList.add('edit-mode');
-                canvas.style.cursor = 'move';
-                updateCameraForOrientation();
-            }
-            if (e.code === 'Enter' && editMode) {
-                editMode = false;
-                topDownView = false;
-                topDownBtn.classList.remove('active');
-                topDownBtn.textContent = '🔍 Top-Down View';
-                document.body.classList.remove('edit-mode');
-                canvas.style.cursor = 'default';
-                showMessage('✅ Edit mode exited');
-            }
         });
         
         document.addEventListener('keyup', (e) => {
             keys[e.code] = false;
-            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-                editMode = false;
-                topDownView = false;
-                topDownBtn.classList.remove('active');
-                topDownBtn.textContent = '🔍 Top-Down View';
-                document.body.classList.remove('edit-mode');
-                canvas.style.cursor = 'default';
-            }
         });
-
-        // Function to move landing zone to touched/clicked position
-        function moveLandingZone(clientX, clientY) {
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = ((clientX - rect.left) / rect.width) * 2 - 1;
-            const mouseY = -((clientY - rect.top) / rect.height) * 2 + 1;
-
-            // Create a raycaster to find ground position
-            const mouse = new THREE.Vector2(mouseX, mouseY);
-            const raycaster = new THREE.Raycaster();
-            raycaster.setFromCamera(mouse, camera);
-
-            const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-            const target = new THREE.Vector3();
-            raycaster.ray.intersectPlane(groundPlane, target);
-
-            if (target) {
-                const currentZoneIndex = state.level - 1;
-                if (currentZoneIndex >= 0 && currentZoneIndex < state.landingZones.length) {
-                    state.landingZones[currentZoneIndex].position.copy(target);
-
-                    // Update visual elements
-                    landingZoneMeshes[currentZoneIndex].position.copy(target);
-                    landingGlowMeshes[currentZoneIndex].position.copy(target);
-
-                    // Update markers
-                    const markers = markerGroups[currentZoneIndex];
-                    const zone = state.landingZones[currentZoneIndex];
-                    for (let i = 0; i < markers.length; i++) {
-                        const angle = (i / 4) * Math.PI * 2;
-                        markers[i].position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
-                        markers[i].position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
-                    }
-
-                    showMessage(`✏️ Zone moved to (${target.x.toFixed(1)}, ${target.z.toFixed(1)})`);
-                }
-            }
-        }
-
-        // Mouse click for editing landing zone position
-        canvas.addEventListener('mousedown', (e) => {
-            if (!editMode) return;
-            moveLandingZone(e.clientX, e.clientY);
-        });
-
-        // Touch support for editing on mobile
-        let editTouchStartTime = 0;
-        let editTouchTimer = null;
-        let longPressDetected = false;
-
-        canvas.addEventListener('touchstart', (e) => {
-            // Check if touch is on canvas (not on controls)
-            if (editMode) {
-                const touch = e.changedTouches[0];
-                moveLandingZone(touch.clientX, touch.clientY);
-            } else {
-                // Long press (500ms) to enter edit mode on mobile
-                const touch = e.changedTouches[0];
-                editTouchStartTime = Date.now();
-                longPressDetected = false;
-                editTouchTimer = setTimeout(() => {
-                    editMode = true;
-                    longPressDetected = true;
-                    document.body.classList.add('edit-mode');
-                    canvas.style.cursor = 'move';
-                    showMessage('✏️ Edit Mode: Tap to move zone');
-                    // Move the zone immediately on long press
-                    moveLandingZone(touch.clientX, touch.clientY);
-                }, 500);
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            // Cancel long press if user moves finger
-            if (editTouchTimer && !editMode) {
-                clearTimeout(editTouchTimer);
-                editTouchTimer = null;
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchend', (e) => {
-            const touchDuration = Date.now() - editTouchStartTime;
-            // Clear the timer if touch was short (less than 500ms)
-            if (editTouchTimer && touchDuration < 500) {
-                clearTimeout(editTouchTimer);
-            }
-            editTouchTimer = null;
-            // Exit edit mode on short tap (if in edit mode and no long press was detected)
-            if (editMode && !longPressDetected) {
-                editMode = false;
-                topDownView = false;
-                topDownBtn.classList.remove('active');
-                topDownBtn.textContent = '🔍 Top-Down View';
-                document.body.classList.remove('edit-mode');
-            }
-            longPressDetected = false;
-        }, { passive: false });
         // Touch controls
         const leftZone = document.getElementById('leftZone');
         const rightZone = document.getElementById('rightZone');
@@ -1059,14 +838,6 @@
         }
 
         function showLevelComplete() {
-            // Reset edit mode when level is complete
-            editMode = false;
-            longPressDetected = false;
-            topDownView = false;
-            document.body.classList.remove('edit-mode');
-            canvas.style.cursor = 'default';
-            topDownBtn.classList.remove('active');
-            topDownBtn.textContent = '🔍 Top-Down View';
             document.getElementById('levelComplete').style.display = 'block';
         }
 
@@ -1082,14 +853,6 @@
                 state.drone.rotation.set(0, 0, 0);
                 state.drone.angularVelocity.set(0, 0, 0);
                 state.battery = 100;
-                // Reset top-down view and edit mode when changing levels
-                topDownView = false;
-                editMode = false;
-                longPressDetected = false;
-                topDownBtn.classList.remove('active');
-                topDownBtn.textContent = '🔍 Top-Down View';
-                document.body.classList.remove('edit-mode');
-                canvas.style.cursor = 'default';
                 updateLandingZoneVisibility();
                 hideLevelComplete();
                 showMessage("");
@@ -1107,36 +870,6 @@
             e.stopPropagation();
             nextLevel();
         }, { passive: false });
-
-        // Top-down view button functionality
-        const topDownBtn = document.getElementById('topDownBtn');
-        
-        function toggleTopDownView() {
-            topDownView = !topDownView;
-            topDownBtn.classList.toggle('active', topDownView);
-            topDownBtn.textContent = topDownView ? '🔍 Normal View' : '🔍 Top-Down View';
-            updateCameraForOrientation();
-        }
-        
-        // Support both click and touch events for mobile
-        topDownBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleTopDownView();
-        });
-        
-        topDownBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleTopDownView();
-        }, { passive: false, capture: true });
-        
-        // Also add mousedown for better desktop/mobile compatibility
-        topDownBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleTopDownView();
-        });
 
         function updatePhysics(deltaTime) {
             const phys = state.physics;
