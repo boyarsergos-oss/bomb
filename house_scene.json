@@ -200,10 +200,10 @@
           {
             "uuid": "mesh-floor2",
             "type": "Mesh",
-            "name": "Floor_Second",
+            "name": "Floor_First",
             "geometry": "geo-floor2",
             "material": "mat-wood",
-            "position": [0, 3, 0]
+            "position": [0, 0.1, 0]
           },
           {
             "uuid": "mesh-chimney",
@@ -224,65 +224,13 @@
           {
             "uuid": "win-f-l-1",
             "type": "Mesh",
-            "name": "Window_Front_Left_1F",
-            "geometry": "geo-window",
-            "material": "mat-glass",
-            "position": [-2.5, 2, 4.05]
-          },
-          {
-            "uuid": "win-f-r-1",
-            "type": "Mesh",
-            "name": "Window_Front_Right_1F",
-            "geometry": "geo-window",
-            "material": "mat-glass",
-            "position": [2.5, 2, 4.05]
-          },
-          {
-            "uuid": "win-b-l-1",
-            "type": "Mesh",
-            "name": "Window_Back_Left_1F",
-            "geometry": "geo-window",
-            "material": "mat-glass",
-            "position": [-2.5, 2, -4.05],
-            "rotation": [0, 3.14159, 0]
-          },
-          {
-            "uuid": "win-b-r-1",
-            "type": "Mesh",
-            "name": "Window_Back_Right_1F",
-            "geometry": "geo-window",
-            "material": "mat-glass",
-            "position": [2.5, 2, -4.05],
-            "rotation": [0, 3.14159, 0]
-          },
-          {
-            "uuid": "win-l-1",
-            "type": "Mesh",
-            "name": "Window_Left_1F",
-            "geometry": "geo-window",
-            "material": "mat-glass",
-            "position": [-5.05, 2, 0],
-            "rotation": [0, 1.5708, 0]
-          },
-          {
-            "uuid": "win-r-1",
-            "type": "Mesh",
-            "name": "Window_Right_1F",
-            "geometry": "geo-window",
-            "material": "mat-glass",
-            "position": [5.05, 2, 0],
-            "rotation": [0, -1.5708, 0]
-          },
-          {
-            "uuid": "win-f-l-2",
-            "type": "Mesh",
             "name": "Window_Front_Left_2F",
             "geometry": "geo-window",
             "material": "mat-glass",
             "position": [-2.5, 4.5, 4.05]
           },
           {
-            "uuid": "win-f-r-2",
+            "uuid": "win-f-r-1",
             "type": "Mesh",
             "name": "Window_Front_Right_2F",
             "geometry": "geo-window",
@@ -290,7 +238,7 @@
             "position": [2.5, 4.5, 4.05]
           },
           {
-            "uuid": "win-b-l-2",
+            "uuid": "win-b-l-1",
             "type": "Mesh",
             "name": "Window_Back_Left_2F",
             "geometry": "geo-window",
@@ -299,7 +247,7 @@
             "rotation": [0, 3.14159, 0]
           },
           {
-            "uuid": "win-b-r-2",
+            "uuid": "win-b-r-1",
             "type": "Mesh",
             "name": "Window_Back_Right_2F",
             "geometry": "geo-window",
@@ -308,7 +256,7 @@
             "rotation": [0, 3.14159, 0]
           },
           {
-            "uuid": "win-l-2",
+            "uuid": "win-l-1",
             "type": "Mesh",
             "name": "Window_Left_2F",
             "geometry": "geo-window",
@@ -317,13 +265,21 @@
             "rotation": [0, 1.5708, 0]
           },
           {
-            "uuid": "win-r-2",
+            "uuid": "win-r-1",
             "type": "Mesh",
             "name": "Window_Right_2F",
             "geometry": "geo-window",
             "material": "mat-glass",
             "position": [5.05, 4.5, 0],
             "rotation": [0, -1.5708, 0]
+          },
+          {
+            "uuid": "win-f-l-new",
+            "type": "Mesh",
+            "name": "Window_Front_Left_1F_New",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [-2.5, 2, 4.05]
           }
         ]
       },
