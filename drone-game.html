@@ -1179,92 +1179,7 @@
         
         // Try to load saved level on startup (will override defaults if save exists)
         const savedLevelExists = localStorage.getItem('droneGameLevel');
-        if (savedLevelExists) {
-            loadLevel();
-        }
-
-        // Building/Platform for Level 2
-        const buildingGroup = new THREE.Group();
         
-        function createBuilding() {
-            // Main building body (rectangular structure)
-            const buildingGeometry = new THREE.BoxGeometry(10, 8, 10);
-            const buildingMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x5a6b7c,
-                roughness: 0.7,
-                metalness: 0.3
-            });
-            const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
-            building.position.set(-20, 4, 20);
-            building.castShadow = true;
-            building.receiveShadow = true;
-            buildingGroup.add(building);
-            
-            // Windows on the building
-            const windowGeometry = new THREE.PlaneGeometry(1.5, 1.5);
-            const windowMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0x87ceeb,
-                transparent: true,
-                opacity: 0.7
-            });
-            
-            // Add windows on each side
-            for (let i = 0; i < 3; i++) {
-                for (let j = 0; j < 2; j++) {
-                    // Front windows
-                    const windowFront = new THREE.Mesh(windowGeometry, windowMaterial);
-                    windowFront.position.set(-20 + (i - 1) * 2.5, 5 + j * 2.5, 25.01);
-                    buildingGroup.add(windowFront);
-                    
-                    // Back windows
-                    const windowBack = new THREE.Mesh(windowGeometry, windowMaterial);
-                    windowBack.position.set(-20 + (i - 1) * 2.5, 5 + j * 2.5, 14.99);
-                    windowBack.rotation.y = Math.PI;
-                    buildingGroup.add(windowBack);
-                    
-                    // Left windows
-                    const windowLeft = new THREE.Mesh(windowGeometry, windowMaterial);
-                    windowLeft.position.set(-25.01, 5 + j * 2.5, 20 + (i - 1) * 2.5);
-                    windowLeft.rotation.y = -Math.PI / 2;
-                    buildingGroup.add(windowLeft);
-                    
-                    // Right windows
-                    const windowRight = new THREE.Mesh(windowGeometry, windowMaterial);
-                    windowRight.position.set(-14.99, 5 + j * 2.5, 20 + (i - 1) * 2.5);
-                    windowRight.rotation.y = Math.PI / 2;
-                    buildingGroup.add(windowRight);
-                }
-            }
-            
-            // Roof platform (landing surface)
-            const roofGeometry = new THREE.BoxGeometry(10, 0.3, 10);
-            const roofMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x3a4b5c,
-                roughness: 0.9,
-                metalness: 0.1
-            });
-            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-            roof.position.set(-20, 8, 20);
-            roof.castShadow = true;
-            roof.receiveShadow = true;
-            buildingGroup.add(roof);
-            
-            scene.add(buildingGroup);
-        }
-        
-        // createBuilding(); - отключено для очистки сцены
-        
-        // Add house for level 2
-        const houseForLevel2 = { position: new THREE.Vector3(0, 0, -40) };
-        state.houses.push(houseForLevel2);
-        createHouseModel(houseForLevel2.position);
-        
-        // Hide house initially (only show on level 2)
-        houseMeshes.forEach((mesh, index) => {
-            mesh.visible = false;
-        });
-        // Also hide house collision boxes initially by checking level in collision detection
-
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
             landingZoneMeshes.forEach((mesh, index) => {
@@ -1282,7 +1197,22 @@
                 mesh.visible = state.level >= 2;
             });
         }
-        updateLandingZoneVisibility();
+        
+        if (savedLevelExists) {
+            loadLevel();
+        } else {
+            // Add house for level 2 (only if not loading a saved level that will handle this)
+            const houseForLevel2 = { position: new THREE.Vector3(0, 0, -40) };
+            state.houses.push(houseForLevel2);
+            createHouseModel(houseForLevel2.position);
+            
+            // Hide house initially (only show on level 2)
+            houseMeshes.forEach((mesh, index) => {
+                mesh.visible = false;
+            });
+            
+            updateLandingZoneVisibility();
+        }
 
         // Camera offset for third-person view - will be adjusted based on orientation
         let cameraOffset = new THREE.Vector3(0, 3, 6);
@@ -1915,6 +1845,12 @@
                     markerGroups = [];
                     state.landingZones = [];
                     
+                    // Clear existing houses
+                    houseMeshes.forEach(mesh => scene.remove(mesh));
+                    houseMeshes = [];
+                    houseCollisionBoxes = [];
+                    state.houses = [];
+                    
                     // Load saved zones
                     levelData.landingZones.forEach((zoneData, index) => {
                         state.landingZones.push({
@@ -1928,6 +1864,28 @@
                         });
                         createLandingZone(index);
                     });
+                    
+                    // Load saved houses
+                    if (levelData.houses) {
+                        levelData.houses.forEach((houseData) => {
+                            const house = {
+                                position: new THREE.Vector3(
+                                    houseData.position.x,
+                                    houseData.position.y,
+                                    houseData.position.z
+                                )
+                            };
+                            state.houses.push(house);
+                            createHouseModel(house.position);
+                        });
+                        
+                        // Hide houses initially (only show on level 2)
+                        houseMeshes.forEach((mesh, index) => {
+                            mesh.visible = false;
+                        });
+                    }
+                    
+                    updateLandingZoneVisibility();
                     
                     showMessage('✅ Уровень загружён!');
                     console.log('Уровень загружён:', levelData);
