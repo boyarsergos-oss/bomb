@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Flappy Bird 3D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            touch-action: none;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #87CEEB 0%, #E0F6FF 100%);
+        }
+        
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        
+        #start-screen, #game-over-screen {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+        }
+        
+        #start-screen h1, #game-over-screen h1 {
+            color: #FFD700;
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #start-screen p, #game-over-screen p {
+            color: white;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #FF6B6B, #FF8E8E);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        #game-over-screen {
+            display: none;
+        }
+        
+        #final-score {
+            font-size: 24px;
+            color: #FFD700;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui-overlay">
+            <div id="score-display">0</div>
+            
+            <div id="start-screen">
+                <h1>🐦 Flappy Bird 3D</h1>
+                <p>Тапни по экрану или нажми пробел,<br>чтобы взлететь!</p>
+                <button class="btn" id="start-btn">Начать игру</button>
+            </div>
+            
+            <div id="game-over-screen">
+                <h1>💥 Game Over</h1>
+                <p id="final-score">Счет: 0</p>
+                <button class="btn" id="restart-btn">Играть снова</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Игровые переменные
+        let scene, camera, renderer;
+        let bird, birdBody, birdWings = [];
+        let pipes = [];
+        let gameActive = false;
+        let score = 0;
+        let birdVelocity = 0;
+        const gravity = -0.015;
+        const jumpStrength = 0.25;
+        const birdSpeed = 0.15;
+        const pipeGap = 3.5;
+        const pipeDistance = 12;
+        let lastPipeZ = -20;
+        
+        // Элементы UI
+        const scoreDisplay = document.getElementById('score-display');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        // Инициализация сцены
+        function init() {
+            // Сцена
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 50, 150);
+            
+            // Камера (вид от третьего лица сзади)
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, -8);
+            camera.lookAt(0, 0, 10);
+            
+            // Рендерер
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.getElementById('game-container').appendChild(renderer.domElement);
+            
+            // Освещение
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            scene.add(directionalLight);
+            
+            // Создаем птицу
+            createBird();
+            
+            // Земля
+            const groundGeometry = new THREE.PlaneGeometry(200, 1000);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -8;
+            ground.position.z = 400;
+            scene.add(ground);
+            
+            // Обработчики событий
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('touchstart', onTouchStart);
+            startBtn.addEventListener('click', startGame);
+            restartBtn.addEventListener('click', restartGame);
+            
+            animate();
+        }
+        
+        // Создание птицы
+        function createBird() {
+            bird = new THREE.Group();
+            
+            // Тело
+            const bodyGeometry = new THREE.SphereGeometry(0.8, 16, 16);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+            birdBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            bird.add(birdBody);
+            
+            // Глаза
+            const eyeGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+            const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+            
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.3, 0.2, 0.6);
+            bird.add(leftEye);
+            
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.3, 0.2, 0.6);
+            bird.add(rightEye);
+            
+            // Клюв
+            const beakGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
+            const beakMaterial = new THREE.MeshLambertMaterial({ color: 0xFF6B6B });
+            const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+            beak.rotation.x = Math.PI / 2;
+            beak.position.set(0, 0, 0.9);
+            bird.add(beak);
+            
+            // Крылья
+            const wingGeometry = new THREE.BoxGeometry(0.8, 0.1, 0.4);
+            const wingMaterial = new THREE.MeshLambertMaterial({ color: 0xFFA500 });
+            
+            const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            leftWing.position.set(-0.6, 0, 0);
+            bird.add(leftWing);
+            birdWings.push(leftWing);
+            
+            const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            rightWing.position.set(0.6, 0, 0);
+            bird.add(rightWing);
+            birdWings.push(rightWing);
+            
+            bird.position.set(0, 0, 0);
+            scene.add(bird);
+        }
+        
+        // Создание трубы
+        function createPipe(zPosition) {
+            const pipeGeometry = new THREE.CylinderGeometry(1.5, 1.5, 20, 16);
+            const pipeMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            
+            // Случайная высота зазора
+            const gapY = (Math.random() - 0.5) * 8;
+            
+            // Верхняя труба
+            const topPipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
+            topPipe.position.set(0, gapY + 10 + pipeGap/2, zPosition);
+            scene.add(topPipe);
+            
+            // Нижняя труба
+            const bottomPipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
+            bottomPipe.position.set(0, gapY - 10 - pipeGap/2, zPosition);
+            scene.add(bottomPipe);
+            
+            pipes.push({
+                top: topPipe,
+                bottom: bottomPipe,
+                passed: false,
+                zPosition: zPosition
+            });
+        }
+        
+        // Обработка изменения размера окна
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Обработка нажатия клавиш
+        function onKeyDown(event) {
+            if (event.code === 'Space' && gameActive) {
+                jump();
+            }
+        }
+        
+        // Обработка касания экрана
+        function onTouchStart(event) {
+            if (gameActive) {
+                event.preventDefault();
+                jump();
+            }
+        }
+        
+        // Прыжок птицы
+        function jump() {
+            birdVelocity = jumpStrength;
+        }
+        
+        // Проверка столкновений
+        function checkCollision() {
+            const birdBox = new THREE.Box3().setFromObject(birdBody);
+            
+            for (const pipe of pipes) {
+                const topBox = new THREE.Box3().setFromObject(pipe.top);
+                const bottomBox = new THREE.Box3().setFromObject(pipe.bottom);
+                
+                if (birdBox.intersectsBox(topBox) || birdBox.intersectsBox(bottomBox)) {
+                    return true;
+                }
+            }
+            
+            // Проверка столкновения с землей или потолком
+            if (bird.position.y < -7 || bird.position.y > 12) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // Начало игры
+        function startGame() {
+            gameActive = true;
+            startScreen.style.display = 'none';
+            score = 0;
+            scoreDisplay.textContent = '0';
+            bird.position.set(0, 0, 0);
+            birdVelocity = 0;
+            
+            // Удаляем старые трубы
+            for (const pipe of pipes) {
+                scene.remove(pipe.top);
+                scene.remove(pipe.bottom);
+            }
+            pipes = [];
+            lastPipeZ = -20;
+        }
+        
+        // Перезапуск игры
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+        
+        // Конец игры
+        function gameOver() {
+            gameActive = false;
+            finalScoreDisplay.textContent = `Счет: ${score}`;
+            gameOverScreen.style.display = 'block';
+        }
+        
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (gameActive) {
+                // Физика птицы
+                birdVelocity += gravity;
+                bird.position.y += birdVelocity;
+                bird.position.z += birdSpeed;
+                
+                // Вращение птицы в зависимости от скорости
+                bird.rotation.x = birdVelocity * 2;
+                
+                // Анимация крыльев
+                const wingAngle = Math.sin(Date.now() * 0.01) * 0.5;
+                birdWings[0].rotation.z = wingAngle;
+                birdWings[1].rotation.z = -wingAngle;
+                
+                // Камера следует за птицей
+                camera.position.z = bird.position.z - 8;
+                camera.position.y = bird.position.y + 2;
+                camera.lookAt(bird.position.x, bird.position.y, bird.position.z + 10);
+                
+                // Генерация труб
+                if (bird.position.z > lastPipeZ + pipeDistance) {
+                    createPipe(lastPipeZ + pipeDistance);
+                    lastPipeZ += pipeDistance;
+                }
+                
+                // Удаление старых труб и подсчет очков
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    const pipe = pipes[i];
+                    
+                    // Подсчет очков
+                    if (!pipe.passed && bird.position.z > pipe.zPosition) {
+                        pipe.passed = true;
+                        score++;
+                        scoreDisplay.textContent = score;
+                    }
+                    
+                    // Удаление старых труб
+                    if (pipe.zPosition < bird.position.z - 20) {
+                        scene.remove(pipe.top);
+                        scene.remove(pipe.bottom);
+                        pipes.splice(i, 1);
+                    }
+                }
+                
+                // Проверка столкновений
+                if (checkCollision()) {
+                    gameOver();
+                }
+            } else {
+                // Анимация птицы в меню
+                if (bird) {
+                    bird.position.y = Math.sin(Date.now() * 0.002) * 0.5;
+                    const wingAngle = Math.sin(Date.now() * 0.01) * 0.3;
+                    birdWings[0].rotation.z = wingAngle;
+                    birdWings[1].rotation.z = -wingAngle;
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Запуск
+        init();
+    </script>
+</body>
+</html>
