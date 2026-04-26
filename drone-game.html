@@ -696,12 +696,25 @@
                 prop.rotation.y += propellerSpeed * deltaTime * (i % 2 === 0 ? 1 : -1);
             });
 
-            // Update camera
-            const cameraTargetPosition = drone.position.clone().add(cameraOffset);
+            // Update camera - position camera to show both drone and landing target
+            const targetPos = state.targetPosition.clone();
+            const midPoint = drone.position.clone().lerp(targetPos, 0.4);
+            
+            // Calculate angle to place camera behind drone relative to target
+            const angleToTarget = Math.atan2(targetPos.z - drone.position.z, targetPos.x - drone.position.x);
+            const cameraDist = 8;
+            const cameraHeight = 4;
+            
+            const cameraTargetPosition = new THREE.Vector3(
+                drone.position.x - Math.cos(angleToTarget) * cameraDist,
+                drone.position.y + cameraHeight,
+                drone.position.z - Math.sin(angleToTarget) * cameraDist
+            );
+            
             camera.position.lerp(cameraTargetPosition, 5 * deltaTime);
             
-            const lookAtTarget = drone.position.clone().add(new THREE.Vector3(0, 0, 0));
-            cameraLookAt.lerp(lookAtTarget, 10 * deltaTime);
+            // Look at point between drone and target
+            cameraLookAt.lerp(midPoint, 10 * deltaTime);
             camera.lookAt(cameraLookAt);
 
             // Boundary constraints
