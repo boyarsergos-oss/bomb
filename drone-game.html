@@ -468,13 +468,14 @@
             },
             physics: {
                 gravity: 9.81,
-                mass: 1.5,
-                drag: 0.08,
-                angularDrag: 3.0,
-                maxThrust: 35.0,
-                maxTilt: Math.PI / 4,
-                motorResponse: 12.0,
-                gyroStability: 10.0
+                mass: 1.8,
+                drag: 0.15,
+                angularDrag: 4.5,
+                maxThrust: 45.0,
+                maxTilt: Math.PI / 5,
+                motorResponse: 8.0,
+                gyroStability: 15.0,
+                autoLevelStrength: 3.5
             },
             battery: 100,
             time: 0,
@@ -1364,8 +1365,10 @@
             joystick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
             joystick.classList.add('active');
 
-            const normalizedX = dx / maxDistance;
-            const normalizedY = dy / maxDistance;
+            // Уменьшена чувствительность джойстиков для более плавного управления
+            const sensitivity = 0.7;
+            const normalizedX = (dx / maxDistance) * sensitivity;
+            const normalizedY = (dy / maxDistance) * sensitivity;
 
             if (isLeft) {
                 state.controls.throttle = -normalizedY;
@@ -2416,13 +2419,13 @@
             if (keys['ArrowLeft']) keyboardRoll = 1;
             if (keys['ArrowRight']) keyboardRoll = -1;
 
-            // Combine inputs (touch + keyboard)
-            const targetThrottle = controls.throttle + keyboardThrottle * 1.0;
-            const targetYaw = controls.yaw + keyboardYaw * 1.0;
-            const targetPitch = controls.pitch + keyboardPitch * 1.0;
-            const targetRoll = controls.roll + keyboardRoll * 1.0;
+            // Combine inputs (touch + keyboard) - уменьшена чувствительность для плавности
+            const targetThrottle = controls.throttle + keyboardThrottle * 0.7;
+            const targetYaw = controls.yaw + keyboardYaw * 0.7;
+            const targetPitch = controls.pitch + keyboardPitch * 0.7;
+            const targetRoll = controls.roll + keyboardRoll * 0.7;
 
-            // Smooth input response
+            // Smooth input response (плавный отклик моторов)
             const responseSpeed = phys.motorResponse * deltaTime;
             drone.throttle += (targetThrottle - drone.throttle) * responseSpeed;
             drone.yaw += (targetYaw - drone.yaw) * responseSpeed;
@@ -2436,10 +2439,11 @@
             // Базовая тяга для зависания (компенсирует гравитацию)
             const hoverThrust = phys.gravity * phys.mass;
             
-            // Добавочная тяга от управления:
+            // Добавочная тяга от управления с ограничением по максимальной тяге
             // throttle > 0 -> подъем (тяга > веса)
             // throttle < 0 -> снижение (тяга < веса)
-            const thrustMagnitude = hoverThrust + (drone.throttle * hoverThrust * 1.5);
+            const thrustFactor = Math.min(Math.max(drone.throttle, -1), 1);
+            const thrustMagnitude = hoverThrust + (thrustFactor * hoverThrust * 1.2);
             
             // Гравитация ВСЕГДА действует полностью
             const gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass, 0);
@@ -2449,8 +2453,11 @@
             thrustDirection.applyEuler(drone.rotation);
             const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude);
 
-            // Drag force (сопротивление воздуха)
-            const dragForce = drone.velocity.clone().multiplyScalar(-phys.drag);
+            // Drag force (сопротивление воздуха) - более реалистичное с квадратом скорости
+            const speed = drone.velocity.length();
+            const dragDirection = drone.velocity.clone().normalize();
+            const dragMagnitude = phys.drag * speed * speed;
+            const dragForce = dragDirection.multiplyScalar(-dragMagnitude);
 
             // Total force
             const totalForce = new THREE.Vector3()
@@ -2465,12 +2472,17 @@
             // Update position
             drone.position.add(drone.velocity.clone().multiplyScalar(deltaTime));
 
-            // Ground collision
+            // Ground collision (реалистичная посадка с амортизацией)
             if (drone.position.y < 0.3) {
                 drone.position.y = 0.3;
-                drone.velocity.y = Math.max(0, drone.velocity.y);
-                drone.velocity.x *= 0.5;
-                drone.velocity.z *= 0.5;
+                // Амортизация при ударе о землю
+                if (drone.velocity.y < -2) {
+                    drone.velocity.y = -drone.velocity.y * 0.3; // Отскок
+                } else {
+                    drone.velocity.y = Math.max(0, drone.velocity.y);
+                }
+                drone.velocity.x *= 0.6; // Трение о землю
+                drone.velocity.z *= 0.6;
             }
 
             // Ceiling collision
@@ -2499,9 +2511,10 @@
             drone.rotation.y += drone.angularVelocity.y * deltaTime;
             drone.rotation.z += drone.angularVelocity.z * deltaTime;
 
-            // Auto-leveling
-            drone.rotation.x *= (1 - 2 * deltaTime);
-            drone.rotation.z *= (1 - 2 * deltaTime);
+            // Auto-leveling (реалистичное самовыравнивание)
+            const autoLevelFactor = 1 - phys.autoLevelStrength * deltaTime;
+            drone.rotation.x *= autoLevelFactor;
+            drone.rotation.z *= autoLevelFactor;
 
             // Battery drain
             const thrustUsage = Math.abs(drone.throttle) * 0.5 + 0.1;
