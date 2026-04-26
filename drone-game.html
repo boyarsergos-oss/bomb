@@ -536,26 +536,27 @@
             drone.pitch += (targetPitch - drone.pitch) * responseSpeed;
             drone.roll += (targetRoll - drone.roll) * responseSpeed;
 
-            // Calculate thrust force - throttle directly controls thrust, no auto-hover
-            // Throttle range: -1 to 1, maps to 0 to maxThrust
-            const thrustMagnitude = Math.max(0, drone.throttle) * phys.maxThrust;
+            // --- РЕАЛИСТИЧНАЯ ФИЗИКА КВАДРОКОПТЕРА ---
+            // throttle: -1 (полный вниз) до 1 (полный вверх)
+            // 0 = нейтраль = зависание (тяга = весу)
             
-            // Only apply gravity when throttle is very low (near zero)
-            // This allows the drone to stay at the same height when throttle is released
-            let gravityForce;
-            if (drone.throttle < 0.02) {
-                gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass, 0);
-            } else {
-                // When throttle is applied, we balance gravity to allow stable hovering
-                // The thrust exactly counteracts gravity when throttle is in neutral position
-                gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass * (1 - drone.throttle), 0);
-            }
+            // Базовая тяга для зависания (компенсирует гравитацию)
+            const hoverThrust = phys.gravity * phys.mass;
+            
+            // Добавочная тяга от управления:
+            // throttle > 0 -> подъем (тяга > веса)
+            // throttle < 0 -> снижение (тяга < веса)
+            const thrustMagnitude = hoverThrust + (drone.throttle * hoverThrust * 0.8);
+            
+            // Гравитация ВСЕГДА действует полностью
+            const gravityForce = new THREE.Vector3(0, -phys.gravity * phys.mass, 0);
 
+            // Тяга двигателей (направлена вверх относительно дрона)
             const thrustDirection = new THREE.Vector3(0, 1, 0);
             thrustDirection.applyEuler(drone.rotation);
             const thrustForce = thrustDirection.multiplyScalar(thrustMagnitude);
 
-            // Drag force
+            // Drag force (сопротивление воздуха)
             const dragForce = drone.velocity.clone().multiplyScalar(-phys.drag);
 
             // Total force
