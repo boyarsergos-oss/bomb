@@ -484,11 +484,7 @@
                 { position: new THREE.Vector3(-15, 0, 15), radius: 2.5, landed: false },
                 { position: new THREE.Vector3(20, 0, -30), radius: 2, landed: false }
             ],
-            objects: [
-                { type: 'cube', position: new THREE.Vector3(-10, 5, -10), size: new THREE.Vector3(3, 10, 3), color: 0x8B4513 },
-                { type: 'cube', position: new THREE.Vector3(10, 3, -15), size: new THREE.Vector3(2, 6, 2), color: 0x808080 },
-                { type: 'cube', position: new THREE.Vector3(-15, 4, 10), size: new THREE.Vector3(4, 8, 4), color: 0x2F4F4F }
-            ],
+            objects: [],
             houses: []
         };
 
@@ -726,8 +722,8 @@
             markerGroups.push(markers);
         }
 
-        // Create landing zones for all levels (default)
-        state.landingZones.forEach((_, index) => createLandingZone(index));
+        // Create landing zones for all levels (default) - отключено для очистки сцены
+        // state.landingZones.forEach((_, index) => createLandingZone(index));
         
         // Function to create editable object mesh
         function createObjectMesh(index) {
@@ -1238,7 +1234,7 @@
             scene.add(buildingGroup);
         }
         
-        createBuilding();
+        // createBuilding(); - отключено для очистки сцены
 
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
@@ -1249,12 +1245,12 @@
                 markerGroups[index].forEach(m => m.visible = visible);
             });
             
-            // Show/hide building based on level
-            if (buildingGroup) {
-                buildingGroup.visible = state.level >= 2;
-            }
+            // Show/hide building based on level (отключено - здание удалено)
+            // if (buildingGroup) {
+            //     buildingGroup.visible = state.level >= 2;
+            // }
         }
-        updateLandingZoneVisibility();
+        // updateLandingZoneVisibility(); - отключено, так как зоны посадки удалены
 
         // Camera offset for third-person view - will be adjusted based on orientation
         let cameraOffset = new THREE.Vector3(0, 3, 6);
@@ -1902,8 +1898,8 @@
                 cameraLookAt.copy(editor.originalCameraTarget);
                 editor.cameraMode = 'third';
                 
-                // Restore visibility based on level
-                updateLandingZoneVisibility();
+                // Restore visibility based on level (отключено - зоны посадки удалены)
+                // updateLandingZoneVisibility();
                 
                 // Deselect any selected object
                 deselectObject();
