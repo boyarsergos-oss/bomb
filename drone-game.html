@@ -1799,6 +1799,7 @@
         }
         
         // Editor Functions
+        // Editor Functions
         function saveLevel() {
             const levelData = {
                 landingZones: state.landingZones.map(zone => ({
@@ -1810,46 +1811,109 @@
                     position: { x: house.position.x, y: house.position.y, z: house.position.z }
                 }))
             };
+            
+            // Сохраняем в localStorage (резервная копия)
             localStorage.setItem('droneGameLevel', JSON.stringify(levelData));
-            showMessage('✅ Уровень сохранён!');
+            
+            // Сохраняем на сервере в файл
+            fetch('/api/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(levelData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showMessage('✅ Уровень сохранён в файл!');
+                    console.log('Уровень сохранён на сервере:', result);
+                } else {
+                    showMessage('⚠️ Сохранено только в браузере');
+                    console.error('Ошибка сохранения на сервере:', result.error);
+                }
+            })
+            .catch(err => {
+                showMessage('⚠️ Сохранено только в браузере (сервер недоступен)');
+                console.error('Ошибка сети:', err);
+            });
+            
             console.log('Уровень сохранён:', levelData);
         }
         
         function loadLevel() {
+            // Сначала пробуем загрузить с сервера
+            fetch('/api/load')
+            .then(response => {
+                if (!response.ok) throw new Error('Файл не найден');
+                return response.json();
+            })
+            .then(result => {
+                if (result.success && result.data) {
+                    applyLevelData(result.data);
+                    showMessage('✅ Уровень загружен из файла!');
+                    console.log('Уровень загружен из файла:', result.data);
+                } else {
+                    // Если файл не найден, пробуем localStorage
+                    loadFromLocalStorage();
+                }
+            })
+            .catch(err => {
+                console.log('Сервер недоступен, пробуем localStorage:', err);
+                loadFromLocalStorage();
+            });
+        }
+        
+        function loadFromLocalStorage() {
             const savedData = localStorage.getItem('droneGameLevel');
             if (savedData) {
                 try {
                     const levelData = JSON.parse(savedData);
-                    
-                    // Clear existing zones
-                    landingZoneMeshes.forEach(mesh => scene.remove(mesh));
-                    landingGlowMeshes.forEach(mesh => scene.remove(mesh));
-                    markerGroups.forEach(group => group.forEach(m => scene.remove(m)));
-                    landingZoneMeshes = [];
-                    landingGlowMeshes = [];
-                    markerGroups = [];
-                    state.landingZones = [];
-                    
-                    // Load saved zones
-                    levelData.landingZones.forEach((zoneData, index) => {
-                        state.landingZones.push({
-                            position: new THREE.Vector3(
-                                zoneData.position.x,
-                                zoneData.position.y,
-                                zoneData.position.z
-                            ),
-                            radius: zoneData.radius,
-                            landed: zoneData.landed
-                        });
-                        createLandingZone(index);
-                    });
-                    
-                    showMessage('✅ Уровень загружён!');
-                    console.log('Уровень загружён:', levelData);
+                    applyLevelData(levelData);
+                    showMessage('✅ Уровень загружен из браузера!');
+                    console.log('Уровень загружен из localStorage:', levelData);
                 } catch (e) {
                     console.error('Ошибка при загрузке уровня:', e);
                     showMessage('❌ Ошибка при загрузке уровня');
                 }
+            } else {
+                showMessage('❌ Нет сохранённых уровней');
+            }
+        }
+        
+        function applyLevelData(levelData) {
+            // Clear existing zones
+            landingZoneMeshes.forEach(mesh => scene.remove(mesh));
+            landingGlowMeshes.forEach(mesh => scene.remove(mesh));
+            markerGroups.forEach(group => group.forEach(m => scene.remove(m)));
+            landingZoneMeshes = [];
+            landingGlowMeshes = [];
+            markerGroups = [];
+            state.landingZones = [];
+            
+            // Load saved zones
+            levelData.landingZones.forEach((zoneData, index) => {
+                state.landingZones.push({
+                    position: new THREE.Vector3(
+                        zoneData.position.x,
+                        zoneData.position.y,
+                        zoneData.position.z
+                    ),
+                    radius: zoneData.radius,
+                    landed: zoneData.landed
+                });
+                createLandingZone(index);
+            });
+            
+            // Load houses if present
+            if (levelData.houses) {
+                state.houses.forEach(house => scene.remove(house));
+                state.houses = [];
+                levelData.houses.forEach(houseData => {
+                    addHouseAtPosition(
+                        houseData.position.x,
+                        houseData.position.y,
+                        houseData.position.z
+                    );
+                });
             }
         }
         
@@ -2100,6 +2164,17 @@
             
             createHouseModel(newPosition);
             selectHouse(state.houses.length - 1);
+            updateSelectedObjectInfo();
+        }
+
+        function addHouseAtPosition(x, y, z) {
+            const newPosition = new THREE.Vector3(x, y, z);
+
+            state.houses.push({
+                position: newPosition
+            });
+
+            createHouseModel(newPosition);
             updateSelectedObjectInfo();
         }
         
