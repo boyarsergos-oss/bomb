@@ -980,12 +980,26 @@
 
         // Top-down view button functionality
         const topDownBtn = document.getElementById('topDownBtn');
-        topDownBtn.addEventListener('click', () => {
+        
+        function toggleTopDownView() {
             topDownView = !topDownView;
             topDownBtn.classList.toggle('active', topDownView);
             topDownBtn.textContent = topDownView ? '🔍 Normal View' : '🔍 Top-Down View';
             updateCameraForOrientation();
+        }
+        
+        // Support both click and touch events for mobile
+        topDownBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleTopDownView();
         });
+        
+        topDownBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleTopDownView();
+        }, { passive: false });
 
         function updatePhysics(deltaTime) {
             const phys = state.physics;
