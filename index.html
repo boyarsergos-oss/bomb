@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Drone Delivery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            touch-action: none;
+            background: #000;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: monospace;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: rgba(255,255,255,0.7);
+            font-family: monospace;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        
+        /* Mobile controls */
+        .touch-zone {
+            position: absolute;
+            bottom: 0;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            pointer-events: auto;
+            display: none;
+        }
+        
+        #touch-left {
+            left: 20px;
+            width: 150px;
+            height: 150px;
+        }
+        
+        #touch-right {
+            right: 20px;
+            width: 150px;
+            height: 150px;
+        }
+        
+        .touch-active {
+            background: rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Level: <span id="level">1</span></div>
+        <div>Cargo: <span id="cargo-status">Attached</span></div>
+    </div>
+    
+    <div id="controls-hint">
+        PC: W/S - Up/Down | A/D - Left/Right | Space - Stabilize<br>
+        Mobile: Touch zones for control
+    </div>
+    
+    <div id="touch-left" class="touch-zone"></div>
+    <div id="touch-right" class="touch-zone"></div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+    </script>
+    
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
