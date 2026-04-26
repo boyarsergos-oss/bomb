@@ -314,6 +314,15 @@
             box-shadow: 0 4px 15px rgba(0, 100, 255, 0.4);
             z-index: 1001;
             transition: all 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        
+        #topDownBtn:active {
+            background: rgba(80, 130, 230, 1);
+            transform: translateX(-50%) scale(0.95);
         }
         
         #topDownBtn:hover {
@@ -334,6 +343,14 @@
                 top: 10px;
                 padding: 10px 20px;
                 font-size: 14px;
+            }
+        }
+        
+        @media (max-width: 767px) {
+            #topDownBtn {
+                padding: 14px 28px;
+                font-size: 18px;
+                top: 15px;
             }
         }
     </style>
@@ -746,6 +763,7 @@
         // Touch support for editing on mobile
         let editTouchStartTime = 0;
         let editTouchTimer = null;
+        let longPressDetected = false;
 
         canvas.addEventListener('touchstart', (e) => {
             // Check if touch is on canvas (not on controls)
@@ -756,14 +774,24 @@
                 // Long press (500ms) to enter edit mode on mobile
                 const touch = e.changedTouches[0];
                 editTouchStartTime = Date.now();
+                longPressDetected = false;
                 editTouchTimer = setTimeout(() => {
                     editMode = true;
+                    longPressDetected = true;
                     document.body.classList.add('edit-mode');
                     canvas.style.cursor = 'move';
                     showMessage('✏️ Edit Mode: Tap to move zone');
                     // Move the zone immediately on long press
                     moveLandingZone(touch.clientX, touch.clientY);
                 }, 500);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            // Cancel long press if user moves finger
+            if (editTouchTimer && !editMode) {
+                clearTimeout(editTouchTimer);
+                editTouchTimer = null;
             }
         }, { passive: false });
 
@@ -774,14 +802,15 @@
                 clearTimeout(editTouchTimer);
             }
             editTouchTimer = null;
-            // Exit edit mode on short tap (if in edit mode)
-            if (editMode && touchDuration < 500) {
+            // Exit edit mode on short tap (if in edit mode and no long press was detected)
+            if (editMode && !longPressDetected) {
                 editMode = false;
                 topDownView = false;
                 topDownBtn.classList.remove('active');
                 topDownBtn.textContent = '🔍 Top-Down View';
                 document.body.classList.remove('edit-mode');
             }
+            longPressDetected = false;
         }, { passive: false });
         // Touch controls
         const leftZone = document.getElementById('leftZone');
@@ -947,6 +976,14 @@
         }
 
         function showLevelComplete() {
+            // Reset edit mode when level is complete
+            editMode = false;
+            longPressDetected = false;
+            topDownView = false;
+            document.body.classList.remove('edit-mode');
+            canvas.style.cursor = 'default';
+            topDownBtn.classList.remove('active');
+            topDownBtn.textContent = '🔍 Top-Down View';
             document.getElementById('levelComplete').style.display = 'block';
         }
 
@@ -962,10 +999,14 @@
                 state.drone.rotation.set(0, 0, 0);
                 state.drone.angularVelocity.set(0, 0, 0);
                 state.battery = 100;
-                // Reset top-down view when changing levels
+                // Reset top-down view and edit mode when changing levels
                 topDownView = false;
+                editMode = false;
+                longPressDetected = false;
                 topDownBtn.classList.remove('active');
                 topDownBtn.textContent = '🔍 Top-Down View';
+                document.body.classList.remove('edit-mode');
+                canvas.style.cursor = 'default';
                 updateLandingZoneVisibility();
                 hideLevelComplete();
                 showMessage("");
@@ -975,8 +1016,14 @@
             }
         }
 
-        // Continue button event listener
-        document.getElementById('continueBtn').addEventListener('click', nextLevel);
+        // Continue button event listener - support both click and touch
+        const continueBtn = document.getElementById('continueBtn');
+        continueBtn.addEventListener('click', nextLevel);
+        continueBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            nextLevel();
+        }, { passive: false });
 
         // Top-down view button functionality
         const topDownBtn = document.getElementById('topDownBtn');
@@ -999,7 +1046,14 @@
             e.preventDefault();
             e.stopPropagation();
             toggleTopDownView();
-        }, { passive: false });
+        }, { passive: false, capture: true });
+        
+        // Also add mousedown for better desktop/mobile compatibility
+        topDownBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleTopDownView();
+        });
 
         function updatePhysics(deltaTime) {
             const phys = state.physics;
@@ -1184,6 +1238,13 @@
         
         // Initial call to set the correct class and camera offset
         handleOrientationChange();
+
+        // Prevent default touch behaviors on buttons for better mobile experience
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+        });
 
         // Start the game
         animate();
