@@ -2439,8 +2439,8 @@
             // Базовая тяга для зависания (компенсирует гравитацию)
             const hoverThrust = phys.gravity * phys.mass;
             
-            // Прямое управление вертикальной скоростью (максимум 4 м/с)
-            const maxVerticalSpeed = 4.0;
+            // Прямое управление вертикальной скоростью (максимум 400 м/с)
+            const maxVerticalSpeed = 400.0;
             const targetVerticalSpeed = drone.throttle * maxVerticalSpeed;
             const verticalSpeedError = targetVerticalSpeed - drone.velocity.y;
             const verticalCorrectionForce = verticalSpeedError * phys.mass * 5.0; // Коэффициент коррекции
@@ -2462,8 +2462,8 @@
             const verticalThrust = thrustDirection.y * thrustMagnitude;
             const horizontalThrustFactor = Math.sqrt(thrustDirection.x * thrustDirection.x + thrustDirection.z * thrustDirection.z);
             
-            // Прямое управление горизонтальной скоростью (максимум 4 м/с)
-            const maxHorizontalSpeed = 4.0;
+            // Прямое управление горизонтальной скоростью (максимум 400 м/с)
+            const maxHorizontalSpeed = 400.0;
             const targetPitchSpeed = -drone.pitch * maxHorizontalSpeed; // Вперёд/назад
             const targetRollSpeed = drone.roll * maxHorizontalSpeed;    // Влево/вправо
             
