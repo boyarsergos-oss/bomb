@@ -125,10 +125,50 @@
             opacity: 0.8;
         }
         
-        @media (min-width: 768px) {
-            #controls {
-                display: none;
-            }
+        #message {
+            margin-top: 10px;
+            color: #6af;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        #levelComplete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 200, 0, 0.9);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            text-align: center;
+            font-size: 24px;
+            display: none;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        #continueBtn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 18px;
+            background: linear-gradient(45deg, #00ff00, #00aa00);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0, 255, 0, 0.4);
+        }
+
+        #continueBtn:hover {
+            background: linear-gradient(45deg, #00ff00, #00cc00);
         }
         
         @media (max-width: 767px) {
@@ -143,10 +183,12 @@
     
     <div id="ui">
         <div id="info">
+            <div><span class="label">Level:</span> <span class="value" id="level">1</span></div>
             <div><span class="label">Altitude:</span> <span class="value" id="altitude">0.0</span> m</div>
             <div><span class="label">Speed:</span> <span class="value" id="speed">0.0</span> m/s</div>
             <div><span class="label">Heading:</span> <span class="value" id="heading">0°</span></div>
             <div><span class="label">Battery:</span> <span class="value" id="battery">100%</span></div>
+            <div id="message"></div>
         </div>
         
         <div id="instructions">
@@ -156,6 +198,14 @@
             <p>↑/↓ - Pitch Forward/Back</p>
             <p>←/→ - Roll Left/Right</p>
             <p>Space - Reset Position</p>
+            <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
+            <p style="color: #ff6b6b; font-weight: bold;">🎯 Land in the RED CIRCLE to advance!</p>
+        </div>
+
+        <div id="levelComplete">
+            <div>🎉 Level Complete! 🎉</div>
+            <div style="font-size: 18px; margin-top: 10px;">You landed the drone successfully!</div>
+            <button id="continueBtn">Continue to Level 2</button>
         </div>
         
         <div id="controls">
@@ -199,7 +249,12 @@
                 gyroStability: 8.0
             },
             battery: 100,
-            time: 0
+            time: 0,
+            level: 1,
+            landingZones: [
+                { position: new THREE.Vector3(10, 0, -15), radius: 3, landed: false },
+                { position: new THREE.Vector3(-20, 0, 20), radius: 2.5, landed: false }
+            ]
         };
 
         // Three.js Setup
@@ -337,6 +392,72 @@
 
         scene.add(droneGroup);
 
+        // Landing Zone (Red Circle) - Create for each level
+        const landingZoneMeshes = [];
+        const landingGlowMeshes = [];
+        const markerGroups = [];
+
+        function createLandingZone(index) {
+            const zone = state.landingZones[index];
+            
+            // Red ring
+            const landingZoneGeometry = new THREE.RingGeometry(zone.radius - 0.2, zone.radius + 0.2, 32);
+            const landingZoneMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.8,
+                side: THREE.DoubleSide
+            });
+            const landingZone = new THREE.Mesh(landingZoneGeometry, landingZoneMaterial);
+            landingZone.rotation.x = -Math.PI / 2;
+            landingZone.position.copy(zone.position);
+            scene.add(landingZone);
+            landingZoneMeshes.push(landingZone);
+
+            // Red glow effect
+            const glowGeometry = new THREE.CircleGeometry(zone.radius, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.3
+            });
+            const landingGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+            landingGlow.rotation.x = -Math.PI / 2;
+            landingGlow.position.copy(zone.position);
+            landingGlow.position.y = 0.01;
+            scene.add(landingGlow);
+            landingGlowMeshes.push(landingGlow);
+
+            // Marker poles around the zone
+            const markerGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+            const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const markers = [];
+            for (let i = 0; i < 4; i++) {
+                const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+                const angle = (i / 4) * Math.PI * 2;
+                marker.position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
+                marker.position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
+                marker.position.y = 0.5;
+                scene.add(marker);
+                markers.push(marker);
+            }
+            markerGroups.push(markers);
+        }
+
+        // Create landing zones for all levels
+        state.landingZones.forEach((_, index) => createLandingZone(index));
+
+        // Hide landing zones for levels > current
+        function updateLandingZoneVisibility() {
+            landingZoneMeshes.forEach((mesh, index) => {
+                const visible = index === state.level - 1 || state.landingZones[index].landed;
+                mesh.visible = visible;
+                landingGlowMeshes[index].visible = visible;
+                markerGroups[index].forEach(m => m.visible = visible);
+            });
+        }
+        updateLandingZoneVisibility();
+
         // Camera offset for third-person view
         const cameraOffset = new THREE.Vector3(0, 3, 6);
         const cameraLookAt = new THREE.Vector3(0, 0, 0);
@@ -473,6 +594,66 @@
             state.drone.angularVelocity.set(0, 0, 0);
             state.battery = 100;
         }
+
+        // Check if drone is in landing zone
+        function checkLanding() {
+            const currentZone = state.landingZones[state.level - 1];
+            if (!currentZone || currentZone.landed) return;
+
+            const dx = state.drone.position.x - currentZone.position.x;
+            const dz = state.drone.position.z - currentZone.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            
+            const altitude = state.drone.position.y;
+            const speed = state.drone.velocity.length();
+
+            // Check if drone is within the red circle and landed gently
+            if (distance < currentZone.radius && altitude < 1.0 && speed < 0.5) {
+                currentZone.landed = true;
+                showMessage("✓ Level Complete!");
+                showLevelComplete();
+            } else if (distance < currentZone.radius) {
+                if (altitude >= 1.0) {
+                    showMessage("↓ Lower altitude to land");
+                } else if (speed >= 0.5) {
+                    showMessage("⚠ Slow down to land safely");
+                }
+            } else {
+                showMessage("");
+            }
+        }
+
+        function showMessage(text) {
+            document.getElementById('message').textContent = text;
+        }
+
+        function showLevelComplete() {
+            document.getElementById('levelComplete').style.display = 'block';
+        }
+
+        function hideLevelComplete() {
+            document.getElementById('levelComplete').style.display = 'none';
+        }
+
+        function nextLevel() {
+            if (state.level < state.landingZones.length) {
+                state.level++;
+                state.drone.position.set(0, 2, 0);
+                state.drone.velocity.set(0, 0, 0);
+                state.drone.rotation.set(0, 0, 0);
+                state.drone.angularVelocity.set(0, 0, 0);
+                state.battery = 100;
+                updateLandingZoneVisibility();
+                hideLevelComplete();
+                showMessage("");
+                document.getElementById('level').textContent = state.level;
+            } else {
+                showMessage("🎉 All levels complete! You're a master pilot!");
+            }
+        }
+
+        // Continue button event listener
+        document.getElementById('continueBtn').addEventListener('click', nextLevel);
 
         function updatePhysics(deltaTime) {
             const phys = state.physics;
@@ -632,6 +813,7 @@
             state.time += deltaTime;
 
             updatePhysics(deltaTime);
+            checkLanding();
             updateUI();
 
             renderer.render(scene, camera);
