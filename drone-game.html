@@ -1528,8 +1528,23 @@
             mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
             
             raycaster.setFromCamera(mouseVector, camera);
-            const intersectionPoint = new THREE.Vector3();
-            raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
+            
+            // Сначала проверяем пересечение с объектами сцены (здания, препятствия)
+            const allObjects = [...objectMeshes, ...houseMeshes];
+            const objectIntersects = raycaster.intersectObjects(allObjects, true);
+            
+            let intersectionPoint = new THREE.Vector3();
+            let foundSurface = false;
+            
+            if (objectIntersects.length > 0) {
+                // Нашли пересечение с объектом - используем эту точку
+                intersectionPoint.copy(objectIntersects[0].point);
+                foundSurface = true;
+            } else {
+                // Нет пересечения с объектами - используем плоскость земли
+                raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
+            }
+            
             
             // Check if clicking on landing zone, object, or house
             if (editor.selectedType === 'landingZone') {
@@ -1543,15 +1558,25 @@
                         // Click outside: place at click position (allow on objects)
                         state.landingZones[editor.selectedIndex].position.x = intersectionPoint.x;
                         state.landingZones[editor.selectedIndex].position.z = intersectionPoint.z;
+                        // Если нашли поверхность объекта, устанавливаем Y координату
+                        if (foundSurface) {
+                            state.landingZones[editor.selectedIndex].position.y = intersectionPoint.y;
+                        }
                         
                         // Update mesh positions directly
                         const mesh = landingZoneMeshes[editor.selectedIndex];
                         mesh.position.x = intersectionPoint.x;
                         mesh.position.z = intersectionPoint.z;
+                        if (foundSurface) {
+                            mesh.position.y = intersectionPoint.y;
+                        }
                         
                         const glow = landingGlowMeshes[editor.selectedIndex];
                         glow.position.x = intersectionPoint.x;
                         glow.position.z = intersectionPoint.z;
+                        if (foundSurface) {
+                            glow.position.y = intersectionPoint.y;
+                        }
                         
                         // Update markers
                         const markers = markerGroups[editor.selectedIndex];
@@ -1560,6 +1585,9 @@
                             const angle = (i / 4) * Math.PI * 2;
                             markers[i].position.x = z.position.x + Math.cos(angle) * (z.radius + 0.5);
                             markers[i].position.z = z.position.z + Math.sin(angle) * (z.radius + 0.5);
+                            if (foundSurface) {
+                                markers[i].position.y = z.position.y;
+                            }
                         }
                     }
                 }
@@ -1611,27 +1639,45 @@
             mouseVector.y = -(e.clientY / window.innerHeight) * 2 + 1;
             
             raycaster.setFromCamera(mouseVector, camera);
-            const intersectionPoint = new THREE.Vector3();
             
-            if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) {
+            // Проверяем пересечение с объектами сцены
+            const allObjects = [...objectMeshes, ...houseMeshes];
+            const objectIntersects = raycaster.intersectObjects(allObjects, true);
+            
+            let intersectionPoint = new THREE.Vector3();
+            let foundSurface = false;
+            
+            if (objectIntersects.length > 0) {
+                intersectionPoint.copy(objectIntersects[0].point);
+                foundSurface = true;
+            } else if (raycaster.ray.intersectPlane(dragPlane, intersectionPoint)) {
                 if (editor.selectedType === 'landingZone') {
                     moveSelectedObject(
                         intersectionPoint.x - state.landingZones[editor.selectedIndex].position.x,
-                        0,
+                        foundSurface ? intersectionPoint.y - state.landingZones[editor.selectedIndex].position.y : 0,
                         intersectionPoint.z - state.landingZones[editor.selectedIndex].position.z
                     );
                     // Reset position to the intersection point
                     state.landingZones[editor.selectedIndex].position.x = intersectionPoint.x;
                     state.landingZones[editor.selectedIndex].position.z = intersectionPoint.z;
+                    if (foundSurface) {
+                        state.landingZones[editor.selectedIndex].position.y = intersectionPoint.y;
+                    }
                     
                     // Update mesh positions directly
                     const mesh = landingZoneMeshes[editor.selectedIndex];
                     mesh.position.x = intersectionPoint.x;
                     mesh.position.z = intersectionPoint.z;
+                    if (foundSurface) {
+                        mesh.position.y = intersectionPoint.y;
+                    }
                     
                     const glow = landingGlowMeshes[editor.selectedIndex];
                     glow.position.x = intersectionPoint.x;
                     glow.position.z = intersectionPoint.z;
+                    if (foundSurface) {
+                        glow.position.y = intersectionPoint.y;
+                    }
                     
                     // Update markers
                     const markers = markerGroups[editor.selectedIndex];
@@ -1640,6 +1686,9 @@
                         const angle = (i / 4) * Math.PI * 2;
                         markers[i].position.x = zone.position.x + Math.cos(angle) * (zone.radius + 0.5);
                         markers[i].position.z = zone.position.z + Math.sin(angle) * (zone.radius + 0.5);
+                        if (foundSurface) {
+                            markers[i].position.y = zone.position.y;
+                        }
                     }
                 } else if (editor.selectedType === 'object') {
                     moveSelectedObject(
