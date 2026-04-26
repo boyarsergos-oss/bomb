@@ -659,7 +659,8 @@
             selectedType: 'landingZone', // 'landingZone' or 'object'
             cameraMode: 'top',
             originalCameraPosition: new THREE.Vector3(),
-            originalCameraTarget: new THREE.Vector3()
+            originalCameraTarget: new THREE.Vector3(),
+            cameraSpeed: 0.5
         };
 
         function createLandingZone(index) {
@@ -863,17 +864,47 @@
         document.addEventListener('keydown', (e) => {
             keys[e.code] = true;
             
-            // Editor mode: arrow keys for precise positioning
-            if (editor.active && editor.selectedIndex >= 0) {
-                const step = e.shiftKey ? 1 : 0.2;
-                if (e.code === 'ArrowLeft') {
-                    moveSelectedObject(-step, 0, 0);
-                } else if (e.code === 'ArrowRight') {
-                    moveSelectedObject(step, 0, 0);
-                } else if (e.code === 'ArrowUp') {
-                    moveSelectedObject(0, 0, -step);
-                } else if (e.code === 'ArrowDown') {
-                    moveSelectedObject(0, 0, step);
+            // Editor mode: arrow keys for camera movement when no object selected
+            if (editor.active) {
+                const step = editor.cameraSpeed;
+                
+                // If no object is selected, use arrow keys to move camera
+                if (editor.selectedIndex < 0) {
+                    if (e.code === 'ArrowLeft') {
+                        camera.position.x -= step;
+                        cameraLookAt.x -= step;
+                        camera.lookAt(cameraLookAt);
+                    } else if (e.code === 'ArrowRight') {
+                        camera.position.x += step;
+                        cameraLookAt.x += step;
+                        camera.lookAt(cameraLookAt);
+                    } else if (e.code === 'ArrowUp') {
+                        camera.position.z -= step;
+                        cameraLookAt.z -= step;
+                        camera.lookAt(cameraLookAt);
+                    } else if (e.code === 'ArrowDown') {
+                        camera.position.z += step;
+                        cameraLookAt.z += step;
+                        camera.lookAt(cameraLookAt);
+                    } else if (e.code === 'KeyW') {
+                        camera.position.y += step;
+                        camera.lookAt(cameraLookAt);
+                    } else if (e.code === 'KeyS') {
+                        camera.position.y = Math.max(1, camera.position.y - step);
+                        camera.lookAt(cameraLookAt);
+                    }
+                } else {
+                    // Object selected: arrow keys for precise positioning
+                    const objStep = e.shiftKey ? 1 : 0.2;
+                    if (e.code === 'ArrowLeft') {
+                        moveSelectedObject(-objStep, 0, 0);
+                    } else if (e.code === 'ArrowRight') {
+                        moveSelectedObject(objStep, 0, 0);
+                    } else if (e.code === 'ArrowUp') {
+                        moveSelectedObject(0, 0, -objStep);
+                    } else if (e.code === 'ArrowDown') {
+                        moveSelectedObject(0, 0, objStep);
+                    }
                 }
             }
             
@@ -1257,7 +1288,7 @@
                 editor.originalCameraPosition.copy(camera.position);
                 editor.originalCameraTarget.copy(cameraLookAt);
                 
-                // Set top-down view
+                // Set top-down view centered on drone
                 setTopDownCamera();
                 
                 // Show all landing zones in editor
@@ -1268,6 +1299,9 @@
                 // Disable physics in editor mode
                 state.drone.velocity.set(0, 0, 0);
                 state.drone.angularVelocity.set(0, 0, 0);
+                
+                // Show info about camera controls
+                showMessage("Режим редактора: Стрелки - перемещение камеры, W/S - вверх/вниз, Клик - выбор объекта");
             } else {
                 // Exit editor mode - auto save
                 saveLevel();
@@ -1340,6 +1374,14 @@
             editor.selectedObject = null;
             editor.selectedIndex = -1;
             updateSelectedObjectInfo();
+            
+            // Restore camera to follow drone when deselecting
+            if (editor.active) {
+                const dronePos = state.drone.position;
+                camera.position.set(dronePos.x, 30, dronePos.z + 0.1);
+                cameraLookAt.set(dronePos.x, 0, dronePos.z);
+                camera.lookAt(cameraLookAt);
+            }
         }
         
         function updateSelectedObjectInfo() {
