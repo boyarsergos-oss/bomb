@@ -136,9 +136,9 @@
             scene.background = new THREE.Color(0x87CEEB);
             scene.fog = new THREE.Fog(0x87CEEB, 20, 50);
             
-            // Настройка камеры (вид от 3-го лица)
+            // Настройка камеры (вид от 3-го лица сзади)
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(-5, 0, 5);
+            camera.position.set(-3, 0, 0);
             camera.lookAt(0, 0, 0);
             
             // Рендерер
@@ -422,9 +422,9 @@
                     }
                 }
                 
-                // Камера следует за птицей
-                camera.position.x = bird.position.x - 5;
-                camera.position.y = bird.position.y + 2;
+                // Камера следует за птицей (вид сзади по оси Z)
+                camera.position.x = bird.position.x - 3;
+                camera.position.y = bird.position.y;
                 camera.lookAt(bird.position.x + 2, bird.position.y, 0);
             }
             
