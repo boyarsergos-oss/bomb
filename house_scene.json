@@ -1,0 +1,454 @@
+{
+  "metadata": {
+    "version": "4.5",
+    "type": "Object",
+    "generator": "Manual Export for Game Editor"
+  },
+  "geometries": [
+    {
+      "uuid": "geo-base",
+      "type": "BoxGeometry",
+      "width": 10,
+      "height": 6,
+      "depth": 8
+    },
+    {
+      "uuid": "geo-roof",
+      "type": "BoxGeometry",
+      "width": 10.4,
+      "height": 0.4,
+      "depth": 8.4
+    },
+    {
+      "uuid": "geo-floor2",
+      "type": "BoxGeometry",
+      "width": 9.8,
+      "height": 0.2,
+      "depth": 7.8
+    },
+    {
+      "uuid": "geo-chimney",
+      "type": "BoxGeometry",
+      "width": 1,
+      "height": 2,
+      "depth": 1
+    },
+    {
+      "uuid": "geo-door",
+      "type": "BoxGeometry",
+      "width": 1.2,
+      "height": 2.2,
+      "depth": 0.2
+    },
+    {
+      "uuid": "geo-window",
+      "type": "BoxGeometry",
+      "width": 1.2,
+      "height": 1.5,
+      "depth": 0.1
+    },
+    {
+      "uuid": "geo-tree-trunk",
+      "type": "CylinderGeometry",
+      "radiusTop": 0.3,
+      "radiusBottom": 0.4,
+      "height": 2,
+      "radialSegments": 8
+    },
+    {
+      "uuid": "geo-tree-leaves",
+      "type": "DodecahedronGeometry",
+      "radius": 1.5,
+      "detail": 0
+    },
+    {
+      "uuid": "col-house-main",
+      "type": "BoxGeometry",
+      "width": 10,
+      "height": 6,
+      "depth": 8
+    },
+    {
+      "uuid": "col-roof",
+      "type": "BoxGeometry",
+      "width": 10.4,
+      "height": 0.4,
+      "depth": 8.4
+    },
+    {
+      "uuid": "col-chimney",
+      "type": "BoxGeometry",
+      "width": 1,
+      "height": 2,
+      "depth": 1
+    },
+    {
+      "uuid": "col-tree-1",
+      "type": "CylinderGeometry",
+      "radiusTop": 0.3,
+      "radiusBottom": 0.4,
+      "height": 2,
+      "radialSegments": 8
+    },
+    {
+      "uuid": "col-tree-leaves-1",
+      "type": "DodecahedronGeometry",
+      "radius": 1.5,
+      "detail": 0
+    },
+    {
+      "uuid": "col-tree-2",
+      "type": "CylinderGeometry",
+      "radiusTop": 0.3,
+      "radiusBottom": 0.4,
+      "height": 2,
+      "radialSegments": 8
+    },
+    {
+      "uuid": "col-tree-leaves-2",
+      "type": "DodecahedronGeometry",
+      "radius": 1.5,
+      "detail": 0
+    }
+  ],
+  "materials": [
+    {
+      "uuid": "mat-brick",
+      "type": "MeshStandardMaterial",
+      "color": 13421772,
+      "roughness": 0.8,
+      "metalness": 0.1,
+      "name": "BrickWall"
+    },
+    {
+      "uuid": "mat-roof",
+      "type": "MeshStandardMaterial",
+      "color": 3355443,
+      "roughness": 0.9,
+      "name": "FlatRoof"
+    },
+    {
+      "uuid": "mat-wood",
+      "type": "MeshStandardMaterial",
+      "color": 10066329,
+      "roughness": 0.6,
+      "name": "WoodFrame"
+    },
+    {
+      "uuid": "mat-glass",
+      "type": "MeshStandardMaterial",
+      "color": 10066329,
+      "transparent": true,
+      "opacity": 0.6,
+      "roughness": 0.1,
+      "metalness": 0.8,
+      "name": "Glass"
+    },
+    {
+      "uuid": "mat-door",
+      "type": "MeshStandardMaterial",
+      "color": 5592405,
+      "roughness": 0.7,
+      "name": "Door"
+    },
+    {
+      "uuid": "mat-bark",
+      "type": "MeshStandardMaterial",
+      "color": 5592405,
+      "name": "TreeBark"
+    },
+    {
+      "uuid": "mat-leaves",
+      "type": "MeshStandardMaterial",
+      "color": 3289650,
+      "name": "TreeLeaves"
+    },
+    {
+      "uuid": "mat-collision",
+      "type": "MeshBasicMaterial",
+      "color": 16711680,
+      "wireframe": true,
+      "visible": false,
+      "name": "CollisionDebug"
+    }
+  ],
+  "object": {
+    "uuid": "scene-root",
+    "type": "Scene",
+    "children": [
+      {
+        "uuid": "house-group",
+        "type": "Group",
+        "name": "House_Model",
+        "children": [
+          {
+            "uuid": "mesh-base",
+            "type": "Mesh",
+            "name": "Walls",
+            "geometry": "geo-base",
+            "material": "mat-brick",
+            "position": [0, 3, 0]
+          },
+          {
+            "uuid": "mesh-roof",
+            "type": "Mesh",
+            "name": "Roof",
+            "geometry": "geo-roof",
+            "material": "mat-roof",
+            "position": [0, 6.2, 0]
+          },
+          {
+            "uuid": "mesh-floor2",
+            "type": "Mesh",
+            "name": "Floor_Second",
+            "geometry": "geo-floor2",
+            "material": "mat-wood",
+            "position": [0, 3, 0]
+          },
+          {
+            "uuid": "mesh-chimney",
+            "type": "Mesh",
+            "name": "Chimney",
+            "geometry": "geo-chimney",
+            "material": "mat-brick",
+            "position": [3, 7, 2]
+          },
+          {
+            "uuid": "mesh-door",
+            "type": "Mesh",
+            "name": "Door",
+            "geometry": "geo-door",
+            "material": "mat-door",
+            "position": [0, 1.1, 4.05]
+          },
+          {
+            "uuid": "win-f-l-1",
+            "type": "Mesh",
+            "name": "Window_Front_Left_1F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [-2.5, 2, 4.05]
+          },
+          {
+            "uuid": "win-f-r-1",
+            "type": "Mesh",
+            "name": "Window_Front_Right_1F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [2.5, 2, 4.05]
+          },
+          {
+            "uuid": "win-b-l-1",
+            "type": "Mesh",
+            "name": "Window_Back_Left_1F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [-2.5, 2, -4.05],
+            "rotation": [0, 3.14159, 0]
+          },
+          {
+            "uuid": "win-b-r-1",
+            "type": "Mesh",
+            "name": "Window_Back_Right_1F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [2.5, 2, -4.05],
+            "rotation": [0, 3.14159, 0]
+          },
+          {
+            "uuid": "win-l-1",
+            "type": "Mesh",
+            "name": "Window_Left_1F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [-5.05, 2, 0],
+            "rotation": [0, 1.5708, 0]
+          },
+          {
+            "uuid": "win-r-1",
+            "type": "Mesh",
+            "name": "Window_Right_1F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [5.05, 2, 0],
+            "rotation": [0, -1.5708, 0]
+          },
+          {
+            "uuid": "win-f-l-2",
+            "type": "Mesh",
+            "name": "Window_Front_Left_2F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [-2.5, 4.5, 4.05]
+          },
+          {
+            "uuid": "win-f-r-2",
+            "type": "Mesh",
+            "name": "Window_Front_Right_2F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [2.5, 4.5, 4.05]
+          },
+          {
+            "uuid": "win-b-l-2",
+            "type": "Mesh",
+            "name": "Window_Back_Left_2F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [-2.5, 4.5, -4.05],
+            "rotation": [0, 3.14159, 0]
+          },
+          {
+            "uuid": "win-b-r-2",
+            "type": "Mesh",
+            "name": "Window_Back_Right_2F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [2.5, 4.5, -4.05],
+            "rotation": [0, 3.14159, 0]
+          },
+          {
+            "uuid": "win-l-2",
+            "type": "Mesh",
+            "name": "Window_Left_2F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [-5.05, 4.5, 0],
+            "rotation": [0, 1.5708, 0]
+          },
+          {
+            "uuid": "win-r-2",
+            "type": "Mesh",
+            "name": "Window_Right_2F",
+            "geometry": "geo-window",
+            "material": "mat-glass",
+            "position": [5.05, 4.5, 0],
+            "rotation": [0, -1.5708, 0]
+          }
+        ]
+      },
+      {
+        "uuid": "trees-group",
+        "type": "Group",
+        "name": "Environment",
+        "children": [
+          {
+            "uuid": "tree-1",
+            "type": "Group",
+            "name": "Tree_1",
+            "position": [-6, 0, -5],
+            "children": [
+              {
+                "uuid": "trunk-1",
+                "type": "Mesh",
+                "geometry": "geo-tree-trunk",
+                "material": "mat-bark",
+                "position": [0, 1, 0]
+              },
+              {
+                "uuid": "leaves-1",
+                "type": "Mesh",
+                "geometry": "geo-tree-leaves",
+                "material": "mat-leaves",
+                "position": [0, 2.5, 0]
+              }
+            ]
+          },
+          {
+            "uuid": "tree-2",
+            "type": "Group",
+            "name": "Tree_2",
+            "position": [7, 0, 4],
+            "children": [
+              {
+                "uuid": "trunk-2",
+                "type": "Mesh",
+                "geometry": "geo-tree-trunk",
+                "material": "mat-bark",
+                "position": [0, 1, 0]
+              },
+              {
+                "uuid": "leaves-2",
+                "type": "Mesh",
+                "geometry": "geo-tree-leaves",
+                "material": "mat-leaves",
+                "position": [0, 2.5, 0]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "uuid": "collision-group",
+        "type": "Group",
+        "name": "Collisions",
+        "userData": { "isCollisionGroup": true },
+        "children": [
+          {
+            "uuid": "col-house",
+            "type": "Mesh",
+            "name": "Col_House_Walls",
+            "geometry": "col-house-main",
+            "material": "mat-collision",
+            "position": [0, 3, 0],
+            "userData": { "type": "static", "friction": 0.5 }
+          },
+          {
+            "uuid": "col-roof-mesh",
+            "type": "Mesh",
+            "name": "Col_Roof",
+            "geometry": "col-roof",
+            "material": "mat-collision",
+            "position": [0, 6.2, 0],
+            "userData": { "type": "static", "friction": 0.6 }
+          },
+          {
+            "uuid": "col-chimney-mesh",
+            "type": "Mesh",
+            "name": "Col_Chimney",
+            "geometry": "col-chimney",
+            "material": "mat-collision",
+            "position": [3, 7, 2],
+            "userData": { "type": "static", "friction": 0.5 }
+          },
+          {
+            "uuid": "col-tree1-trunk",
+            "type": "Mesh",
+            "name": "Col_Tree1_Trunk",
+            "geometry": "col-tree-1",
+            "material": "mat-collision",
+            "position": [-6, 1, -5],
+            "userData": { "type": "static", "friction": 0.4 }
+          },
+          {
+            "uuid": "col-tree1-leaves",
+            "type": "Mesh",
+            "name": "Col_Tree1_Leaves",
+            "geometry": "col-tree-leaves-1",
+            "material": "mat-collision",
+            "position": [-6, 2.5, -5],
+            "userData": { "type": "static", "friction": 0.2 }
+          },
+          {
+            "uuid": "col-tree2-trunk",
+            "type": "Mesh",
+            "name": "Col_Tree2_Trunk",
+            "geometry": "col-tree-2",
+            "material": "mat-collision",
+            "position": [7, 1, 4],
+            "userData": { "type": "static", "friction": 0.4 }
+          },
+          {
+            "uuid": "col-tree2-leaves",
+            "type": "Mesh",
+            "name": "Col_Tree2_Leaves",
+            "geometry": "col-tree-leaves-2",
+            "material": "mat-collision",
+            "position": [7, 2.5, 4],
+            "userData": { "type": "static", "friction": 0.2 }
+          }
+        ]
+      }
+    ]
+  }
+}
