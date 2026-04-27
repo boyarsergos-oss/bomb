@@ -401,6 +401,7 @@
             <p>🕹️ Правый джойстик - Наклон/Крен</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p style="color: #ff6b6b; font-weight: bold;">🎯 Приземлитесь в КРАСНЫЙ КРУГ для перехода!</p>
+            <button id="skipLevelBtn" style="margin-top: 10px; padding: 8px 16px; background: linear-gradient(45deg, #00ff00, #00aa00); border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; pointer-events: auto;">⏭️ Пропустить уровень</button>
         </div>
 
         <button id="modeToggle">🛠️ Режим редактора</button>
@@ -2217,7 +2218,7 @@
                 state.drone.position.set(0, 2, 0);
                 showMessage("🎮 Уровень 2: Полёт вокруг дома!");
             } else if (state.level === 3) {
-                initCargoSystem();
+                enableCargoRope();
                 state.drone.position.set(0, 20, 0);
                 // Setup landing zone in front of house door
                 state.landingZones[2].position.set(0, 0.1, -7);  // In front of house door at Z=-7
@@ -2792,6 +2793,17 @@
             e.stopPropagation();
             hideLevelComplete();
             showMessage("🎉 Все уровни пройдены! Вы мастер пилотирования!");
+        }, { passive: false });
+        
+        // Skip level button event listener - support both click and touch
+        const skipLevelBtn = document.getElementById('skipLevelBtn');
+        skipLevelBtn.addEventListener('click', () => {
+            skipLevel();
+        });
+        skipLevelBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            skipLevel();
         }, { passive: false });
         
         // Editor mode button listeners
