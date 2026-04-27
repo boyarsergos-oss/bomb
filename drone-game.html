@@ -483,7 +483,8 @@
             ],
             objects: [],
             houses: [],
-            houseMeshesCreated: []  // Track which meshes belong to which level
+            houseMeshesCreated: [],  // Track which meshes belong to which level
+            islands: []  // Track island meshes for level 4
         };
 
         // Three.js Setup
@@ -532,6 +533,7 @@
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
+        ground.name = "mainGround";  // Tag for level 4 visibility
         scene.add(ground);
 
         // Grid helper removed along with obstacles
@@ -1523,6 +1525,136 @@
             level2HouseCreated = true;
         }
         
+        // Level 4: Two islands with water between them - 120 meters apart on Z axis
+        let level4IslandsCreated = false;
+        
+        function createLevel4Islands() {
+            if (level4IslandsCreated) return;
+            
+            // Hide the main ground for level 4 to show only islands with water
+            const mainGround = scene.getObjectByName("mainGround");
+            if (mainGround) {
+                mainGround.visible = false;
+            }
+            
+            // Starting island at z=0 (drone starts here)
+            const startIslandPosition = new THREE.Vector3(0, 0, 0);
+            // End island at z=-120 (120 meters away on Z axis)
+            const endIslandPosition = new THREE.Vector3(0, 0, -120);
+            
+            // Create water surface between islands (large flat blue plane)
+            const waterGeometry = new THREE.PlaneGeometry(300, 200);
+            const waterMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x006994,  // Deep blue water color
+                transparent: true,
+                opacity: 0.85,
+                shininess: 100,
+                side: THREE.DoubleSide
+            });
+            const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+            waterMesh.rotation.x = -Math.PI / 2;
+            waterMesh.position.set(0, -0.5, -60);  // Centered between islands at z=-60, slightly below ground
+            waterMesh.receiveShadow = true;
+            scene.add(waterMesh);
+            state.islands.push(waterMesh);
+            
+            // Create starting island (green grassy island)
+            const startIslandGeometry = new THREE.CylinderGeometry(25, 30, 2, 8);
+            const startIslandMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x228B22,  // Forest green
+                shininess: 30
+            });
+            const startIsland = new THREE.Mesh(startIslandGeometry, startIslandMaterial);
+            startIsland.position.set(startIslandPosition.x, -1, startIslandPosition.z);
+            startIsland.receiveShadow = true;
+            startIsland.castShadow = true;
+            scene.add(startIsland);
+            state.islands.push(startIsland);
+            
+            // Add grass top to starting island
+            const startGrassGeometry = new THREE.CylinderGeometry(24, 28, 0.5, 8);
+            const startGrassMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x32CD32,  // Lime green
+                shininess: 20
+            });
+            const startGrass = new THREE.Mesh(startGrassGeometry, startGrassMaterial);
+            startGrass.position.set(startIslandPosition.x, 0.25, startIslandPosition.z);
+            startGrass.receiveShadow = true;
+            startGrass.castShadow = true;
+            scene.add(startGrass);
+            state.islands.push(startGrass);
+            
+            // Create ending island (green grassy island)
+            const endIslandGeometry = new THREE.CylinderGeometry(25, 30, 2, 8);
+            const endIslandMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x228B22,  // Forest green
+                shininess: 30
+            });
+            const endIsland = new THREE.Mesh(endIslandGeometry, endIslandMaterial);
+            endIsland.position.set(endIslandPosition.x, -1, endIslandPosition.z);
+            endIsland.receiveShadow = true;
+            endIsland.castShadow = true;
+            scene.add(endIsland);
+            state.islands.push(endIsland);
+            
+            // Add grass top to ending island
+            const endGrassGeometry = new THREE.CylinderGeometry(24, 28, 0.5, 8);
+            const endGrassMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x32CD32,  // Lime green
+                shininess: 20
+            });
+            const endGrass = new THREE.Mesh(endGrassGeometry, endGrassMaterial);
+            endGrass.position.set(endIslandPosition.x, 0.25, endIslandPosition.z);
+            endGrass.receiveShadow = true;
+            endGrass.castShadow = true;
+            scene.add(endGrass);
+            state.islands.push(endGrass);
+            
+            // Add some palm trees or rocks on the starting island for visual interest
+            // Simple tree trunks (brown cylinders)
+            for (let i = 0; i < 3; i++) {
+                const angle = (i / 3) * Math.PI * 2;
+                const radius = 15;
+                const treeX = Math.cos(angle) * radius;
+                const treeZ = Math.sin(angle) * radius;
+                
+                const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 4, 6);
+                const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.set(treeX, 2, treeZ);
+                trunk.castShadow = true;
+                scene.add(trunk);
+                state.islands.push(trunk);
+                
+                // Tree leaves (green sphere)
+                const leavesGeometry = new THREE.SphereGeometry(2, 8, 8);
+                const leavesMaterial = new THREE.MeshPhongMaterial({ color: 0x006400 });
+                const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                leaves.position.set(treeX, 5, treeZ);
+                leaves.castShadow = true;
+                scene.add(leaves);
+                state.islands.push(leaves);
+            }
+            
+            // Add some rocks on the ending island
+            for (let i = 0; i < 5; i++) {
+                const angle = (i / 5) * Math.PI * 2 + 0.5;
+                const radius = 12;
+                const rockX = Math.cos(angle) * radius;
+                const rockZ = Math.sin(angle) * radius;
+                
+                const rockGeometry = new THREE.DodecahedronGeometry(1 + Math.random(), 0);
+                const rockMaterial = new THREE.MeshPhongMaterial({ color: 0x696969 });
+                const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+                rock.position.set(rockX, 0.5, rockZ);
+                rock.castShadow = true;
+                scene.add(rock);
+                state.islands.push(rock);
+            }
+            
+            level4IslandsCreated = true;
+        }
+        
         // Hide landing zones for levels > current
         function updateLandingZoneVisibility() {
             landingZoneMeshes.forEach((mesh, index) => {
@@ -2195,6 +2327,12 @@
                     cargoSystem.ropeTension = 0;
                 }
             }
+            
+            // For Level 4, position drone on the starting island
+            if (state.level === 4) {
+                state.drone.position.set(0, 10, 0);  // Start above the first island
+                state.drone.velocity.set(0, 0, 0);
+            }
         }
         
         // Skip level function for testing
@@ -2223,7 +2361,12 @@
                 // Setup landing zone in front of house door
                 state.landingZones[2].position.set(0, 0.1, -7);  // In front of house door at Z=-7
                 showMessage("🎮 Уровень 3: Используйте верёвку 3м!");
-            } else if (state.level > 3) {
+            } else if (state.level === 4) {
+                // Level 4: Two islands with water between!
+                createLevel4Islands();
+                state.drone.position.set(0, 10, 0);  // Start on the first island
+                showMessage("🎮 Уровень 4: Перелет через воду к другому острову!");
+            } else if (state.level > 4) {
                 state.level = 1;
                 showMessage("🔄 Возврат к уровню 1");
             }
@@ -2748,8 +2891,24 @@
                     resetDroneForLevel();
                     updateLandingZoneVisibility();
                     document.getElementById('level').textContent = state.level;
+                } else if (state.level === 3) {
+                    // Go to Level 4 - TWO ISLANDS WITH WATER BETWEEN! Start island and end island, 120 meters apart on Z axis
+                    state.landingZones.push({ 
+                        position: new THREE.Vector3(0, 0.5, -200),  // 120 meters from level 3's zone at z=-72, so z=-72-120=-192, round to -200
+                        radius: 4, 
+                        landed: false 
+                    });
+                    // Create the visual elements for the new landing zone
+                    createLandingZone(state.landingZones.length - 1);
+                    state.level++;
+                    showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
+                    // Setup level 4 - create two islands with water between
+                    createLevel4Islands();
+                    resetDroneForLevel();
+                    updateLandingZoneVisibility();
+                    document.getElementById('level').textContent = state.level;
                 } else {
-                    // All levels complete
+                    // All levels complete - Level 4 is the final level
                     showMessage("✓ Уровень пройден!");
                     showLevelComplete();
                     document.getElementById('levelCompleteSubtext').textContent = 'Все уровни пройдены!';
