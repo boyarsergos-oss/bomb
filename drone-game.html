@@ -394,6 +394,7 @@
             <p>↑/↓ - Наклон вперёд/назад</p>
             <p>←/→ - Крен влево/вправо</p>
             <p>Пробел - Сброс позиции</p>
+            <p style="color: #00ff00; font-weight: bold;">N - Пропустить уровень (для теста)</p>
             <hr style="margin: 10px 0; border: none; border-top: 1px solid rgba(255,255,255,0.3);">
             <p><strong>Мышь (как на телефоне):</strong></p>
             <p>🕹️ Левый джойстик - Тяга/Поворот</p>
@@ -2193,6 +2194,42 @@
                     cargoSystem.ropeTension = 0;
                 }
             }
+        }
+        
+        // Skip level function for testing
+        function skipLevel() {
+            if (editor.active) return;  // Don't skip in editor mode
+            
+            state.level++;
+            
+            // Hide current landing zone
+            if (state.landingZones[state.level - 2]) {
+                state.landingZones[state.level - 2].landed = true;
+                const currentZoneMesh = landingZoneMeshes[state.level - 2];
+                if (currentZoneMesh) {
+                    currentZoneMesh.visible = false;
+                }
+            }
+            
+            // Setup next level
+            if (state.level === 2) {
+                createLevel2House();
+                state.drone.position.set(0, 2, 0);
+                showMessage("🎮 Уровень 2: Полёт вокруг дома!");
+            } else if (state.level === 3) {
+                initCargoSystem();
+                state.drone.position.set(0, 20, 0);
+                // Setup landing zone in front of house door
+                state.landingZones[2].position.set(0, 0.1, -7);  // In front of house door at Z=-7
+                showMessage("🎮 Уровень 3: Используйте верёвку 3м!");
+            } else if (state.level > 3) {
+                state.level = 1;
+                showMessage("🔄 Возврат к уровню 1");
+            }
+            
+            resetDroneForLevel();
+            updateLandingZoneVisibility();
+            document.getElementById('level').textContent = state.level;
         }
         
         // Editor Functions
