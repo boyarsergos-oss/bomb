@@ -2362,9 +2362,9 @@
                 state.landingZones[2].position.set(0, 0.1, -7);  // In front of house door at Z=-7
                 showMessage("🎮 Уровень 3: Используйте верёвку 3м!");
             } else if (state.level === 4) {
-                // Level 4: Two islands with water between!
+                // Level 4: Two islands with water between! NO cargo rope, NO house!
                 createLevel4Islands();
-                state.drone.position.set(0, 10, 0);  // Start on the first island
+                state.drone.position.set(0, 10, 0);  // Start on the first island at z=0
                 showMessage("🎮 Уровень 4: Перелет через воду к другому острову!");
             } else if (state.level > 4) {
                 state.level = 1;
@@ -2894,7 +2894,7 @@
                 } else if (state.level === 3) {
                     // Go to Level 4 - TWO ISLANDS WITH WATER BETWEEN! Start island and end island, 120 meters apart on Z axis
                     state.landingZones.push({ 
-                        position: new THREE.Vector3(0, 0.5, -200),  // 120 meters from level 3's zone at z=-72, so z=-72-120=-192, round to -200
+                        position: new THREE.Vector3(0, 0.5, -120),  // On the end island at z=-120
                         radius: 4, 
                         landed: false 
                     });
@@ -2902,7 +2902,7 @@
                     createLandingZone(state.landingZones.length - 1);
                     state.level++;
                     showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
-                    // Setup level 4 - create two islands with water between
+                    // Setup level 4 - create two islands with water between (NO cargo rope, NO house)
                     createLevel4Islands();
                     resetDroneForLevel();
                     updateLandingZoneVisibility();
