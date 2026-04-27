@@ -641,13 +641,21 @@
 
         scene.add(droneGroup);
 
-        // Cargo system for Level 3 - rope and cargo
+        // Cargo system for Level 3 - rope and cargo with physics
         let cargoSystem = {
             enabled: false,
             ropeLength: 3.0,
             cargoPosition: new THREE.Vector3(0, -3, 0),
             cargoMesh: null,
-            ropeMesh: null
+            ropeMesh: null,
+            // Physics state for pendulum simulation
+            swingAngleX: 0,        // Angle of swing in X axis (forward/backward)
+            swingAngleZ: 0,        // Angle of swing in Z axis (left/right)
+            angularVelX: 0,        // Angular velocity in X
+            angularVelZ: 0,        // Angular velocity in Z
+            cargoMass: 0.5,        // Mass of the cargo in kg
+            damping: 0.98,         // Damping factor for swing
+            gravity: 9.81          // Gravity for pendulum
         };
 
         function enableCargoRope() {
@@ -681,18 +689,97 @@
             cargoSystem.enabled = true;
         }
 
-        function updateCargoSystem() {
+        function updateCargoSystem(deltaTime) {
             if (!cargoSystem.enabled) return;
             
-            // Update cargo position based on drone position
-            cargoSystem.cargoMesh.position.set(0, -cargoSystem.ropeLength, 0);
+            // Get drone's current velocity and acceleration for pendulum physics
+            const droneVel = state.drone.velocity.clone();
+            const droneAccel = new THREE.Vector3(
+                (state.drone.velocity.x - (state.drone.prevVelX || 0)) / deltaTime,
+                0,
+                (state.drone.velocity.z - (state.drone.prevVelZ || 0)) / deltaTime
+            );
+            
+            // Store previous velocity for next frame
+            state.drone.prevVelX = state.drone.velocity.x;
+            state.drone.prevVelZ = state.drone.velocity.z;
+            
+            // Pendulum physics: simulate cargo swinging
+            // Acceleration of drone causes cargo to swing in opposite direction
+            
+            // Calculate forces on the pendulum from drone acceleration
+            const accelForceX = -droneAccel.x / cargoSystem.ropeLength;
+            const accelForceZ = -droneAccel.z / cargoSystem.ropeLength;
+            
+            // Gravity restoring force (pendulum wants to hang straight down)
+            const gravityRestoreX = -(cargoSystem.gravity / cargoSystem.ropeLength) * Math.sin(cargoSystem.swingAngleX);
+            const gravityRestoreZ = -(cargoSystem.gravity / cargoSystem.ropeLength) * Math.sin(cargoSystem.swingAngleZ);
+            
+            // Update angular acceleration
+            const angularAccelX = accelForceX + gravityRestoreX;
+            const angularAccelZ = accelForceZ + gravityRestoreZ;
+            
+            // Update angular velocity with damping
+            cargoSystem.angularVelX += angularAccelX * deltaTime;
+            cargoSystem.angularVelZ += angularAccelZ * deltaTime;
+            cargoSystem.angularVelX *= cargoSystem.damping;
+            cargoSystem.angularVelZ *= cargoSystem.damping;
+            
+            // Update angles
+            cargoSystem.swingAngleX += cargoSystem.angularVelX * deltaTime;
+            cargoSystem.swingAngleZ += cargoSystem.angularVelZ * deltaTime;
+            
+            // Clamp angles to reasonable values
+            const maxAngle = Math.PI / 3; // 60 degrees max
+            cargoSystem.swingAngleX = Math.max(-maxAngle, Math.min(maxAngle, cargoSystem.swingAngleX));
+            cargoSystem.swingAngleZ = Math.max(-maxAngle, Math.min(maxAngle, cargoSystem.swingAngleZ));
+            
+            // Calculate cargo position based on swing angles
+            const sinX = Math.sin(cargoSystem.swingAngleX);
+            const cosX = Math.cos(cargoSystem.swingAngleX);
+            const sinZ = Math.sin(cargoSystem.swingAngleZ);
+            const cosZ = Math.cos(cargoSystem.swingAngleZ);
+            
+            // Cargo position relative to drone (in world space, accounting for swing)
+            const offsetX = cargoSystem.ropeLength * sinX * cosZ;
+            const offsetY = -cargoSystem.ropeLength * cosX * cosZ;
+            const offsetZ = cargoSystem.ropeLength * sinZ * cosX;
+            
+            cargoSystem.cargoPosition.set(offsetX, offsetY, offsetZ);
+            
+            // Update cargo mesh position
+            cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
+            
+            // Rotate cargo mesh to align with rope direction
+            const ropeDirection = cargoSystem.cargoPosition.clone().normalize();
+            const upVector = new THREE.Vector3(0, 1, 0);
+            const quaternion = new THREE.Quaternion();
+            quaternion.setFromUnitVectors(upVector, ropeDirection.clone().negate());
+            cargoSystem.cargoMesh.quaternion.slerp(quaternion, 0.1);
             
             // Update rope line
             const ropePoints = [
                 new THREE.Vector3(0, 0, 0),
-                new THREE.Vector3(0, -cargoSystem.ropeLength, 0)
+                cargoSystem.cargoPosition
             ];
             cargoSystem.ropeMesh.geometry.setFromPoints(ropePoints);
+            
+            // Apply cargo force to drone (cargo pulls on drone)
+            // This affects drone flight dynamics
+            const cargoForce = new THREE.Vector3(
+                -sinX * cargoSystem.cargoMass * cargoSystem.gravity,
+                -cosX * cosZ * cargoSystem.cargoMass * cargoSystem.gravity,
+                -sinZ * cargoSystem.cargoMass * cargoSystem.gravity
+            );
+            
+            // Add cargo force to drone velocity (small effect based on mass ratio)
+            const massRatio = cargoSystem.cargoMass / state.physics.mass;
+            state.drone.velocity.x += cargoForce.x * massRatio * deltaTime * 0.5;
+            state.drone.velocity.z += cargoForce.z * massRatio * deltaTime * 0.5;
+            
+            // Add slight tilt to drone based on cargo swing (cargo pulls drone)
+            state.drone.rotation.x += cargoForce.x * massRatio * deltaTime * 0.1;
+            state.drone.rotation.z += cargoForce.z * massRatio * deltaTime * 0.1;
         }
 
         // Landing Zone (Red Circle) - Create for each level
@@ -1980,6 +2067,14 @@
             state.drone.rotation.set(0, 0, 0);
             state.drone.angularVelocity.set(0, 0, 0);
             
+            // Reset cargo swing physics when starting a new level
+            if (cargoSystem.enabled) {
+                cargoSystem.swingAngleX = 0;
+                cargoSystem.swingAngleZ = 0;
+                cargoSystem.angularVelX = 0;
+                cargoSystem.angularVelZ = 0;
+            }
+            
             // Create house for Level 2 and Level 3
             if (state.level >= 2) {
                 createLevel2House();
@@ -2697,7 +2792,7 @@
             droneGroup.rotation.copy(drone.rotation);
 
             // Update cargo system if enabled
-            updateCargoSystem();
+            updateCargoSystem(deltaTime);
 
             // Animate propellers
             const propellerSpeed = 20 + drone.throttle * 10;
@@ -2722,7 +2817,17 @@
             const droneSize = new THREE.Vector3(0.5, 0.5, 0.5);
             droneBox.setFromCenterAndSize(drone.position, droneSize);
             
-            // Check collision with object meshes
+            // Also check cargo collision if enabled (Level 3)
+            let cargoBox = null;
+            if (state.level === 3 && cargoSystem.enabled && cargoSystem.cargoMesh) {
+                const cargoWorldPos = new THREE.Vector3();
+                cargoSystem.cargoMesh.getWorldPosition(cargoWorldPos);
+                const cargoSize = new THREE.Vector3(0.5, 0.5, 0.5);
+                cargoBox = new THREE.Box3();
+                cargoBox.setFromCenterAndSize(cargoWorldPos, cargoSize);
+            }
+            
+            // Check collision with object meshes (drone)
             for (let i = 0; i < objectMeshes.length; i++) {
                 const objBox = new THREE.Box3().setFromObject(objectMeshes[i]);
                 if (droneBox.intersectsBox(objBox)) {
@@ -2733,6 +2838,20 @@
                     if (direction.length() > 0) {
                         drone.position.add(direction.multiplyScalar(0.1));
                         drone.velocity.multiplyScalar(0.5);
+                    }
+                }
+                // Check cargo collision with objects
+                if (cargoBox && cargoBox.intersectsBox(objBox)) {
+                    // Push cargo away from obstacle - this affects swing
+                    const center = new THREE.Vector3();
+                    objBox.getCenter(center);
+                    const cargoWorldPos = new THREE.Vector3();
+                    cargoSystem.cargoMesh.getWorldPosition(cargoWorldPos);
+                    const direction = cargoWorldPos.clone().sub(center).normalize();
+                    if (direction.length() > 0) {
+                        // Add force to swing angles
+                        cargoSystem.swingAngleX += direction.x * 0.1;
+                        cargoSystem.swingAngleZ += direction.z * 0.1;
                     }
                 }
             }
@@ -2785,6 +2904,36 @@
                         
                         // Dampen velocity
                         drone.velocity.multiplyScalar(0.3);
+                    }
+                    
+                    // Check cargo collision with house
+                    if (cargoBox && cargoBox.intersectsBox(housePartBox)) {
+                        const cargoWorldPos = new THREE.Vector3();
+                        cargoSystem.cargoMesh.getWorldPosition(cargoWorldPos);
+                        const housePartCenter = new THREE.Vector3().addVectors(worldColliderMin, worldColliderMax).multiplyScalar(0.5);
+                        
+                        // Calculate overlap on each axis
+                        const overlapX = Math.min(cargoBox.max.x - worldColliderMin.x, worldColliderMax.x - cargoBox.min.x);
+                        const overlapY = Math.min(cargoBox.max.y - worldColliderMin.y, worldColliderMax.y - cargoBox.min.y);
+                        const overlapZ = Math.min(cargoBox.max.z - worldColliderMin.z, worldColliderMax.z - cargoBox.min.z);
+                        
+                        const minOverlap = Math.min(overlapX, overlapY, overlapZ);
+                        
+                        // Apply force to cargo swing based on collision
+                        if (minOverlap === overlapX) {
+                            const direction = cargoWorldPos.x < housePartCenter.x ? -1 : 1;
+                            cargoSystem.swingAngleX += direction * minOverlap * 0.5;
+                            cargoSystem.angularVelX *= 0.5;
+                        } else if (minOverlap === overlapY) {
+                            const direction = cargoWorldPos.y < housePartCenter.y ? -1 : 1;
+                            // Vertical collision - dampen swing
+                            cargoSystem.angularVelX *= 0.3;
+                            cargoSystem.angularVelZ *= 0.3;
+                        } else {
+                            const direction = cargoWorldPos.z < housePartCenter.z ? -1 : 1;
+                            cargoSystem.swingAngleZ += direction * minOverlap * 0.5;
+                            cargoSystem.angularVelZ *= 0.5;
+                        }
                     }
                 }
             }
