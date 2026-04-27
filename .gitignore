@@ -28,14 +28,14 @@ venv/
 .vscode/
 .idea/
 
-# System files
-.DS_Store
-Thumbs.db
-
 # Coverage
 coverage/
 htmlcov/
 .coverage
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Compressed files
 *.zip
@@ -73,10 +73,15 @@ __pycache__/
 dist/
 build/
 target/
-*.egg-info/
+.gradle/
 
 # Cache directories
 .mypy_cache/
 .pytest_cache/
-.gradle/
-.cargo/
+.hypothesis/
+
+# Temporary files
+*.tmp
+*~
+.DS_Store
+Thumbs.db

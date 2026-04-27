@@ -641,55 +641,62 @@
 
         scene.add(droneGroup);
 
-        // Cargo system for Level 3 - rope and cargo with physics
+        // Cargo system for Level 3 - realistic rope physics (no cargo box)
         let cargoSystem = {
             enabled: false,
-            ropeLength: 3.5,         // Rope length
-            cargoPosition: new THREE.Vector3(0, -3.5, 0),
-            cargoWorldPosition: new THREE.Vector3(0, 0, 0),  // Track world position
-            cargoMesh: null,
+            ropeLength: 3.0,         // Rope length - exactly 3 meters
+            cargoPosition: new THREE.Vector3(0, -3.0, 0),
+            cargoWorldPosition: new THREE.Vector3(0, 0, 0),  // Track world position of rope end
+            cargoMesh: null,         // No cargo mesh - just rope end weight
             ropeMesh: null,
             // Physics state for pendulum simulation
             swingAngleX: 0,        // Angle of swing in X axis (forward/backward)
             swingAngleZ: 0,        // Angle of swing in Z axis (left/right)
             angularVelX: 0,        // Angular velocity in X
             angularVelZ: 0,        // Angular velocity in Z
-            cargoMass: 0.5,        // Mass of cargo
+            cargoMass: 0.3,        // Mass of rope end weight (lighter without cargo box)
             damping: 0.95,         // Damping for less swinging
             gravity: 9.81,         // Gravity for pendulum
-            // Rope segments for collision detection
-            ropeSegments: 10,      // Segments for smoother rope
-            ropeRadius: 0.05,      // Rope thickness for collision
+            // Rope segments for collision detection and visual representation
+            ropeSegments: 20,      // More segments for smoother rope curve
+            ropeRadius: 0.03,      // Rope thickness for collision
             // Rope tension state
             ropeTension: 0,        // Current tension in the rope (0 = slack, 1+ = taut)
-            maxTensionForce: 3.0,  // Maximum force rope can apply to drone
-            cargoOnGround: false   // Is cargo touching ground?
+            maxTensionForce: 2.0,  // Maximum force rope can apply to drone
+            cargoOnGround: false,   // Is rope end touching ground?
+            // Rope segment positions for rendering and collision
+            segmentPositions: []    // Array of Vector3 for each rope segment
         };
 
         function enableCargoRope() {
             if (cargoSystem.enabled) return;
             
-            // Create cargo box
-            const cargoGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-            const cargoMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0xff8800,
-                roughness: 0.5,
-                metalness: 0.3
+            // Create rope end weight (small sphere instead of cargo box)
+            const weightGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+            const weightMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff4400,
+                roughness: 0.3,
+                metalness: 0.7
             });
-            const cargoMesh = new THREE.Mesh(cargoGeometry, cargoMaterial);
-            cargoMesh.castShadow = true;
-            cargoMesh.position.set(0, -cargoSystem.ropeLength, 0);
-            droneGroup.add(cargoMesh);
-            cargoSystem.cargoMesh = cargoMesh;
+            const weightMesh = new THREE.Mesh(weightGeometry, weightMaterial);
+            weightMesh.castShadow = true;
+            weightMesh.position.set(0, -cargoSystem.ropeLength, 0);
+            droneGroup.add(weightMesh);
+            cargoSystem.cargoMesh = weightMesh;
             
-            // Create rope/line from drone to cargo
-            const ropeMaterial = new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 2 });
+            // Create segmented rope using Line for realistic curve rendering
+            const ropeMaterial = new THREE.LineBasicMaterial({ color: 0x222222, linewidth: 2 });
             const ropeGeometry = new THREE.BufferGeometry();
-            const ropePoints = [
-                new THREE.Vector3(0, 0, 0),
-                new THREE.Vector3(0, -cargoSystem.ropeLength, 0)
-            ];
-            ropeGeometry.setFromPoints(ropePoints);
+            
+            // Initialize segment positions array
+            cargoSystem.segmentPositions = [];
+            const numSegments = cargoSystem.ropeSegments;
+            for (let i = 0; i <= numSegments; i++) {
+                const t = i / numSegments;
+                cargoSystem.segmentPositions.push(new THREE.Vector3(0, -t * cargoSystem.ropeLength, 0));
+            }
+            
+            ropeGeometry.setFromPoints(cargoSystem.segmentPositions);
             const ropeMesh = new THREE.Line(ropeGeometry, ropeMaterial);
             droneGroup.add(ropeMesh);
             cargoSystem.ropeMesh = ropeMesh;
@@ -799,30 +806,49 @@
                 cargoSystem.ropeTension = Math.max(0, gravityTension + centrifugalTension);
             }
             
-            // Update cargo mesh position
+            // Update cargo mesh position (rope end weight)
             cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
             
             // Calculate world position for collision detection
             cargoSystem.cargoWorldPosition.copy(state.drone.position).add(cargoSystem.cargoPosition);
             
-            // Rotate cargo mesh to align with rope direction
+            // Rotate weight mesh to align with rope direction
             const ropeDirection = cargoSystem.cargoPosition.clone().normalize();
             const upVector = new THREE.Vector3(0, 1, 0);
             const quaternion = new THREE.Quaternion();
             quaternion.setFromUnitVectors(upVector, ropeDirection.clone().negate());
             cargoSystem.cargoMesh.quaternion.slerp(quaternion, 0.1);
             
-            // Update rope line
-            const ropePoints = [
-                new THREE.Vector3(0, 0, 0),
-                cargoSystem.cargoPosition
-            ];
-            cargoSystem.ropeMesh.geometry.setFromPoints(ropePoints);
+            // Update rope segments for realistic curved rope rendering
+            // Calculate segment positions along the rope from drone to weight
+            const numSegments = cargoSystem.ropeSegments;
+            const dronePos = new THREE.Vector3(0, 0, 0);  // Drone attachment point (local space)
+            const weightPos = cargoSystem.cargoPosition.clone();
             
-            // Apply rope force to drone ONLY when rope is taut and cargo is in air
+            // Add some sag to the rope based on tension (catenary-like effect)
+            const sagAmount = (1 - Math.min(cargoSystem.ropeTension / cargoSystem.cargoMass / 9.81, 1)) * 0.15;
+            
+            for (let i = 0; i <= numSegments; i++) {
+                const t = i / numSegments;
+                const segmentPos = dronePos.clone().lerp(weightPos, t);
+                
+                // Add sag in the middle of the rope (parabolic approximation)
+                if (i > 0 && i < numSegments) {
+                    const sagFactor = Math.sin(Math.PI * t) * sagAmount;
+                    // Sag is perpendicular to rope direction, downward
+                    segmentPos.y += sagFactor;
+                }
+                
+                cargoSystem.segmentPositions[i].copy(segmentPos);
+            }
+            
+            cargoSystem.ropeMesh.geometry.setFromPoints(cargoSystem.segmentPositions);
+            cargoSystem.ropeMesh.geometry.attributes.position.needsUpdate = true;
+            
+            // Apply rope force to drone ONLY when rope is taut and weight is in air
             // This simulates a real rope that only pulls, never pushes
             if (!cargoSystem.cargoOnGround && cargoSystem.ropeTension > 0.01) {
-                // Calculate the force direction (from drone to cargo)
+                // Calculate the force direction (from drone to weight)
                 const ropeForceDir = cargoSystem.cargoPosition.clone().normalize();
                 
                 // Limit the maximum force the rope can apply to the drone
@@ -831,7 +857,7 @@
                 // Apply force to drone velocity (only horizontal components, vertical handled by throttle)
                 const forceMultiplier = limitedTension / state.physics.mass;
                 
-                // Apply gentle horizontal pull from swinging cargo
+                // Apply gentle horizontal pull from swinging weight
                 state.drone.velocity.x += ropeForceDir.x * forceMultiplier * deltaTime * 0.3;
                 state.drone.velocity.z += ropeForceDir.z * forceMultiplier * deltaTime * 0.3;
                 
@@ -1598,6 +1624,11 @@
             
             if (e.code === 'Space') {
                 resetDrone();
+            }
+            
+            // Skip level with N key for testing
+            if (e.code === 'KeyN' && !e.repeat) {
+                skipLevel();
             }
             
             // Toggle editor with E key
@@ -2908,23 +2939,25 @@
             droneBox.setFromCenterAndSize(drone.position, droneSize);
             
             // Also check cargo collision if enabled (Level 3)
-            let cargoBox = null;
+            let cargoSphere = null;
             let ropeCollisionPoints = [];
             if (state.level === 3 && cargoSystem.enabled && cargoSystem.cargoMesh) {
                 // Use the pre-calculated world position from updateCargoSystem
                 const cargoWorldPos = cargoSystem.cargoWorldPosition.clone();
-                const cargoSize = new THREE.Vector3(0.5, 0.5, 0.5);
-                cargoBox = new THREE.Box3();
-                cargoBox.setFromCenterAndSize(cargoWorldPos, cargoSize);
+                // Rope end weight is a sphere with radius 0.08
+                cargoSphere = new THREE.Sphere(cargoWorldPos, 0.1);  // Slightly larger for collision margin
                 
-                // Calculate rope segment positions for collision detection
+                // Calculate rope segment positions for collision detection using actual segmentPositions
                 const droneWorldPos = drone.position.clone();
                 const numSegments = cargoSystem.ropeSegments;
-                for (let i = 1; i < numSegments; i++) {
-                    const t = i / numSegments;
-                    const ropePoint = droneWorldPos.clone().lerp(cargoWorldPos, t);
+                
+                // Transform local segment positions to world space
+                for (let i = 0; i <= numSegments; i++) {
+                    const localSegPos = cargoSystem.segmentPositions[i];
+                    // Transform from drone local space to world space
+                    const worldSegPos = droneWorldPos.clone().add(localSegPos);
                     ropeCollisionPoints.push({
-                        position: ropePoint,
+                        position: worldSegPos,
                         radius: cargoSystem.ropeRadius
                     });
                 }
@@ -2943,36 +2976,39 @@
                         drone.velocity.multiplyScalar(0.5);
                     }
                 }
-                // Check cargo collision with objects
-                if (cargoBox && cargoBox.intersectsBox(objBox)) {
-                    // Push cargo away from obstacle - this affects swing
-                    const center = new THREE.Vector3();
-                    objBox.getCenter(center);
-                    const cargoWorldPos = cargoSystem.cargoWorldPosition.clone();
-                    const direction = cargoWorldPos.clone().sub(center).normalize();
-                    if (direction.length() > 0) {
-                        // Add force to swing angles
-                        cargoSystem.swingAngleX += direction.x * 0.15;
-                        cargoSystem.swingAngleZ += direction.z * 0.15;
-                        cargoSystem.angularVelX *= 0.7;
-                        cargoSystem.angularVelZ *= 0.7;
+                // Check rope end weight collision with objects (sphere-box collision)
+                if (cargoSphere) {
+                    const closestPoint = objBox.clampPoint(cargoSphere.center, new THREE.Vector3());
+                    const distance = cargoSphere.center.distanceTo(closestPoint);
+                    
+                    if (distance < cargoSphere.radius) {
+                        // Rope end hit the object - push it away via swing adjustment
+                        const center = new THREE.Vector3();
+                        objBox.getCenter(center);
+                        const direction = cargoSphere.center.clone().sub(center).normalize();
+                        if (direction.length() > 0) {
+                            // Add force to swing angles based on collision
+                            cargoSystem.swingAngleX += direction.x * 0.2;
+                            cargoSystem.swingAngleZ += direction.z * 0.2;
+                            cargoSystem.angularVelX *= 0.6;
+                            cargoSystem.angularVelZ *= 0.6;
+                        }
                     }
                 }
                 
-                // Check rope collision with objects
-                for (let r = 0; r < ropeCollisionPoints.length; r++) {
+                // Check rope collision with objects (segment-by-segment)
+                for (let r = 1; r < ropeCollisionPoints.length - 1; r++) {
                     const ropePoint = ropeCollisionPoints[r];
-                    const ropeSphere = new THREE.Sphere(ropePoint.position, ropePoint.radius);
                     
-                    // Simple sphere-box collision check
+                    // Simple sphere-box collision check for each rope segment
                     const closestPoint = objBox.clampPoint(ropePoint.position, new THREE.Vector3());
                     const distance = ropePoint.position.distanceTo(closestPoint);
                     
                     if (distance < ropePoint.radius) {
-                        // Rope hit the object - push cargo away
+                        // Rope hit the object - push rope away
                         const pushDir = ropePoint.position.clone().sub(closestPoint).normalize();
-                        cargoSystem.swingAngleX += pushDir.x * 0.08;
-                        cargoSystem.swingAngleZ += pushDir.z * 0.08;
+                        cargoSystem.swingAngleX += pushDir.x * 0.1;
+                        cargoSystem.swingAngleZ += pushDir.z * 0.1;
                     }
                 }
             }
@@ -3027,46 +3063,38 @@
                         drone.velocity.multiplyScalar(0.3);
                     }
                     
-                    // Check cargo collision with house
-                    if (cargoBox && cargoBox.intersectsBox(housePartBox)) {
-                        const cargoWorldPos = cargoSystem.cargoWorldPosition.clone();
-                        const housePartCenter = new THREE.Vector3().addVectors(worldColliderMin, worldColliderMax).multiplyScalar(0.5);
+                    // Check rope end weight collision with house (sphere-box collision)
+                    if (cargoSphere) {
+                        const closestPoint = housePartBox.clampPoint(cargoSphere.center, new THREE.Vector3());
+                        const distance = cargoSphere.center.distanceTo(closestPoint);
                         
-                        // Calculate overlap on each axis
-                        const overlapX = Math.min(cargoBox.max.x - worldColliderMin.x, worldColliderMax.x - cargoBox.min.x);
-                        const overlapY = Math.min(cargoBox.max.y - worldColliderMin.y, worldColliderMax.y - cargoBox.min.y);
-                        const overlapZ = Math.min(cargoBox.max.z - worldColliderMin.z, worldColliderMax.z - cargoBox.min.z);
-                        
-                        const minOverlap = Math.min(overlapX, overlapY, overlapZ);
-                        
-                        // Apply force to cargo swing based on collision
-                        if (minOverlap === overlapX) {
-                            const direction = cargoWorldPos.x < housePartCenter.x ? -1 : 1;
-                            cargoSystem.swingAngleX += direction * minOverlap * 0.6;
-                            cargoSystem.angularVelX *= 0.4;
-                        } else if (minOverlap === overlapY) {
-                            const direction = cargoWorldPos.y < housePartCenter.y ? -1 : 1;
-                            // Vertical collision - dampen swing
-                            cargoSystem.angularVelX *= 0.2;
-                            cargoSystem.angularVelZ *= 0.2;
-                        } else {
-                            const direction = cargoWorldPos.z < housePartCenter.z ? -1 : 1;
-                            cargoSystem.swingAngleZ += direction * minOverlap * 0.6;
-                            cargoSystem.angularVelZ *= 0.4;
+                        if (distance < cargoSphere.radius) {
+                            // Rope end hit the house - push it away via swing adjustment
+                            const housePartCenter = new THREE.Vector3().addVectors(worldColliderMin, worldColliderMax).multiplyScalar(0.5);
+                            const direction = cargoSphere.center.clone().sub(housePartCenter).normalize();
+                            
+                            // Apply force to cargo swing based on collision
+                            if (Math.abs(direction.x) > Math.abs(direction.z)) {
+                                cargoSystem.swingAngleX += direction.x * 0.25;
+                                cargoSystem.angularVelX *= 0.4;
+                            } else {
+                                cargoSystem.swingAngleZ += direction.z * 0.25;
+                                cargoSystem.angularVelZ *= 0.4;
+                            }
                         }
                     }
                     
-                    // Check rope collision with house parts
-                    for (let r = 0; r < ropeCollisionPoints.length; r++) {
+                    // Check rope collision with house parts (segment-by-segment)
+                    for (let r = 1; r < ropeCollisionPoints.length - 1; r++) {
                         const ropePoint = ropeCollisionPoints[r];
                         const closestPoint = housePartBox.clampPoint(ropePoint.position, new THREE.Vector3());
                         const distance = ropePoint.position.distanceTo(closestPoint);
                         
                         if (distance < ropePoint.radius) {
-                            // Rope hit the house - push cargo away
+                            // Rope hit the house - push rope away
                             const pushDir = ropePoint.position.clone().sub(closestPoint).normalize();
-                            cargoSystem.swingAngleX += pushDir.x * 0.1;
-                            cargoSystem.swingAngleZ += pushDir.z * 0.1;
+                            cargoSystem.swingAngleX += pushDir.x * 0.12;
+                            cargoSystem.swingAngleZ += pushDir.z * 0.12;
                         }
                     }
                 }
