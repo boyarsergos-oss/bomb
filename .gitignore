@@ -28,7 +28,7 @@ venv/
 .vscode/
 .idea/
 
-# System files
+# OS files
 .DS_Store
 Thumbs.db
 
@@ -36,6 +36,16 @@ Thumbs.db
 coverage/
 htmlcov/
 .coverage
+
+# Build directories
+dist/
+build/
+target/
+.gradle/
+
+# Python cache
+.mypy_cache/
+.pytest_cache/
 
 # Compressed files
 *.zip
@@ -60,11 +70,3 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
-
-# Build directories
-dist/
-build/
-target/
-.gradle/
-.mypy_cache/
-.pytest_cache/

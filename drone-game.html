@@ -1985,9 +1985,9 @@
                 createLevel2House();
             }
             
-            // For Level 3, position drone further back to have space for cargo delivery
+            // For Level 3, position drone at origin (0, 0, 0) and landing zone in front of house door
             if (state.level === 3) {
-                state.drone.position.set(0, 5, -60);
+                state.drone.position.set(0, 2, 0);
             }
         }
         
@@ -2489,9 +2489,11 @@
                     updateLandingZoneVisibility();
                     document.getElementById('level').textContent = state.level;
                 } else if (state.level === 2) {
-                    // Go to Level 3 - add the landing zone at z=-80 in front of the house door with cargo rope
+                    // Go to Level 3 - add the landing zone in front of the house door with cargo rope
+                    // House is at z=-80, door is at z=-80 + houseDepth/2 + 0.05 = -80 + 4 + 0.05 = -75.95
+                    // Landing zone should be in front of the door, at approximately z=-72
                     state.landingZones.push({ 
-                        position: new THREE.Vector3(0, 0.05, -80), 
+                        position: new THREE.Vector3(0, 0.05, -72), 
                         radius: 2.5, 
                         landed: false 
                     });
