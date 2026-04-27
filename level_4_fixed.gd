@@ -83,12 +83,13 @@ class Level4(GDScript):
         island_group.add_child(body)
 
         # Декор (пальмы по углам, опционально)
-        # Можно добавить простые цилиндры как пальмы
+        # Добавляем пальмы с полной физикой (визуализация + коллизия)
         var palm_positions = [
             Vector3(-15, 5, -15), Vector3(15, 5, -15),
             Vector3(-15, 5, 15), Vector3(15, 5, 15)
         ]
         for p in palm_positions:
+            # Визуальная часть пальмы
             var palm = MeshInstance3D.new()
             var trunk = CylinderMesh.new()
             trunk.radius = 0.5
@@ -99,6 +100,38 @@ class Level4(GDScript):
             palm.material = trunk_mat
             palm.position = p
             island_group.add_child(palm)
+            
+            # Крона пальмы (визуализация)
+            var leaves = MeshInstance3D.new()
+            var leaves_mesh = SphereMesh.new()
+            leaves_mesh.radius = 2.0
+            leaves.mesh = leaves_mesh
+            var leaves_mat = StandardMaterial3D.new()
+            leaves_mat.albedo_color = Color(0.1, 0.5, 0.1)
+            leaves.material = leaves_mat
+            leaves.position = p + Vector3(0, 5, 0)
+            island_group.add_child(leaves)
+            
+            # Коллизия ствола пальмы
+            var trunk_body = StaticBody3D.new()
+            var trunk_col = CollisionShape3D.new()
+            var trunk_shape = CylinderShape3D.new()
+            trunk_shape.radius = 0.5
+            trunk_shape.height = 8
+            trunk_col.shape = trunk_shape
+            trunk_col.position = p
+            trunk_body.add_child(trunk_col)
+            island_group.add_child(trunk_body)
+            
+            # Коллизия кроны пальмы
+            var leaves_body = StaticBody3D.new()
+            var leaves_col = CollisionShape3D.new()
+            var leaves_shape = SphereShape3D.new()
+            leaves_shape.radius = 2.0
+            leaves_col.shape = leaves_shape
+            leaves_col.position = p + Vector3(0, 5, 0)
+            leaves_body.add_child(leaves_col)
+            island_group.add_child(leaves_body)
 
         return island_group
 
