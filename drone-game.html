@@ -751,10 +751,10 @@
             cargoSystem.cargoPosition.set(offsetX, offsetY, offsetZ);
             
             // Ground collision for cargo - prevent cargo from going below ground
-            const cargoWorldY = drone.position.y + offsetY;
+            const cargoWorldY = state.drone.position.y + offsetY;
             if (cargoWorldY < 0.25) {
                 // Cargo hit the ground - clamp cargo Y position to ground level
-                cargoSystem.cargoPosition.y = 0.25 - drone.position.y;
+                cargoSystem.cargoPosition.y = 0.25 - state.drone.position.y;
                 
                 // Dampen swing when cargo hits ground
                 cargoSystem.angularVelX *= 0.5;
