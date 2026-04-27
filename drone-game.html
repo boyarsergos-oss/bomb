@@ -641,6 +641,60 @@
 
         scene.add(droneGroup);
 
+        // Cargo system for Level 3 - rope and cargo
+        let cargoSystem = {
+            enabled: false,
+            ropeLength: 4.0,
+            cargoPosition: new THREE.Vector3(0, -4, 0),
+            cargoMesh: null,
+            ropeMesh: null
+        };
+
+        function enableCargoRope() {
+            if (cargoSystem.enabled) return;
+            
+            // Create cargo box
+            const cargoGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const cargoMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff8800,
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            const cargoMesh = new THREE.Mesh(cargoGeometry, cargoMaterial);
+            cargoMesh.castShadow = true;
+            cargoMesh.position.set(0, -cargoSystem.ropeLength, 0);
+            droneGroup.add(cargoMesh);
+            cargoSystem.cargoMesh = cargoMesh;
+            
+            // Create rope/line from drone to cargo
+            const ropeMaterial = new THREE.LineBasicMaterial({ color: 0x333333, linewidth: 2 });
+            const ropeGeometry = new THREE.BufferGeometry();
+            const ropePoints = [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, -cargoSystem.ropeLength, 0)
+            ];
+            ropeGeometry.setFromPoints(ropePoints);
+            const ropeMesh = new THREE.Line(ropeGeometry, ropeMaterial);
+            droneGroup.add(ropeMesh);
+            cargoSystem.ropeMesh = ropeMesh;
+            
+            cargoSystem.enabled = true;
+        }
+
+        function updateCargoSystem() {
+            if (!cargoSystem.enabled) return;
+            
+            // Update cargo position based on drone position
+            cargoSystem.cargoMesh.position.set(0, -cargoSystem.ropeLength, 0);
+            
+            // Update rope line
+            const ropePoints = [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, -cargoSystem.ropeLength, 0)
+            ];
+            cargoSystem.ropeMesh.geometry.setFromPoints(ropePoints);
+        }
+
         // Landing Zone (Red Circle) - Create for each level
         const landingZoneMeshes = [];
         const landingGlowMeshes = [];
@@ -1930,6 +1984,11 @@
             if (state.level === 2) {
                 createLevel2House();
             }
+            
+            // For Level 3, position drone further back to have space for cargo delivery
+            if (state.level === 3) {
+                state.drone.position.set(0, 3, -15);
+            }
         }
         
         // Editor Functions
@@ -2391,15 +2450,25 @@
             const currentZone = state.landingZones[state.level - 1];
             if (!currentZone || currentZone.landed) return;
 
-            const dx = state.drone.position.x - currentZone.position.x;
-            const dz = state.drone.position.z - currentZone.position.z;
+            // Check if drone is within the red circle and landed gently
+            // For level 3, we need to check cargo position instead of drone position
+            let checkPosition = state.drone.position;
+            if (state.level === 3 && cargoSystem.enabled) {
+                // For cargo delivery, check the cargo position relative to landing zone
+                const cargoWorldPos = new THREE.Vector3();
+                cargoSystem.cargoMesh.getWorldPosition(cargoWorldPos);
+                checkPosition = cargoWorldPos;
+            }
+            
+            const dx = checkPosition.x - currentZone.position.x;
+            const dz = checkPosition.z - currentZone.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
             
             // Calculate relative altitude to the landing zone height
-            const relativeAltitude = state.drone.position.y - currentZone.position.y;
+            const relativeAltitude = checkPosition.y - currentZone.position.y;
             const speed = state.drone.velocity.length();
 
-            // Check if drone is within the red circle and landed gently
+            // Check if drone/cargo is within the red circle and landed gently
             if (distance < currentZone.radius && relativeAltitude < 1.0 && speed < 0.5) {
                 currentZone.landed = true;
                 
@@ -2419,6 +2488,23 @@
                     resetDroneForLevel();
                     updateLandingZoneVisibility();
                     document.getElementById('level').textContent = state.level;
+                } else if (state.level === 2) {
+                    // Go to Level 3 - add the landing zone in front of the house door with cargo rope
+                    // Door is at position z=4.05, landing spot in front of door at z=8
+                    state.landingZones.push({ 
+                        position: new THREE.Vector3(0, 0.05, 8), 
+                        radius: 2.5, 
+                        landed: false 
+                    });
+                    // Create the visual elements for the new landing zone
+                    createLandingZone(state.landingZones.length - 1);
+                    state.level++;
+                    showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
+                    resetDroneForLevel();
+                    updateLandingZoneVisibility();
+                    document.getElementById('level').textContent = state.level;
+                    // Enable cargo rope for level 3
+                    enableCargoRope();
                 } else {
                     // All levels complete
                     showMessage("✓ Уровень пройден!");
@@ -2608,6 +2694,9 @@
             // Update drone model
             droneGroup.position.copy(drone.position);
             droneGroup.rotation.copy(drone.rotation);
+
+            // Update cargo system if enabled
+            updateCargoSystem();
 
             // Animate propellers
             const propellerSpeed = 20 + drone.throttle * 10;
