@@ -2790,6 +2790,13 @@
                     resetDroneForLevel();
                     updateLandingZoneVisibility();
                     document.getElementById('level').textContent = state.level;
+                } else if (state.level === 3) {
+                    // Go to Level 4 - Islands with side wind
+                    state.level++;
+                    showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
+                    resetDroneForLevel();
+                    updateLandingZoneVisibility();
+                    document.getElementById('level').textContent = state.level;
                 } else {
                     // All levels complete
                     showMessage("✓ Уровень пройден!");
