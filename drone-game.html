@@ -644,8 +644,8 @@
         // Cargo system for Level 3 - rope and cargo with physics
         let cargoSystem = {
             enabled: false,
-            ropeLength: 3.0,
-            cargoPosition: new THREE.Vector3(0, -3, 0),
+            ropeLength: 4.0,         // Increased rope length for more slack
+            cargoPosition: new THREE.Vector3(0, -4, 0),
             cargoMesh: null,
             ropeMesh: null,
             // Physics state for pendulum simulation
@@ -653,12 +653,15 @@
             swingAngleZ: 0,        // Angle of swing in Z axis (left/right)
             angularVelX: 0,        // Angular velocity in X
             angularVelZ: 0,        // Angular velocity in Z
-            cargoMass: 0.3,        // Mass of the cargo in kg (reduced for better flight)
-            damping: 0.97,         // Damping factor for swing (slightly less damping)
+            cargoMass: 0.15,       // Reduced mass for less influence on drone
+            damping: 0.92,         // Higher damping for less swinging
             gravity: 9.81,         // Gravity for pendulum
             // Rope segments for collision detection
-            ropeSegments: 5,       // Number of segments for rope collision
-            ropeRadius: 0.05       // Radius of rope for collision
+            ropeSegments: 8,       // More segments for smoother rope
+            ropeRadius: 0.03,      // Thinner rope
+            // Rope tension state
+            ropeTension: 0,        // Current tension in the rope (0 = slack, 1+ = taut)
+            maxTensionForce: 2.0   // Maximum force rope can apply to drone
         };
 
         function enableCargoRope() {
@@ -707,37 +710,7 @@
             state.drone.prevVelX = state.drone.velocity.x;
             state.drone.prevVelZ = state.drone.velocity.z;
             
-            // Pendulum physics: simulate cargo swinging
-            // Acceleration of drone causes cargo to swing in opposite direction
-            
-            // Calculate forces on the pendulum from drone acceleration
-            const accelForceX = -droneAccel.x / cargoSystem.ropeLength;
-            const accelForceZ = -droneAccel.z / cargoSystem.ropeLength;
-            
-            // Gravity restoring force (pendulum wants to hang straight down)
-            const gravityRestoreX = -(cargoSystem.gravity / cargoSystem.ropeLength) * Math.sin(cargoSystem.swingAngleX);
-            const gravityRestoreZ = -(cargoSystem.gravity / cargoSystem.ropeLength) * Math.sin(cargoSystem.swingAngleZ);
-            
-            // Update angular acceleration
-            const angularAccelX = accelForceX + gravityRestoreX;
-            const angularAccelZ = accelForceZ + gravityRestoreZ;
-            
-            // Update angular velocity with damping
-            cargoSystem.angularVelX += angularAccelX * deltaTime;
-            cargoSystem.angularVelZ += angularAccelZ * deltaTime;
-            cargoSystem.angularVelX *= cargoSystem.damping;
-            cargoSystem.angularVelZ *= cargoSystem.damping;
-            
-            // Update angles
-            cargoSystem.swingAngleX += cargoSystem.angularVelX * deltaTime;
-            cargoSystem.swingAngleZ += cargoSystem.angularVelZ * deltaTime;
-            
-            // Clamp angles to reasonable values
-            const maxAngle = Math.PI / 3; // 60 degrees max
-            cargoSystem.swingAngleX = Math.max(-maxAngle, Math.min(maxAngle, cargoSystem.swingAngleX));
-            cargoSystem.swingAngleZ = Math.max(-maxAngle, Math.min(maxAngle, cargoSystem.swingAngleZ));
-            
-            // Calculate cargo position based on swing angles
+            // Calculate current rope length based on swing angles
             const sinX = Math.sin(cargoSystem.swingAngleX);
             const cosX = Math.cos(cargoSystem.swingAngleX);
             const sinZ = Math.sin(cargoSystem.swingAngleZ);
@@ -748,28 +721,84 @@
             const offsetY = -cargoSystem.ropeLength * cosX * cosZ;
             const offsetZ = cargoSystem.ropeLength * sinZ * cosX;
             
-            cargoSystem.cargoPosition.set(offsetX, offsetY, offsetZ);
-            
             // Ground collision for cargo - prevent cargo from going below ground
             const cargoWorldY = state.drone.position.y + offsetY;
+            let cargoOnGround = false;
+            
             if (cargoWorldY < 0.25) {
-                // Cargo hit the ground - clamp cargo Y position to ground level
-                cargoSystem.cargoPosition.y = 0.25 - state.drone.position.y;
-                
-                // Dampen swing when cargo hits ground
-                cargoSystem.angularVelX *= 0.5;
-                cargoSystem.angularVelZ *= 0.5;
-                
-                // Update cargo mesh position after ground collision adjustment
-                cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
-                
-                // When cargo is on ground, don't apply any force to drone (rope goes slack)
-                // This prevents the rope from pulling the drone down
-                return; // Exit early - no forces applied when cargo is resting on ground
+                cargoOnGround = true;
+                // Cargo hit the ground - rope goes slack
+                // Only reset angles if cargo is well on the ground
+                if (cargoWorldY < 0.1) {
+                    cargoSystem.swingAngleX *= 0.9;
+                    cargoSystem.swingAngleZ *= 0.9;
+                    cargoSystem.angularVelX *= 0.3;
+                    cargoSystem.angularVelZ *= 0.3;
+                }
+                // Rope tension is zero when cargo is on ground
+                cargoSystem.ropeTension = 0;
             } else {
-                // Update cargo mesh position normally
-                cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
+                // Pendulum physics: simulate cargo swinging
+                // Acceleration of drone causes cargo to swing in opposite direction
+                
+                // Calculate forces on the pendulum from drone acceleration
+                const accelForceX = -droneAccel.x / cargoSystem.ropeLength;
+                const accelForceZ = -droneAccel.z / cargoSystem.ropeLength;
+                
+                // Gravity restoring force (pendulum wants to hang straight down)
+                const gravityRestoreX = -(cargoSystem.gravity / cargoSystem.ropeLength) * Math.sin(cargoSystem.swingAngleX);
+                const gravityRestoreZ = -(cargoSystem.gravity / cargoSystem.ropeLength) * Math.sin(cargoSystem.swingAngleZ);
+                
+                // Update angular acceleration
+                const angularAccelX = accelForceX + gravityRestoreX;
+                const angularAccelZ = accelForceZ + gravityRestoreZ;
+                
+                // Update angular velocity with damping
+                cargoSystem.angularVelX += angularAccelX * deltaTime;
+                cargoSystem.angularVelZ += angularAccelZ * deltaTime;
+                cargoSystem.angularVelX *= cargoSystem.damping;
+                cargoSystem.angularVelZ *= cargoSystem.damping;
+                
+                // Update angles
+                cargoSystem.swingAngleX += cargoSystem.angularVelX * deltaTime;
+                cargoSystem.swingAngleZ += cargoSystem.angularVelZ * deltaTime;
+                
+                // Clamp angles to reasonable values
+                const maxAngle = Math.PI / 4; // 45 degrees max for more realistic rope
+                cargoSystem.swingAngleX = Math.max(-maxAngle, Math.min(maxAngle, cargoSystem.swingAngleX));
+                cargoSystem.swingAngleZ = Math.max(-maxAngle, Math.min(maxAngle, cargoSystem.swingAngleZ));
+                
+                // Recalculate trig values after angle updates
+                sinX = Math.sin(cargoSystem.swingAngleX);
+                cosX = Math.cos(cargoSystem.swingAngleX);
+                sinZ = Math.sin(cargoSystem.swingAngleZ);
+                cosZ = Math.cos(cargoSystem.swingAngleZ);
+                
+                // Update cargo position with new angles
+                cargoSystem.cargoPosition.set(offsetX, offsetY, offsetZ);
+                
+                // Calculate rope tension based on how much the rope is stretched
+                // For a simple rope model, tension depends on centrifugal force and gravity
+                const cargoSpeed = Math.sqrt(
+                    cargoSystem.angularVelX * cargoSystem.angularVelX + 
+                    cargoSystem.angularVelZ * cargoSystem.angularVelZ
+                ) * cargoSystem.ropeLength;
+                
+                // Tension from gravity component along rope
+                const gravityTension = cargoSystem.cargoMass * cargoSystem.gravity * (cosX * cosZ);
+                // Tension from centrifugal force
+                const centrifugalTension = cargoSystem.cargoMass * cargoSpeed * cargoSpeed / cargoSystem.ropeLength;
+                
+                // Total tension (minimum is 0 - rope can't push)
+                cargoSystem.ropeTension = Math.max(0, gravityTension + centrifugalTension);
             }
+            
+            // Update cargo mesh position
+            const finalOffsetX = cargoSystem.ropeLength * sinX * cosZ;
+            const finalOffsetY = cargoOnGround ? (0.25 - state.drone.position.y) : (-cargoSystem.ropeLength * cosX * cosZ);
+            const finalOffsetZ = cargoSystem.ropeLength * sinZ * cosX;
+            cargoSystem.cargoPosition.set(finalOffsetX, finalOffsetY, finalOffsetZ);
+            cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
             
             // Rotate cargo mesh to align with rope direction
             const ropeDirection = cargoSystem.cargoPosition.clone().normalize();
@@ -785,30 +814,29 @@
             ];
             cargoSystem.ropeMesh.geometry.setFromPoints(ropePoints);
             
-            // Apply cargo force to drone (cargo pulls on drone)
-            // This affects drone flight dynamics - but we separate rope tension from vertical pull
-            const cargoForce = new THREE.Vector3(
-                -sinX * cargoSystem.cargoMass * cargoSystem.gravity,
-                -cosX * cosZ * cargoSystem.cargoMass * cargoSystem.gravity,
-                -sinZ * cargoSystem.cargoMass * cargoSystem.gravity
-            );
-            
-            // Add cargo force to drone acceleration directly (more realistic)
-            const massRatio = cargoSystem.cargoMass / state.physics.mass;
-            
-            // Apply only horizontal forces from cargo swing to drone
-            // Vertical force is handled by the drone's thrust system (throttle compensates for weight)
-            // This prevents the rope from pulling the drone down into the ground
-            state.drone.velocity.x += cargoForce.x * massRatio * deltaTime * 1.5;
-            state.drone.velocity.z += cargoForce.z * massRatio * deltaTime * 1.5;
-            // No vertical force applied - throttle handles the weight compensation
-            
-            // Add tilt to drone based on cargo swing (cargo pulls drone)
-            state.drone.rotation.x += cargoForce.x * massRatio * deltaTime * 0.3;
-            state.drone.rotation.z += cargoForce.z * massRatio * deltaTime * 0.3;
+            // Apply rope force to drone ONLY when rope is taut and cargo is in air
+            // This simulates a real rope that only pulls, never pushes
+            if (!cargoOnGround && cargoSystem.ropeTension > 0) {
+                // Calculate the force direction (from drone to cargo)
+                const ropeForceDir = cargoSystem.cargoPosition.clone().normalize();
+                
+                // Limit the maximum force the rope can apply to the drone
+                const limitedTension = Math.min(cargoSystem.ropeTension, cargoSystem.maxTensionForce);
+                
+                // Apply force to drone velocity (only horizontal components, vertical handled by throttle)
+                const forceMultiplier = limitedTension / state.physics.mass;
+                
+                // Apply gentle horizontal pull from swinging cargo
+                state.drone.velocity.x += ropeForceDir.x * forceMultiplier * deltaTime * 0.5;
+                state.drone.velocity.z += ropeForceDir.z * forceMultiplier * deltaTime * 0.5;
+                
+                // Add slight tilt to drone based on rope tension
+                state.drone.rotation.x += ropeForceDir.x * forceMultiplier * deltaTime * 0.1;
+                state.drone.rotation.z += ropeForceDir.z * forceMultiplier * deltaTime * 0.1;
+            }
             
             // Store cargo force for physics integration
-            state.drone.cargoForce = cargoForce.clone();
+            state.drone.cargoForce = new THREE.Vector3(0, 0, 0);
         }
 
         // Landing Zone (Red Circle) - Create for each level
@@ -2104,6 +2132,7 @@
                 cargoSystem.swingAngleZ = 0;
                 cargoSystem.angularVelX = 0;
                 cargoSystem.angularVelZ = 0;
+                cargoSystem.ropeTension = 0;
                 state.drone.cargoForce = new THREE.Vector3(0, 0, 0);
                 // Reset cargo mesh position to hanging straight down
                 cargoSystem.cargoMesh.position.set(0, -cargoSystem.ropeLength, 0);
@@ -2116,7 +2145,7 @@
             
             // For Level 3, position drone at origin (0, 0, 0) and landing zone in front of house door
             if (state.level === 3) {
-                state.drone.position.set(0, 15, 0);
+                state.drone.position.set(0, 18, 0);  // Higher starting position for rope clearance
             }
         }
         
