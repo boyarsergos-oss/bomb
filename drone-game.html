@@ -750,8 +750,22 @@
             
             cargoSystem.cargoPosition.set(offsetX, offsetY, offsetZ);
             
-            // Update cargo mesh position
-            cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
+            // Ground collision for cargo - prevent cargo from going below ground
+            const cargoWorldY = drone.position.y + offsetY;
+            if (cargoWorldY < 0.25) {
+                // Cargo hit the ground - clamp cargo Y position to ground level
+                cargoSystem.cargoPosition.y = 0.25 - drone.position.y;
+                
+                // Dampen swing when cargo hits ground
+                cargoSystem.angularVelX *= 0.5;
+                cargoSystem.angularVelZ *= 0.5;
+                
+                // Update cargo mesh position after ground collision adjustment
+                cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
+            } else {
+                // Update cargo mesh position normally
+                cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
+            }
             
             // Rotate cargo mesh to align with rope direction
             const ropeDirection = cargoSystem.cargoPosition.clone().normalize();
