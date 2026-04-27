@@ -483,7 +483,16 @@
             ],
             objects: [],
             houses: [],
-            houseMeshesCreated: []  // Track which meshes belong to which level
+            houseMeshesCreated: [],  // Track which meshes belong to which level
+            wind: {
+                enabled: false,
+                direction: new THREE.Vector3(1, 0, 0),  // Default: blowing from left to right (positive X)
+                strength: 0,  // m/s² acceleration force
+                gustsEnabled: true,
+                baseStrength: 5,  // Base wind strength in m/s²
+                gustAmplitude: 3,  // Additional gust variation
+                gustFrequency: 0.5  // Hz - how often gusts change
+            }
         };
 
         // Three.js Setup
@@ -878,6 +887,10 @@
         const landingBeamMeshes = [];
         const landingArrowMeshes = [];
         const markerGroups = [];
+        
+        // Wind visualization elements
+        let windParticles = null;
+        let windArrowHelper = null;
         
         // Editable objects (cubes, etc.)
         const objectMeshes = [];
@@ -2223,7 +2236,12 @@
                 // Setup landing zone in front of house door
                 state.landingZones[2].position.set(0, 0.1, -7);  // In front of house door at Z=-7
                 showMessage("🎮 Уровень 3: Используйте верёвку 3м!");
-            } else if (state.level > 3) {
+            } else if (state.level === 4) {
+                // Level 4: Islands with wind
+                disableCargoRope();
+                setupLevel4();
+                showMessage("🎮 Уровень 4: Боковой ветер! Пролетите между островами!");
+            } else if (state.level > 4) {
                 state.level = 1;
                 showMessage("🔄 Возврат к уровню 1");
             }

@@ -37,9 +37,9 @@ coverage/
 htmlcov/
 .coverage
 
-# Build systems
-dist/
+# Build tools
 build/
+dist/
 target/
 .gradle/
 .mypy_cache/
