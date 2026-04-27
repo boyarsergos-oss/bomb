@@ -475,11 +475,20 @@
                 motorResponse: 8.0,
                 gyroStability: 8.0
             },
+            wind: {
+                enabled: false,
+                direction: new THREE.Vector3(1, 0, 0),  // X direction (side wind)
+                speed: 0,  // m/s
+                gustFactor: 0  // Random gust variation
+            },
             battery: 100,
             time: 0,
             level: 1,
             landingZones: [
-                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false }
+                { position: new THREE.Vector3(0, 0, -80), radius: 3, landed: false },
+                { position: new THREE.Vector3(0, 7.2, -80), radius: 3, landed: false },
+                { position: new THREE.Vector3(0, 0.05, -72), radius: 2.5, landed: false },
+                { position: new THREE.Vector3(60, 0.5, 0), radius: 4, landed: false }  // Level 4: Island destination
             ],
             objects: [],
             houses: [],
@@ -704,6 +713,27 @@
             cargoSystem.ropeMesh = ropeMesh;
             
             cargoSystem.enabled = true;
+        }
+
+        function disableCargoRope() {
+            if (!cargoSystem.enabled) return;
+            
+            // Remove cargo mesh and rope mesh from scene
+            if (cargoSystem.cargoMesh) {
+                droneGroup.remove(cargoSystem.cargoMesh);
+                cargoSystem.cargoMesh.geometry.dispose();
+                cargoSystem.cargoMesh.material.dispose();
+                cargoSystem.cargoMesh = null;
+            }
+            if (cargoSystem.ropeMesh) {
+                droneGroup.remove(cargoSystem.ropeMesh);
+                cargoSystem.ropeMesh.geometry.dispose();
+                cargoSystem.ropeMesh.material.dispose();
+                cargoSystem.ropeMesh = null;
+            }
+            
+            cargoSystem.enabled = false;
+            state.drone.cargoForce = new THREE.Vector3(0, 0, 0);
         }
 
         function updateCargoSystem(deltaTime) {
@@ -2223,7 +2253,19 @@
                 // Setup landing zone in front of house door
                 state.landingZones[2].position.set(0, 0.1, -7);  // In front of house door at Z=-7
                 showMessage("🎮 Уровень 3: Используйте верёвку 3м!");
-            } else if (state.level > 3) {
+            } else if (state.level === 4) {
+                // Level 4: Islands with side wind
+                disableCargoRope();
+                state.wind.enabled = true;
+                state.wind.direction.set(1, 0, 0);  // Wind from left to right
+                state.wind.speed = 8;  // 8 m/s side wind
+                state.wind.gustFactor = 2;  // Random gusts up to 2 m/s
+                state.drone.position.set(-60, 0.5, 0);  // Start on first island at ground level
+                state.drone.velocity.set(0, 0, 0);
+                state.drone.rotation.set(0, 0, 0);
+                // Landing zone is already at (60, 0.5, 0) - 120m away
+                showMessage("🌬️ Уровень 4: Боковой ветер! Пролетите между островами (120м)");
+            } else if (state.level > 4) {
                 state.level = 1;
                 showMessage("🔄 Возврат к уровню 1");
             }
@@ -2890,6 +2932,14 @@
             // Drag force (сопротивление воздуха)
             const dragForce = drone.velocity.clone().multiplyScalar(-phys.drag);
 
+            // Wind force for Level 4
+            let windForce = new THREE.Vector3(0, 0, 0);
+            if (state.wind.enabled) {
+                // Add gust variation
+                const currentWindSpeed = state.wind.speed + (Math.random() - 0.5) * state.wind.gustFactor;
+                windForce = state.wind.direction.clone().multiplyScalar(currentWindSpeed * 0.5);
+            }
+
             // Add cargo force if present (cargo pulls on drone)
             // Only apply horizontal forces from cargo - vertical weight is compensated by throttle
             let cargoForceContribution = new THREE.Vector3(0, 0, 0);
@@ -2906,6 +2956,7 @@
                 .add(thrustForce)
                 .add(gravityForce)
                 .add(dragForce)
+                .add(windForce)
                 .add(cargoForceContribution);
 
             // Acceleration and velocity
@@ -3164,6 +3215,25 @@
                 batteryElement.style.color = '#ffaa00';
             } else {
                 batteryElement.style.color = '#fff';
+            }
+            
+            // Show wind indicator for Level 4
+            let windIndicator = document.getElementById('windIndicator');
+            if (state.wind.enabled) {
+                if (!windIndicator) {
+                    // Create wind indicator element
+                    const infoDiv = document.getElementById('info');
+                    windIndicator = document.createElement('div');
+                    windIndicator.id = 'windIndicator';
+                    windIndicator.style.marginTop = '5px';
+                    windIndicator.style.color = '#aaf';
+                    infoDiv.appendChild(windIndicator);
+                }
+                const currentWindSpeed = state.wind.speed + (Math.sin(state.time * 2) * state.wind.gustFactor * 0.5);
+                const windDir = state.wind.direction.x > 0 ? '→' : '←';
+                windIndicator.textContent = `🌬️ Ветер: ${windDir} ${currentWindSpeed.toFixed(1)} м/с`;
+            } else if (windIndicator) {
+                windIndicator.remove();
             }
         }
 
