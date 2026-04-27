@@ -2412,6 +2412,8 @@
                         radius: 3, 
                         landed: false 
                     });
+                    // Create the visual elements for the new landing zone
+                    createLandingZone(state.landingZones.length - 1);
                     state.level++;
                     showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
                     resetDroneForLevel();
