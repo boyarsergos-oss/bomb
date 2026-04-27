@@ -644,8 +644,8 @@
         // Cargo system for Level 3 - rope and cargo
         let cargoSystem = {
             enabled: false,
-            ropeLength: 4.0,
-            cargoPosition: new THREE.Vector3(0, -4, 0),
+            ropeLength: 3.0,
+            cargoPosition: new THREE.Vector3(0, -3, 0),
             cargoMesh: null,
             ropeMesh: null
         };
@@ -1329,7 +1329,7 @@
         
         function createLevel2House() {
             if (level2HouseCreated) return;
-            const housePosition = new THREE.Vector3(0, 0, -50);
+            const housePosition = new THREE.Vector3(0, 0, -80);
             
             // Store the starting index of meshes before creating the house
             const startMeshIndex = houseMeshes.length;
@@ -1368,8 +1368,8 @@
                 // Check if this mesh belongs to the current level
                 const meshInfo = state.houseMeshesCreated.find(m => m.meshIndex === index);
                 if (meshInfo) {
-                    // This mesh belongs to a specific level
-                    mesh.visible = (state.level === meshInfo.level);
+                    // This mesh belongs to a specific level - show for that level and all subsequent levels
+                    mesh.visible = (state.level >= meshInfo.level);
                 } else {
                     // Default behavior: show if on level 2+
                     mesh.visible = false;
@@ -1980,14 +1980,14 @@
             state.drone.rotation.set(0, 0, 0);
             state.drone.angularVelocity.set(0, 0, 0);
             
-            // Create house for Level 2
-            if (state.level === 2) {
+            // Create house for Level 2 and Level 3
+            if (state.level >= 2) {
                 createLevel2House();
             }
             
             // For Level 3, position drone further back to have space for cargo delivery
             if (state.level === 3) {
-                state.drone.position.set(0, 3, -15);
+                state.drone.position.set(0, 5, -60);
             }
         }
         
@@ -2477,7 +2477,7 @@
                     // Go to Level 2 - add the landing zone on the house roof
                     // House height: 6 (walls) + 0.5 (foundation) + 0.3 (roof) + 0.4 (parapet) = 7.2
                     state.landingZones.push({ 
-                        position: new THREE.Vector3(0, 7.2, -50), 
+                        position: new THREE.Vector3(0, 7.2, -80), 
                         radius: 3, 
                         landed: false 
                     });
@@ -2489,10 +2489,9 @@
                     updateLandingZoneVisibility();
                     document.getElementById('level').textContent = state.level;
                 } else if (state.level === 2) {
-                    // Go to Level 3 - add the landing zone in front of the house door with cargo rope
-                    // Door is at position z=4.05, landing spot in front of door at z=8
+                    // Go to Level 3 - add the landing zone at z=-80 in front of the house door with cargo rope
                     state.landingZones.push({ 
-                        position: new THREE.Vector3(0, 0.05, 8), 
+                        position: new THREE.Vector3(0, 0.05, -80), 
                         radius: 2.5, 
                         landed: false 
                     });

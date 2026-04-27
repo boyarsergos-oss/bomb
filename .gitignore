@@ -61,29 +61,10 @@ htmlcov/
 *.tar.xz
 *.tar.zst
 
-# Python specific
-*.pyc
-__pycache__/
-*.pyo
-*.pyd
-.Python
-*.so
-
 # Build directories
 dist/
 build/
 target/
-*.egg-info/
-
-# Cache directories
+.gradle/
 .mypy_cache/
 .pytest_cache/
-.gradle/
-.cargo/registry/
-.cargo/git/
-
-# Temporary files
-*.tmp
-*~
-.DS_Store
-Thumbs.db
