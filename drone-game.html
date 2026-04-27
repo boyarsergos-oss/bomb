@@ -708,6 +708,35 @@
             cargoSystem.enabled = true;
         }
 
+        function disableCargoRope() {
+            if (!cargoSystem.enabled) return;
+            
+            // Remove rope mesh
+            if (cargoSystem.ropeMesh) {
+                droneGroup.remove(cargoSystem.ropeMesh);
+                cargoSystem.ropeMesh.geometry.dispose();
+                cargoSystem.ropeMesh.material.dispose();
+                cargoSystem.ropeMesh = null;
+            }
+            
+            // Remove cargo/weight mesh
+            if (cargoSystem.cargoMesh) {
+                droneGroup.remove(cargoSystem.cargoMesh);
+                cargoSystem.cargoMesh.geometry.dispose();
+                cargoSystem.cargoMesh.material.dispose();
+                cargoSystem.cargoMesh = null;
+            }
+            
+            // Reset cargo system state
+            cargoSystem.enabled = false;
+            cargoSystem.swingAngleX = 0;
+            cargoSystem.swingAngleZ = 0;
+            cargoSystem.angularVelX = 0;
+            cargoSystem.angularVelZ = 0;
+            cargoSystem.ropeTension = 0;
+            cargoSystem.cargoOnGround = false;
+        }
+
         function updateCargoSystem(deltaTime) {
             if (!cargoSystem.enabled) return;
             
@@ -2301,20 +2330,13 @@
             state.drone.prevVelX = 0;
             state.drone.prevVelZ = 0;
             
-            // Reset cargo swing physics when starting a new level
-            if (cargoSystem.enabled) {
-                cargoSystem.swingAngleX = 0;
-                cargoSystem.swingAngleZ = 0;
-                cargoSystem.angularVelX = 0;
-                cargoSystem.angularVelZ = 0;
-                cargoSystem.ropeTension = 0;
-                state.drone.cargoForce = new THREE.Vector3(0, 0, 0);
-                // Reset cargo mesh position to hanging straight down
-                cargoSystem.cargoMesh.position.set(0, -cargoSystem.ropeLength, 0);
+            // Disable cargo rope for levels other than 3
+            if (state.level !== 3) {
+                disableCargoRope();
             }
             
-            // Create house for Level 2 and Level 3
-            if (state.level >= 2) {
+            // Create house for Level 2 and Level 3 only
+            if (state.level >= 2 && state.level <= 3) {
                 createLevel2House();
             }
             
@@ -2333,7 +2355,7 @@
                 }
             }
             
-            // For Level 4, position drone on the starting island
+            // For Level 4, position drone on the starting island (cargo already disabled above)
             if (state.level === 4) {
                 state.drone.position.set(0, 10, 0);  // Start above the first island
                 state.drone.velocity.set(0, 0, 0);
@@ -2368,6 +2390,7 @@
                 showMessage("🎮 Уровень 3: Используйте верёвку 3м!");
             } else if (state.level === 4) {
                 // Level 4: Two islands with water between! NO cargo rope, NO house!
+                disableCargoRope();
                 createLevel4Islands();
                 state.drone.position.set(0, 10, 0);  // Start on the first island at z=0
                 showMessage("🎮 Уровень 4: Перелет через воду к другому острову!");
@@ -2907,6 +2930,8 @@
                     createLandingZone(state.landingZones.length - 1);
                     state.level++;
                     showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
+                    // Disable cargo rope for level 4 (remove rope and weight from drone)
+                    disableCargoRope();
                     // Setup level 4 - create two islands with water between (NO cargo rope, NO house)
                     createLevel4Islands();
                     resetDroneForLevel();
