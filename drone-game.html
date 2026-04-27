@@ -465,7 +465,7 @@
             },
             physics: {
                 gravity: 9.81,
-                mass: 1.5,
+                mass: 2.0,  // Increased mass to account for cargo when attached
                 drag: 0.3,
                 angularDrag: 2.0,
                 maxThrust: 22.0,
@@ -653,9 +653,12 @@
             swingAngleZ: 0,        // Angle of swing in Z axis (left/right)
             angularVelX: 0,        // Angular velocity in X
             angularVelZ: 0,        // Angular velocity in Z
-            cargoMass: 0.5,        // Mass of the cargo in kg
-            damping: 0.98,         // Damping factor for swing
-            gravity: 9.81          // Gravity for pendulum
+            cargoMass: 2.0,        // Mass of the cargo in kg (increased for more effect)
+            damping: 0.97,         // Damping factor for swing (slightly less damping)
+            gravity: 9.81,         // Gravity for pendulum
+            // Rope segments for collision detection
+            ropeSegments: 5,       // Number of segments for rope collision
+            ropeRadius: 0.05       // Radius of rope for collision
         };
 
         function enableCargoRope() {
@@ -765,21 +768,27 @@
             cargoSystem.ropeMesh.geometry.setFromPoints(ropePoints);
             
             // Apply cargo force to drone (cargo pulls on drone)
-            // This affects drone flight dynamics
+            // This affects drone flight dynamics - stronger effect
             const cargoForce = new THREE.Vector3(
                 -sinX * cargoSystem.cargoMass * cargoSystem.gravity,
                 -cosX * cosZ * cargoSystem.cargoMass * cargoSystem.gravity,
                 -sinZ * cargoSystem.cargoMass * cargoSystem.gravity
             );
             
-            // Add cargo force to drone velocity (small effect based on mass ratio)
+            // Add cargo force to drone acceleration directly (more realistic)
             const massRatio = cargoSystem.cargoMass / state.physics.mass;
-            state.drone.velocity.x += cargoForce.x * massRatio * deltaTime * 0.5;
-            state.drone.velocity.z += cargoForce.z * massRatio * deltaTime * 0.5;
             
-            // Add slight tilt to drone based on cargo swing (cargo pulls drone)
-            state.drone.rotation.x += cargoForce.x * massRatio * deltaTime * 0.1;
-            state.drone.rotation.z += cargoForce.z * massRatio * deltaTime * 0.1;
+            // Apply force to drone velocity with stronger effect
+            state.drone.velocity.x += cargoForce.x * massRatio * deltaTime * 1.5;
+            state.drone.velocity.z += cargoForce.z * massRatio * deltaTime * 1.5;
+            state.drone.velocity.y += cargoForce.y * massRatio * deltaTime * 1.5;
+            
+            // Add tilt to drone based on cargo swing (cargo pulls drone)
+            state.drone.rotation.x += cargoForce.x * massRatio * deltaTime * 0.3;
+            state.drone.rotation.z += cargoForce.z * massRatio * deltaTime * 0.3;
+            
+            // Store cargo force for physics integration
+            state.drone.cargoForce = cargoForce.clone();
         }
 
         // Landing Zone (Red Circle) - Create for each level
@@ -2066,6 +2075,8 @@
             state.drone.velocity.set(0, 0, 0);
             state.drone.rotation.set(0, 0, 0);
             state.drone.angularVelocity.set(0, 0, 0);
+            state.drone.prevVelX = 0;
+            state.drone.prevVelZ = 0;
             
             // Reset cargo swing physics when starting a new level
             if (cargoSystem.enabled) {
@@ -2073,6 +2084,7 @@
                 cargoSystem.swingAngleZ = 0;
                 cargoSystem.angularVelX = 0;
                 cargoSystem.angularVelZ = 0;
+                state.drone.cargoForce = new THREE.Vector3(0, 0, 0);
             }
             
             // Create house for Level 2 and Level 3
@@ -2732,11 +2744,18 @@
             // Drag force (сопротивление воздуха)
             const dragForce = drone.velocity.clone().multiplyScalar(-phys.drag);
 
+            // Add cargo force if present (cargo pulls on drone)
+            let cargoForceContribution = new THREE.Vector3(0, 0, 0);
+            if (state.level === 3 && cargoSystem.enabled && state.drone.cargoForce) {
+                cargoForceContribution.copy(state.drone.cargoForce);
+            }
+
             // Total force
             const totalForce = new THREE.Vector3()
                 .add(thrustForce)
                 .add(gravityForce)
-                .add(dragForce);
+                .add(dragForce)
+                .add(cargoForceContribution);
 
             // Acceleration and velocity
             const acceleration = totalForce.divideScalar(phys.mass);
@@ -2819,12 +2838,25 @@
             
             // Also check cargo collision if enabled (Level 3)
             let cargoBox = null;
+            let ropeCollisionPoints = [];
             if (state.level === 3 && cargoSystem.enabled && cargoSystem.cargoMesh) {
                 const cargoWorldPos = new THREE.Vector3();
                 cargoSystem.cargoMesh.getWorldPosition(cargoWorldPos);
                 const cargoSize = new THREE.Vector3(0.5, 0.5, 0.5);
                 cargoBox = new THREE.Box3();
                 cargoBox.setFromCenterAndSize(cargoWorldPos, cargoSize);
+                
+                // Calculate rope segment positions for collision detection
+                const droneWorldPos = drone.position.clone();
+                const numSegments = cargoSystem.ropeSegments;
+                for (let i = 1; i < numSegments; i++) {
+                    const t = i / numSegments;
+                    const ropePoint = droneWorldPos.clone().lerp(cargoWorldPos, t);
+                    ropeCollisionPoints.push({
+                        position: ropePoint,
+                        radius: cargoSystem.ropeRadius
+                    });
+                }
             }
             
             // Check collision with object meshes (drone)
@@ -2850,8 +2882,27 @@
                     const direction = cargoWorldPos.clone().sub(center).normalize();
                     if (direction.length() > 0) {
                         // Add force to swing angles
-                        cargoSystem.swingAngleX += direction.x * 0.1;
-                        cargoSystem.swingAngleZ += direction.z * 0.1;
+                        cargoSystem.swingAngleX += direction.x * 0.15;
+                        cargoSystem.swingAngleZ += direction.z * 0.15;
+                        cargoSystem.angularVelX *= 0.7;
+                        cargoSystem.angularVelZ *= 0.7;
+                    }
+                }
+                
+                // Check rope collision with objects
+                for (let r = 0; r < ropeCollisionPoints.length; r++) {
+                    const ropePoint = ropeCollisionPoints[r];
+                    const ropeSphere = new THREE.Sphere(ropePoint.position, ropePoint.radius);
+                    
+                    // Simple sphere-box collision check
+                    const closestPoint = objBox.clampPoint(ropePoint.position, new THREE.Vector3());
+                    const distance = ropePoint.position.distanceTo(closestPoint);
+                    
+                    if (distance < ropePoint.radius) {
+                        // Rope hit the object - push cargo away
+                        const pushDir = ropePoint.position.clone().sub(closestPoint).normalize();
+                        cargoSystem.swingAngleX += pushDir.x * 0.08;
+                        cargoSystem.swingAngleZ += pushDir.z * 0.08;
                     }
                 }
             }
@@ -2922,17 +2973,31 @@
                         // Apply force to cargo swing based on collision
                         if (minOverlap === overlapX) {
                             const direction = cargoWorldPos.x < housePartCenter.x ? -1 : 1;
-                            cargoSystem.swingAngleX += direction * minOverlap * 0.5;
-                            cargoSystem.angularVelX *= 0.5;
+                            cargoSystem.swingAngleX += direction * minOverlap * 0.6;
+                            cargoSystem.angularVelX *= 0.4;
                         } else if (minOverlap === overlapY) {
                             const direction = cargoWorldPos.y < housePartCenter.y ? -1 : 1;
                             // Vertical collision - dampen swing
-                            cargoSystem.angularVelX *= 0.3;
-                            cargoSystem.angularVelZ *= 0.3;
+                            cargoSystem.angularVelX *= 0.2;
+                            cargoSystem.angularVelZ *= 0.2;
                         } else {
                             const direction = cargoWorldPos.z < housePartCenter.z ? -1 : 1;
-                            cargoSystem.swingAngleZ += direction * minOverlap * 0.5;
-                            cargoSystem.angularVelZ *= 0.5;
+                            cargoSystem.swingAngleZ += direction * minOverlap * 0.6;
+                            cargoSystem.angularVelZ *= 0.4;
+                        }
+                    }
+                    
+                    // Check rope collision with house parts
+                    for (let r = 0; r < ropeCollisionPoints.length; r++) {
+                        const ropePoint = ropeCollisionPoints[r];
+                        const closestPoint = housePartBox.clampPoint(ropePoint.position, new THREE.Vector3());
+                        const distance = ropePoint.position.distanceTo(closestPoint);
+                        
+                        if (distance < ropePoint.radius) {
+                            // Rope hit the house - push cargo away
+                            const pushDir = ropePoint.position.clone().sub(closestPoint).normalize();
+                            cargoSystem.swingAngleX += pushDir.x * 0.1;
+                            cargoSystem.swingAngleZ += pushDir.z * 0.1;
                         }
                     }
                 }
