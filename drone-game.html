@@ -465,10 +465,10 @@
             },
             physics: {
                 gravity: 9.81,
-                mass: 2.0,  // Increased mass to account for cargo when attached
+                mass: 2.5,  // Increased mass for better stability with cargo
                 drag: 0.3,
                 angularDrag: 2.0,
-                maxThrust: 22.0,
+                maxThrust: 25.0,  // Increased thrust to handle cargo weight
                 maxTilt: Math.PI / 4,
                 motorResponse: 8.0,
                 gyroStability: 8.0
@@ -653,7 +653,7 @@
             swingAngleZ: 0,        // Angle of swing in Z axis (left/right)
             angularVelX: 0,        // Angular velocity in X
             angularVelZ: 0,        // Angular velocity in Z
-            cargoMass: 0.5,        // Mass of the cargo in kg (reduced for better flight)
+            cargoMass: 0.3,        // Mass of the cargo in kg (reduced for better flight)
             damping: 0.97,         // Damping factor for swing (slightly less damping)
             gravity: 9.81,         // Gravity for pendulum
             // Rope segments for collision detection
@@ -762,6 +762,10 @@
                 
                 // Update cargo mesh position after ground collision adjustment
                 cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
+                
+                // When cargo is on ground, don't apply any force to drone (rope goes slack)
+                // This prevents the rope from pulling the drone down
+                return; // Exit early - no forces applied when cargo is resting on ground
             } else {
                 // Update cargo mesh position normally
                 cargoSystem.cargoMesh.position.copy(cargoSystem.cargoPosition);
@@ -782,7 +786,7 @@
             cargoSystem.ropeMesh.geometry.setFromPoints(ropePoints);
             
             // Apply cargo force to drone (cargo pulls on drone)
-            // This affects drone flight dynamics - stronger effect
+            // This affects drone flight dynamics - but we separate rope tension from vertical pull
             const cargoForce = new THREE.Vector3(
                 -sinX * cargoSystem.cargoMass * cargoSystem.gravity,
                 -cosX * cosZ * cargoSystem.cargoMass * cargoSystem.gravity,
@@ -792,14 +796,12 @@
             // Add cargo force to drone acceleration directly (more realistic)
             const massRatio = cargoSystem.cargoMass / state.physics.mass;
             
-            // Apply force to drone velocity with stronger effect
-            // Reduce the negative Y force impact when cargo is hanging straight down (not swinging much)
-            const swingMagnitude = Math.abs(cargoSystem.swingAngleX) + Math.abs(cargoSystem.swingAngleZ);
-            const yForceFactor = swingMagnitude > 0.1 ? 1.5 : 0.3; // Less downward pull when stable
-            
+            // Apply only horizontal forces from cargo swing to drone
+            // Vertical force is handled by the drone's thrust system (throttle compensates for weight)
+            // This prevents the rope from pulling the drone down into the ground
             state.drone.velocity.x += cargoForce.x * massRatio * deltaTime * 1.5;
             state.drone.velocity.z += cargoForce.z * massRatio * deltaTime * 1.5;
-            state.drone.velocity.y += cargoForce.y * massRatio * deltaTime * yForceFactor;
+            // No vertical force applied - throttle handles the weight compensation
             
             // Add tilt to drone based on cargo swing (cargo pulls drone)
             state.drone.rotation.x += cargoForce.x * massRatio * deltaTime * 0.3;
@@ -2103,6 +2105,8 @@
                 cargoSystem.angularVelX = 0;
                 cargoSystem.angularVelZ = 0;
                 state.drone.cargoForce = new THREE.Vector3(0, 0, 0);
+                // Reset cargo mesh position to hanging straight down
+                cargoSystem.cargoMesh.position.set(0, -cargoSystem.ropeLength, 0);
             }
             
             // Create house for Level 2 and Level 3
@@ -2626,13 +2630,11 @@
                     createLandingZone(state.landingZones.length - 1);
                     state.level++;
                     showMessage(`✓ Уровень ${state.level - 1} пройден! Переход на уровень ${state.level}...`);
+                    // Enable cargo rope for level 3 BEFORE resetting drone position
+                    enableCargoRope();
                     resetDroneForLevel();
                     updateLandingZoneVisibility();
                     document.getElementById('level').textContent = state.level;
-                    // Enable cargo rope for level 3 BEFORE resetting drone position
-                    enableCargoRope();
-                    // Now reset drone position again after cargo is attached to account for the weight
-                    state.drone.position.set(0, 15, 0);
                 } else {
                     // All levels complete
                     showMessage("✓ Уровень пройден!");
@@ -2765,14 +2767,14 @@
             const dragForce = drone.velocity.clone().multiplyScalar(-phys.drag);
 
             // Add cargo force if present (cargo pulls on drone)
+            // Only apply horizontal forces from cargo - vertical weight is compensated by throttle
             let cargoForceContribution = new THREE.Vector3(0, 0, 0);
             if (state.level === 3 && cargoSystem.enabled && state.drone.cargoForce) {
-                cargoForceContribution.copy(state.drone.cargoForce);
-                // Reduce the Y component of cargo force when cargo is stable (hanging straight down)
-                const swingMagnitude = Math.abs(cargoSystem.swingAngleX) + Math.abs(cargoSystem.swingAngleZ);
-                if (swingMagnitude < 0.1) {
-                    cargoForceContribution.y *= 0.3; // Less downward pull when stable
-                }
+                cargoForceContribution.set(
+                    state.drone.cargoForce.x,
+                    0,  // No vertical force - throttle handles weight compensation
+                    state.drone.cargoForce.z
+                );
             }
 
             // Total force
