@@ -1678,7 +1678,12 @@
                 const meshInfo = state.houseMeshesCreated.find(m => m.meshIndex === index);
                 if (meshInfo) {
                     // This mesh belongs to a specific level - show for that level and all subsequent levels
-                    mesh.visible = (state.level >= meshInfo.level);
+                    // But hide on level 4 (no house on islands)
+                    if (state.level === 4) {
+                        mesh.visible = false;
+                    } else {
+                        mesh.visible = (state.level >= meshInfo.level);
+                    }
                 } else {
                     // Default behavior: show if on level 2+
                     mesh.visible = false;
