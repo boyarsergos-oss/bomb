@@ -793,9 +793,13 @@
             const massRatio = cargoSystem.cargoMass / state.physics.mass;
             
             // Apply force to drone velocity with stronger effect
+            // Reduce the negative Y force impact when cargo is hanging straight down (not swinging much)
+            const swingMagnitude = Math.abs(cargoSystem.swingAngleX) + Math.abs(cargoSystem.swingAngleZ);
+            const yForceFactor = swingMagnitude > 0.1 ? 1.5 : 0.3; // Less downward pull when stable
+            
             state.drone.velocity.x += cargoForce.x * massRatio * deltaTime * 1.5;
             state.drone.velocity.z += cargoForce.z * massRatio * deltaTime * 1.5;
-            state.drone.velocity.y += cargoForce.y * massRatio * deltaTime * 1.5;
+            state.drone.velocity.y += cargoForce.y * massRatio * deltaTime * yForceFactor;
             
             // Add tilt to drone based on cargo swing (cargo pulls drone)
             state.drone.rotation.x += cargoForce.x * massRatio * deltaTime * 0.3;
@@ -2108,7 +2112,7 @@
             
             // For Level 3, position drone at origin (0, 0, 0) and landing zone in front of house door
             if (state.level === 3) {
-                state.drone.position.set(0, 10, 0);
+                state.drone.position.set(0, 15, 0);
             }
         }
         
@@ -2625,8 +2629,10 @@
                     resetDroneForLevel();
                     updateLandingZoneVisibility();
                     document.getElementById('level').textContent = state.level;
-                    // Enable cargo rope for level 3
+                    // Enable cargo rope for level 3 BEFORE resetting drone position
                     enableCargoRope();
+                    // Now reset drone position again after cargo is attached to account for the weight
+                    state.drone.position.set(0, 15, 0);
                 } else {
                     // All levels complete
                     showMessage("✓ Уровень пройден!");
@@ -2762,6 +2768,11 @@
             let cargoForceContribution = new THREE.Vector3(0, 0, 0);
             if (state.level === 3 && cargoSystem.enabled && state.drone.cargoForce) {
                 cargoForceContribution.copy(state.drone.cargoForce);
+                // Reduce the Y component of cargo force when cargo is stable (hanging straight down)
+                const swingMagnitude = Math.abs(cargoSystem.swingAngleX) + Math.abs(cargoSystem.swingAngleZ);
+                if (swingMagnitude < 0.1) {
+                    cargoForceContribution.y *= 0.3; // Less downward pull when stable
+                }
             }
 
             // Total force
