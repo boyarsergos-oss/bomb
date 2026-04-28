@@ -316,22 +316,12 @@
             const baseSpeed = 0.15;
             const slowSpeed = 0.05;
             
-            // Проверяем несколько точек вокруг игрока
-            const checkRadius = 0.5;
-            let paintedCount = 0;
-            const totalChecks = 9;
-            
-            for (let dx = -checkRadius; dx <= checkRadius; dx += checkRadius) {
-                for (let dz = -checkRadius; dz <= checkRadius; dz += checkRadius) {
-                    if (isCellPainted(x + dx, z + dz)) {
-                        paintedCount++;
-                    }
-                }
+            // Проверяем центральную точку под игроком
+            if (isCellPainted(x, z)) {
+                return baseSpeed;
+            } else {
+                return slowSpeed;
             }
-            
-            // Чем больше закрашенной территории под ногами, тем быстрее движение
-            const ratio = paintedCount / totalChecks;
-            return slowSpeed + (baseSpeed - slowSpeed) * ratio;
         }
         
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
