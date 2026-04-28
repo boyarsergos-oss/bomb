@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splatoon-style Game - 4 Teams Battle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
+            color: white;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #f0f0f0;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .team-score {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .team-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 2px solid white;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+        }
+        
+        #timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            backdrop-filter: blur(10px);
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+        
+        #gameOver h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+        
+        #restartBtn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a6f);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            margin-top: 20px;
+        }
+        
+        #restartBtn:hover {
+            transform: scale(1.1);
+        }
+        
+        .winner-text {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui">
+            <h3>Счет команд:</h3>
+            <div class="team-score">
+                <div class="team-color" style="background: #ff4757;"></div>
+                <span>Красные (Игрок): <span id="score0">0</span>%</span>
+            </div>
+            <div class="team-score">
+                <div class="team-color" style="background: #3498db;"></div>
+                <span>Синие: <span id="score1">0</span>%</span>
+            </div>
+            <div class="team-score">
+                <div class="team-color" style="background: #2ecc71;"></div>
+                <span>Зеленые: <span id="score2">0</span>%</span>
+            </div>
+            <div class="team-score">
+                <div class="team-color" style="background: #f39c12;"></div>
+                <span>Желтые: <span id="score3">0</span>%</span>
+            </div>
+        </div>
+        
+        <div id="controls">
+            <strong>Управление:</strong><br>
+            WASD / Стрелки - Движение<br>
+            ЛКМ - Стрелять краской<br>
+            Пробел - Рывок
+        </div>
+        
+        <div id="timer">
+            Время: <span id="timeLeft">180</span>с
+        </div>
+        
+        <div id="gameOver">
+            <h2>Игра окончена!</h2>
+            <div id="winnerText" class="winner-text"></div>
+            <button id="restartBtn">Играть снова</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Настройка размера канваса
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Константы игры
+        const TEAMS = [
+            { name: 'Красные', color: '#ff4757', isPlayer: true },
+            { name: 'Синие', color: '#3498db', isPlayer: false },
+            { name: 'Зеленые', color: '#2ecc71', isPlayer: false },
+            { name: 'Желтые', color: '#f39c12', isPlayer: false }
+        ];
+        
+        const GAME_DURATION = 180; // 3 минуты в секундах
+        const MAP_SIZE = 2000;
+        const PLAYER_SPEED = 5;
+        const DASH_SPEED = 10;
+        const PAINT_RADIUS = 15;
+        const SHOOT_COOLDOWN = 100;
+        
+        // Состояние игры
+        let gameTime = GAME_DURATION;
+        let gameRunning = true;
+        let lastTime = Date.now();
+        let shootCooldown = 0;
+        
+        // Камера
+        const camera = {
+            x: 0,
+            y: 0,
+            zoom: 1
+        };
+        
+        // Игрок
+        const player = {
+            x: MAP_SIZE / 2,
+            y: MAP_SIZE / 2,
+            team: 0,
+            speed: PLAYER_SPEED,
+            radius: 20,
+            vx: 0,
+            vy: 0,
+            isDashing: false,
+            dashTimer: 0
+        };
+        
+        // Боты
+        const bots = [];
+        const BOT_COUNT = 12; // по 3 бота на команду
+        
+        // Краска на карте
+        const paintMap = [];
+        const PAINT_CELL_SIZE = 10;
+        const COLS = Math.ceil(MAP_SIZE / PAINT_CELL_SIZE);
+        const ROWS = Math.ceil(MAP_SIZE / PAINT_CELL_SIZE);
+        
+        // Инициализация карты краски
+        for (let i = 0; i < COLS; i++) {
+            paintMap[i] = [];
+            for (let j = 0; j < ROWS; j++) {
+                paintMap[i][j] = -1; // -1 означает нет краски
+            }
+        }
+        
+        // Создание ботов
+        function createBots() {
+            for (let t = 0; t < TEAMS.length; t++) {
+                for (let b = 0; b < 3; b++) {
+                    bots.push({
+                        x: Math.random() * MAP_SIZE,
+                        y: Math.random() * MAP_SIZE,
+                        team: t,
+                        speed: PLAYER_SPEED * 0.8,
+                        radius: 20,
+                        vx: 0,
+                        vy: 0,
+                        targetX: Math.random() * MAP_SIZE,
+                        targetY: Math.random() * MAP_SIZE,
+                        changeTargetTimer: 0,
+                        shootTimer: Math.random() * SHOOT_COOLDOWN
+                    });
+                }
+            }
+        }
+        
+        // Управление
+        const keys = {};
+        const mouse = { x: 0, y: 0, down: false };
+        
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space') {
+                player.isDashing = true;
+                player.dashTimer = 20;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        
+        window.addEventListener('mousedown', () => {
+            mouse.down = true;
+        });
+        
+        window.addEventListener('mouseup', () => {
+            mouse.down = false;
+        });
+        
+        // Нанесение краски
+        function applyPaint(x, y, team, radius) {
+            const startCol = Math.max(0, Math.floor((x - radius) / PAINT_CELL_SIZE));
+            const endCol = Math.min(COLS - 1, Math.floor((x + radius) / PAINT_CELL_SIZE));
+            const startRow = Math.max(0, Math.floor((y - radius) / PAINT_CELL_SIZE));
+            const endRow = Math.min(ROWS - 1, Math.floor((y + radius) / PAINT_CELL_SIZE));
+            
+            for (let i = startCol; i <= endCol; i++) {
+                for (let j = startRow; j <= endRow; j++) {
+                    const cellX = i * PAINT_CELL_SIZE + PAINT_CELL_SIZE / 2;
+                    const cellY = j * PAINT_CELL_SIZE + PAINT_CELL_SIZE / 2;
+                    const dist = Math.sqrt((cellX - x) ** 2 + (cellY - y) ** 2);
+                    
+                    if (dist <= radius) {
+                        paintMap[i][j] = team;
+                    }
+                }
+            }
+        }
+        
+        // Подсчет очков
+        function calculateScores() {
+            const scores = [0, 0, 0, 0];
+            let totalPainted = 0;
+            
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    if (paintMap[i][j] !== -1) {
+                        scores[paintMap[i][j]]++;
+                        totalPainted++;
+                    }
+                }
+            }
+            
+            if (totalPainted === 0) return [0, 0, 0, 0];
+            
+            return scores.map(s => ((s / totalPainted) * 100).toFixed(1));
+        }
+        
+        // Обновление игрока
+        function updatePlayer() {
+            // Движение
+            player.vx = 0;
+            player.vy = 0;
+            
+            const currentSpeed = player.isDashing ? DASH_SPEED : player.speed;
+            
+            if (keys['KeyW'] || keys['ArrowUp']) player.vy = -currentSpeed;
+            if (keys['KeyS'] || keys['ArrowDown']) player.vy = currentSpeed;
+            if (keys['KeyA'] || keys['ArrowLeft']) player.vx = -currentSpeed;
+            if (keys['KeyD'] || keys['ArrowRight']) player.vx = currentSpeed;
+            
+            // Нормализация диагонального движения
+            if (player.vx !== 0 && player.vy !== 0) {
+                player.vx *= 0.707;
+                player.vy *= 0.707;
+            }
+            
+            player.x += player.vx;
+            player.y += player.vy;
+            
+            // Ограничение картой
+            player.x = Math.max(player.radius, Math.min(MAP_SIZE - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(MAP_SIZE - player.radius, player.y));
+            
+            // Таймер рывка
+            if (player.isDashing) {
+                player.dashTimer--;
+                if (player.dashTimer <= 0) {
+                    player.isDashing = false;
+                }
+            }
+            
+            // Стрельба
+            if (shootCooldown > 0) shootCooldown--;
+            
+            if (mouse.down && shootCooldown <= 0) {
+                const worldMouseX = mouse.x + camera.x;
+                const worldMouseY = mouse.y + camera.y;
+                const angle = Math.atan2(worldMouseY - player.y, worldMouseX - player.x);
+                
+                // Создаем "пулю" краски
+                const paintX = player.x + Math.cos(angle) * 30;
+                const paintY = player.y + Math.sin(angle) * 30;
+                
+                applyPaint(paintX, paintY, player.team, PAINT_RADIUS);
+                shootCooldown = SHOOT_COOLDOWN;
+            }
+            
+            // Постоянное нанесение краски под игроком
+            applyPaint(player.x, player.y, player.team, PAINT_RADIUS * 0.8);
+        }
+        
+        // Обновление ботов
+        function updateBots() {
+            bots.forEach(bot => {
+                // Изменение цели
+                bot.changeTargetTimer--;
+                if (bot.changeTargetTimer <= 0) {
+                    bot.targetX = Math.random() * MAP_SIZE;
+                    bot.targetY = Math.random() * MAP_SIZE;
+                    bot.changeTargetTimer = 60 + Math.random() * 120;
+                }
+                
+                // Движение к цели
+                const dx = bot.targetX - bot.x;
+                const dy = bot.targetY - bot.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 10) {
+                    bot.vx = (dx / dist) * bot.speed;
+                    bot.vy = (dy / dist) * bot.speed;
+                } else {
+                    bot.vx = 0;
+                    bot.vy = 0;
+                }
+                
+                bot.x += bot.vx;
+                bot.y += bot.vy;
+                
+                // Ограничение картой
+                bot.x = Math.max(bot.radius, Math.min(MAP_SIZE - bot.radius, bot.x));
+                bot.y = Math.max(bot.radius, Math.min(MAP_SIZE - bot.radius, bot.y));
+                
+                // Стрельба
+                bot.shootTimer++;
+                if (bot.shootTimer >= SHOOT_COOLDOWN * 2) {
+                    // Найти ближайшего врага
+                    let nearestEnemy = null;
+                    let nearestDist = Infinity;
+                    
+                    // Проверка игрока
+                    if (player.team !== bot.team) {
+                        const d = Math.sqrt((player.x - bot.x) ** 2 + (player.y - bot.y) ** 2);
+                        if (d < nearestDist && d < 300) {
+                            nearestDist = d;
+                            nearestEnemy = player;
+                        }
+                    }
+                    
+                    // Проверка других ботов
+                    bots.forEach(otherBot => {
+                        if (otherBot.team !== bot.team) {
+                            const d = Math.sqrt((otherBot.x - bot.x) ** 2 + (otherBot.y - bot.y) ** 2);
+                            if (d < nearestDist && d < 300) {
+                                nearestDist = d;
+                                nearestEnemy = otherBot;
+                            }
+                        }
+                    });
+                    
+                    if (nearestEnemy) {
+                        const angle = Math.atan2(nearestEnemy.y - bot.y, nearestEnemy.x - bot.x);
+                        const paintX = bot.x + Math.cos(angle) * 30;
+                        const paintY = bot.y + Math.sin(angle) * 30;
+                        applyPaint(paintX, paintY, bot.team, PAINT_RADIUS);
+                    }
+                    
+                    bot.shootTimer = 0;
+                }
+                
+                // Нанесение краски под ботом
+                applyPaint(bot.x, bot.y, bot.team, PAINT_RADIUS * 0.6);
+            });
+        }
+        
+        // Обновление камеры
+        function updateCamera() {
+            camera.x = player.x - canvas.width / 2;
+            camera.y = player.y - canvas.height / 2;
+            
+            // Ограничение камеры границами карты
+            camera.x = Math.max(0, Math.min(MAP_SIZE - canvas.width, camera.x));
+            camera.y = Math.max(0, Math.min(MAP_SIZE - canvas.height, camera.y));
+        }
+        
+        // Отрисовка карты краски
+        function drawPaintMap() {
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    if (paintMap[i][j] !== -1) {
+                        const x = i * PAINT_CELL_SIZE - camera.x;
+                        const y = j * PAINT_CELL_SIZE - camera.y;
+                        
+                        // Проверка видимости
+                        if (x > -PAINT_CELL_SIZE && x < canvas.width && 
+                            y > -PAINT_CELL_SIZE && y < canvas.height) {
+                            ctx.fillStyle = TEAMS[paintMap[i][j]].color;
+                            ctx.fillRect(x, y, PAINT_CELL_SIZE + 1, PAINT_CELL_SIZE + 1);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Отрисовка игрока
+        function drawPlayer() {
+            const screenX = player.x - camera.x;
+            const screenY = player.y - camera.y;
+            
+            // Тело
+            ctx.beginPath();
+            ctx.arc(screenX, screenY, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = TEAMS[player.team].color;
+            ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Глаза
+            const eyeOffset = 8;
+            const eyeSize = 6;
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(screenX - eyeOffset, screenY - 5, eyeSize, 0, Math.PI * 2);
+            ctx.arc(screenX + eyeOffset, screenY - 5, eyeSize, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(screenX - eyeOffset, screenY - 5, 3, 0, Math.PI * 2);
+            ctx.arc(screenX + eyeOffset, screenY - 5, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Индикатор игрока
+            ctx.fillStyle = 'gold';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('ВЫ', screenX, screenY - 30);
+        }
+        
+        // Отрисовка ботов
+        function drawBots() {
+            bots.forEach(bot => {
+                const screenX = bot.x - camera.x;
+                const screenY = bot.y - camera.y;
+                
+                // Проверка видимости
+                if (screenX < -30 || screenX > canvas.width + 30 || 
+                    screenY < -30 || screenY > canvas.height + 30) {
+                    return;
+                }
+                
+                // Тело
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, bot.radius, 0, Math.PI * 2);
+                ctx.fillStyle = TEAMS[bot.team].color;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Глаза
+                const eyeOffset = 6;
+                const eyeSize = 5;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(screenX - eyeOffset, screenY - 4, eyeSize, 0, Math.PI * 2);
+                ctx.arc(screenX + eyeOffset, screenY - 4, eyeSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(screenX - eyeOffset, screenY - 4, 2.5, 0, Math.PI * 2);
+                ctx.arc(screenX + eyeOffset, screenY - 4, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        // Отрисовка границ карты
+        function drawBoundaries() {
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(-camera.x, -camera.y, MAP_SIZE, MAP_SIZE);
+        }
+        
+        // Отрисовка мини-карты
+        function drawMinimap() {
+            const minimapSize = 150;
+            const minimapX = canvas.width - minimapSize - 20;
+            const minimapY = canvas.height - minimapSize - 20;
+            const scale = minimapSize / MAP_SIZE;
+            
+            // Фон мини-карты
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(minimapX, minimapY, minimapSize, minimapSize);
+            
+            // Граница
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(minimapX, minimapY, minimapSize, minimapSize);
+            
+            // Краска на мини-карте (упрощенно)
+            for (let i = 0; i < COLS; i += 3) {
+                for (let j = 0; j < ROWS; j += 3) {
+                    if (paintMap[i][j] !== -1) {
+                        ctx.fillStyle = TEAMS[paintMap[i][j]].color;
+                        ctx.fillRect(
+                            minimapX + i * PAINT_CELL_SIZE * scale,
+                            minimapY + j * PAINT_CELL_SIZE * scale,
+                            PAINT_CELL_SIZE * scale * 3,
+                            PAINT_CELL_SIZE * scale * 3
+                        );
+                    }
+                }
+            }
+            
+            // Игрок на мини-карте
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(
+                minimapX + player.x * scale,
+                minimapY + player.y * scale,
+                4, 0, Math.PI * 2
+            );
+            ctx.fill();
+        }
+        
+        // Обновление UI
+        function updateUI() {
+            const scores = calculateScores();
+            document.getElementById('score0').textContent = scores[0];
+            document.getElementById('score1').textContent = scores[1];
+            document.getElementById('score2').textContent = scores[2];
+            document.getElementById('score3').textContent = scores[3];
+        }
+        
+        // Завершение игры
+        function endGame() {
+            gameRunning = false;
+            const scores = calculateScores();
+            const maxScore = Math.max(...scores);
+            const winners = [];
+            
+            TEAMS.forEach((team, index) => {
+                if (scores[index] === maxScore) {
+                    winners.push(team.name);
+                }
+            });
+            
+            const gameOverDiv = document.getElementById('gameOver');
+            const winnerText = document.getElementById('winnerText');
+            
+            if (winners.includes(TEAMS[0].name)) {
+                winnerText.textContent = `🏆 Победа! ${winners.join(', ')} выиграли с ${maxScore}% территории!`;
+                winnerText.style.color = '#2ecc71';
+            } else {
+                winnerText.textContent = `Победили: ${winners.join(', ')} с ${maxScore}% территории!\nВаша команда: ${scores[0]}%`;
+                winnerText.style.color = '#ff6b6b';
+            }
+            
+            gameOverDiv.style.display = 'block';
+        }
+        
+        // Перезапуск игры
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            // Сброс краски
+            for (let i = 0; i < COLS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    paintMap[i][j] = -1;
+                }
+            }
+            
+            // Сброс игрока
+            player.x = MAP_SIZE / 2;
+            player.y = MAP_SIZE / 2;
+            
+            // Пересоздание ботов
+            bots.length = 0;
+            createBots();
+            
+            // Сброс времени
+            gameTime = GAME_DURATION;
+            gameRunning = true;
+            
+            // Скрытие экрана конца игры
+            document.getElementById('gameOver').style.display = 'none';
+            
+            lastTime = Date.now();
+        });
+        
+        // Игровой цикл
+        function gameLoop() {
+            if (!gameRunning) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            const currentTime = Date.now();
+            const deltaTime = currentTime - lastTime;
+            
+            if (deltaTime >= 1000) {
+                gameTime--;
+                document.getElementById('timeLeft').textContent = gameTime;
+                lastTime = currentTime;
+                
+                if (gameTime <= 0) {
+                    endGame();
+                }
+            }
+            
+            // Очистка
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Обновление
+            updatePlayer();
+            updateBots();
+            updateCamera();
+            updateUI();
+            
+            // Отрисовка
+            drawPaintMap();
+            drawBoundaries();
+            drawBots();
+            drawPlayer();
+            drawMinimap();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Старт игры
+        createBots();
+        gameLoop();
+    </script>
+</body>
+</html>
