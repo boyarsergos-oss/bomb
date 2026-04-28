@@ -46,8 +46,8 @@ class PaintBattle {
         this.initLights();
         this.initArena();
         this.initTeams();
-        this.initPlayers();
         this.initReservoirs();
+        this.initPlayers();
         this.setupControls();
         this.setupUI();
         
