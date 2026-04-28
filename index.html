@@ -221,7 +221,7 @@
         
         // Функция создания потока жидкости из шланга
         function createHoseStream(origin, direction) {
-            const particleCount = 5; // Количество частиц за кадр при стрельбе
+            const particleCount = 8; // Количество частиц за кадр при стрельбе
             const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
             const maxDistance = 15; // Максимальная дистанция полёта краски
             
@@ -233,21 +233,37 @@
                 });
                 const particle = new THREE.Mesh(particleGeometry, particleMaterial);
                 
-                // Случайная позиция вдоль всей траектории от игрока до максимальной дистанции
+                // Распределяем частицы вдоль всей траектории
                 const distanceAlongTrajectory = Math.random() * maxDistance;
                 const basePosition = origin.clone().add(direction.clone().multiplyScalar(distanceAlongTrajectory));
                 
-                // Разброс вокруг траектории для эффекта распыления
-                const spreadAroundTrajectory = 0.3; // Разброс перпендикулярно направлению
-                const verticalSpread = 0.2; // Вертикальный разброс
+                // Конусообразный разброс: чем ближе к игроку, тем шире площадь покрытия
+                // Используем нормализованную дистанцию (0 у игрока, 1 на макс. дистанции)
+                const normalizedDistance = distanceAlongTrajectory / maxDistance;
                 
-                // Добавляем случайное смещение перпендикулярно направлению полёта
-                const offsetX = (Math.random() - 0.5) * spreadAroundTrajectory;
-                const offsetZ = (Math.random() - 0.5) * spreadAroundTrajectory;
+                // Широкий разброс у игрока (конус), сужающийся к концу траектории
+                // У игрока (normalizedDistance=0): spread = maxSpread
+                // На конце (normalizedDistance=1): spread = minSpread
+                const maxSpread = 1.8; // Максимальный разброс у игрока (широкая область)
+                const minSpread = 0.15; // Минимальный разброс на конце (направленная струя)
+                const currentSpread = maxSpread - (maxSpread - minSpread) * normalizedDistance;
                 
-                // Корректируем высоту с учётом гравитации (чем дальше от игрока, тем ниже должна быть частица)
-                const gravityDrop = distanceAlongTrajectory * 0.03;
-                const offsetY = Math.abs((Math.random() - 0.5) * verticalSpread) + Math.max(0, 0.3 - gravityDrop);
+                // Случайное направление в конусе вокруг основного направления
+                const angle = Math.random() * Math.PI * 2; // Случайный угол вокруг оси
+                const radius = Math.random() * currentSpread; // Случайный радиус в пределах конуса
+                
+                // Вычисляем перпендикулярные векторы для разброса
+                // Создаём вектор, перпендикулярный направлению
+                const perpendicular1 = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
+                const perpendicular2 = new THREE.Vector3().crossVectors(direction, perpendicular1).normalize();
+                
+                // Смещение в конусе
+                const offsetX = perpendicular1.x * radius * Math.cos(angle) + perpendicular2.x * radius * Math.sin(angle);
+                const offsetZ = perpendicular1.z * radius * Math.cos(angle) + perpendicular2.z * radius * Math.sin(angle);
+                
+                // Вертикальное смещение: больше у игрока, меньше к концу
+                const verticalSpread = (maxSpread * 0.4) * (1 - normalizedDistance * 0.7);
+                const offsetY = Math.abs((Math.random() - 0.5) * verticalSpread) + Math.max(0, 0.2 - distanceAlongTrajectory * 0.015);
                 
                 const perpendicularOffset = new THREE.Vector3(offsetX, offsetY, offsetZ);
                 
@@ -255,12 +271,11 @@
                 
                 // Физика струи из шланга:
                 // - Основная скорость в направлении выстрела
-                // - Небольшой случайный разброс для реалистичности
-                // - Начальная вертикальная скорость (струя летит по дуге)
-                const spread = 0.08; // Разброс струи (меньше для более направленной струи)
+                // - Разброс зависит от расстояния до игрока (чем ближе, тем больше разброс)
+                const spread = 0.06 + normalizedDistance * 0.04; // Меньший разброс скорости для более направленной струи
                 particle.userData.velocity = new THREE.Vector3(
                     direction.x + (Math.random() - 0.5) * spread,
-                    0.25 + Math.random() * 0.1, // Начальный импульс вверх
+                    0.2 + Math.random() * 0.1 - normalizedDistance * 0.08, // Начальный импульс вверх, уменьшается к концу
                     direction.z + (Math.random() - 0.5) * spread
                 );
                 
