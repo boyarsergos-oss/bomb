@@ -753,7 +753,6 @@
             }
             
             // Обновляем текст сообщения в зависимости от состояния
-            const reloadMessage = document.getElementById('reload-message');
             if (!canShoot && currentPaint <= 0) {
                 reloadMessage.textContent = 'Краска закончилась! Подойдите к резервуару и зажмите E';
             } else if (isNearTank && currentPaint < maxPaint) {
