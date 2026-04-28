@@ -388,45 +388,48 @@
             const canvasX = ((worldX + 25) / 50) * 1024;
             const canvasY = ((worldZ + 25) / 50) * 1024;
             
-            // Рисуем круг с неровными краями
+            // Увеличенный радиус для канваса
+            const canvasRadius = radius * 60;
+
             groundCtx.save();
-            
+            groundCtx.globalCompositeOperation = 'source-over';
+
             // Основной круг с более яркими цветами и большим размером
             const gradient = groundCtx.createRadialGradient(
                 canvasX, canvasY, 0,
-                canvasX, canvasY, radius * 30
+                canvasX, canvasY, canvasRadius
             );
             gradient.addColorStop(0, 'rgba(0, 255, 255, 1)');
             gradient.addColorStop(0.3, 'rgba(0, 255, 255, 0.95)');
             gradient.addColorStop(0.6, 'rgba(0, 255, 255, 0.8)');
             gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
-            
+
             groundCtx.fillStyle = gradient;
             groundCtx.beginPath();
-            groundCtx.arc(canvasX, canvasY, radius * 30, 0, Math.PI * 2);
+            groundCtx.arc(canvasX, canvasY, canvasRadius, 0, Math.PI * 2);
             groundCtx.fill();
-            
+
             // Добавляем случайные выступы по краям для реалистичности
             for (let i = 0; i < 25; i++) {
                 const angle = Math.random() * Math.PI * 2;
-                const dist = radius * 25 * (0.6 + Math.random() * 0.4);
-                const blobRadius = radius * 20 * (0.4 + Math.random() * 0.4);
+                const dist = canvasRadius * (0.6 + Math.random() * 0.4);
+                const blobRadius = canvasRadius * (0.3 + Math.random() * 0.3);
                 const blobX = canvasX + Math.cos(angle) * dist;
                 const blobY = canvasY + Math.sin(angle) * dist;
-                
+
                 const blobGradient = groundCtx.createRadialGradient(
                     blobX, blobY, 0,
                     blobX, blobY, blobRadius
                 );
                 blobGradient.addColorStop(0, 'rgba(0, 255, 255, 0.85)');
                 blobGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
-                
+
                 groundCtx.fillStyle = blobGradient;
                 groundCtx.beginPath();
                 groundCtx.arc(blobX, blobY, blobRadius, 0, Math.PI * 2);
                 groundCtx.fill();
             }
-            
+
             groundCtx.restore();
             groundTexture.needsUpdate = true;
         }
