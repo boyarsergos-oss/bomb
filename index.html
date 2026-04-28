@@ -80,9 +80,26 @@
         directionalLight.shadow.mapSize.height = 2048;
         scene.add(directionalLight);
 
-        // Земля (плоскость)
-        const groundGeometry = new THREE.PlaneGeometry(50, 50);
-        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x3a7d3a });
+        // Земля (плоскость) с динамической текстурой для краски
+        const groundSize = 50;
+        const groundResolution = 512; // Разрешение текстуры для рисования
+        const groundCanvas = document.createElement('canvas');
+        groundCanvas.width = groundResolution;
+        groundCanvas.height = groundResolution;
+        const groundCtx = groundCanvas.getContext('2d');
+        
+        // Заполняем начальным цветом (зелёный - трава)
+        groundCtx.fillStyle = '#3a7d3a';
+        groundCtx.fillRect(0, 0, groundResolution, groundResolution);
+        
+        const groundTexture = new THREE.CanvasTexture(groundCanvas);
+        groundTexture.needsUpdate = true;
+        
+        const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
+        const groundMaterial = new THREE.MeshLambertMaterial({ 
+            map: groundTexture,
+            color: 0xffffff
+        });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
@@ -203,6 +220,22 @@
             }
         });
 
+        // Функция рисования краски на земле
+        function paintOnGround(position, radius = 0.5) {
+            // Преобразуем 3D координаты в 2D координаты текстуры
+            const u = (position.x + groundSize / 2) / groundSize * groundResolution;
+            const v = (position.z + groundSize / 2) / groundSize * groundResolution;
+            
+            // Рисуем круг на canvas
+            groundCtx.beginPath();
+            groundCtx.arc(u, v, radius / groundSize * groundResolution, 0, Math.PI * 2);
+            groundCtx.fillStyle = '#ff1493'; // Ярко-розовый цвет краски
+            groundCtx.fill();
+            
+            // Обновляем текстуру
+            groundTexture.needsUpdate = true;
+        }
+        
         // Функция выстрела краской
         function shootPaint() {
             // Точка начала луча - позиция игрока + смещение вверх (откуда стреляет)
@@ -312,6 +345,9 @@
                         particle.userData.onGround = true;
                         particle.userData.spreadTime = 0;
                         
+                        // Рисуем краску на земле в точке попадания
+                        paintOnGround(particle.position.clone(), 0.4);
+                        
                         // Создаём эффект брызг при ударе о землю
                         createSplash(particle.position.clone(), new THREE.Vector3(0, 1, 0));
                         
@@ -359,6 +395,12 @@
                     particle.position.y = 0.05;
                     particle.userData.onGround = true;
                     particle.userData.velocity.set(0, 0, 0); // Останавливаем движение
+                    
+                    // Рисуем краску на земле от брызг (только один раз при касании)
+                    if (!particle.userData.painted) {
+                        paintOnGround(particle.position.clone(), 0.2);
+                        particle.userData.painted = true;
+                    }
                     
                     // Расплющиваем частицу брызг
                     particle.scale.set(0.8, 0.2, 0.8);
