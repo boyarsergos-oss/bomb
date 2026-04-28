@@ -214,35 +214,26 @@
         
         const paintTexture = createPaintTexture();
 
+        // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
+        let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
+
         // Функция выстрела краской
         function shootPaint() {
-            // Направление выстрела - от камеры к игроку и дальше вперед
-            // В изометрии камера смотрит на игрока с угла, поэтому "вперед" для игрока
-            // - это направление от камеры к игроку, спроецированное на плоскость XZ
-            
-            // Получаем направление взгляда камеры
-            const cameraDirection = new THREE.Vector3();
-            camera.getWorldDirection(cameraDirection);
-            
-            // Проверяем пересечения с землей и объектами
-            const intersectObjects = [ground];
-            
             // Точка начала луча - позиция игрока + смещение вверх (откуда стреляет)
             const rayOrigin = player.position.clone();
             rayOrigin.y = 1.2; // Высота "руки" или оружия
-            
-            // Направление: от камеры через игрока и вперед по земле
-            // Для изометрии: направление движения игрока при нажатии W
-            const shootDirection = new THREE.Vector3(-1, 0, -1).normalize();
-            
+
+            // Направление выстрела - куда смотрит персонаж
+            const shootDirection = playerDirection.clone();
+
             // Используем Raycaster для определения попадания
             const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
-            
-            const intersects = raycaster.intersectObjects(intersectObjects);
-            
+
+            const intersects = raycaster.intersectObjects([ground]);
+
             if (intersects.length > 0) {
                 const hitPoint = intersects[0].point;
-                
+
                 // Создаем спрайт с краской в точке попадания
                 const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
                     map: paintTexture, 
@@ -250,29 +241,27 @@
                     transparent: true,
                     opacity: 0.95
                 }));
-                
+
                 paintSprite.position.copy(hitPoint);
                 paintSprite.position.y += 0.08; // Чуть выше поверхности чтобы не мерцало
-                
+
                 // Случайный размер пятна
                 const scale = 1.2 + Math.random() * 0.8;
                 paintSprite.scale.set(scale, scale, 1);
-                
+
                 // Случайная ориентация
                 paintSprite.material.rotation = Math.random() * Math.PI * 2;
-                
+
                 scene.add(paintSprite);
                 paintMarks.push(paintSprite);
-                
+
                 // Ограничиваем количество пятен (удаляем старые)
                 if (paintMarks.length > 150) {
                     const oldMark = paintMarks.shift();
                     scene.remove(oldMark);
-                    oldMark.material.map.dispose();
-                    oldMark.material.dispose();
                 }
             }
-            
+
             // Добавляем эффект частиц при выстреле
             createPaintParticles(rayOrigin, shootDirection);
         }
@@ -400,24 +389,32 @@
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
+                // Обновляем направление персонажа
+                playerDirection.set(-1, 0, -1).normalize();
             }
             if (keys.s || keys.ArrowDown) {
                 // Визуально вниз по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
+                // Обновляем направление персонажа
+                playerDirection.set(1, 0, 1).normalize();
             }
             if (keys.a || keys.ArrowLeft) {
                 // Визуально влево по экрану
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
+                // Обновляем направление персонажа
+                playerDirection.set(-1, 0, 1).normalize();
             }
             if (keys.d || keys.ArrowRight) {
                 // Визуально вправо по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
+                // Обновляем направление персонажа
+                playerDirection.set(1, 0, -1).normalize();
             }
 
             // Ограничение движения границами земли
