@@ -468,9 +468,10 @@
         
         // Поток краски AI
         const aiHoseParticles = [];
+        const aiSplashParticles = []; // Частицы для эффекта разбрызгивания у AI
         
         function createAiHoseStream(origin, direction) {
-            const particleCount = 5; // Увеличено для более интенсивной покраски как у игрока
+            const particleCount = 4; // Такое же количество как у игрока
             const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
             
             for (let i = 0; i < particleCount; i++) {
@@ -499,36 +500,83 @@
             }
         }
         
-        // Обновление частиц AI
+        // Функция создания брызг при ударе о землю для AI
+        function createAiSplash(position, normal) {
+            const splashCount = 3; // Количество брызг на одно попадание (как у игрока)
+            const splashGeometry = new THREE.SphereGeometry(0.04, 6, 6);
+            
+            for (let i = 0; i < splashCount; i++) {
+                const particleMaterial = new THREE.MeshBasicMaterial({ 
+                    color: aiPaintColor,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                const particle = new THREE.Mesh(splashGeometry, particleMaterial);
+                
+                particle.position.copy(position);
+                particle.position.y += 0.1;
+                
+                // Случайное направление разбрызгивания вверх и в стороны
+                const angle = Math.random() * Math.PI * 2;
+                const horizontalSpeed = 0.05 + Math.random() * 0.1;
+                const verticalSpeed = 0.1 + Math.random() * 0.15;
+                
+                particle.userData.velocity = new THREE.Vector3(
+                    Math.cos(angle) * horizontalSpeed,
+                    verticalSpeed,
+                    Math.sin(angle) * horizontalSpeed
+                );
+                
+                particle.userData.speed = 1.0;
+                particle.userData.life = 0.6 + Math.random() * 0.3;
+                particle.userData.onGround = false;
+                particle.userData.isSplash = true;
+                
+                scene.add(particle);
+                aiSplashParticles.push(particle);
+            }
+        }
+        
+        // Обновление частиц шланга AI
         function updateAiHoseParticles() {
             for (let i = aiHoseParticles.length - 1; i >= 0; i--) {
                 const particle = aiHoseParticles[i];
                 
                 if (!particle.userData.onGround) {
+                    // Движение частицы в полёте
                     particle.position.add(
                         particle.userData.velocity.clone().multiplyScalar(particle.userData.speed)
                     );
                     
+                    // Гравитация (более сильная для эффекта жидкости)
                     particle.userData.velocity.y -= 0.025;
                     
+                    // Проверка столкновения с землёй
                     if (particle.position.y <= 0.1) {
                         particle.position.y = 0.1;
                         particle.userData.onGround = true;
                         particle.userData.spreadTime = 0;
                         
-                        // AI красит землю своим цветом
+                        // Рисуем краску на земле в точке попадания
                         aiPaintOnGround(particle.position.clone(), 0.4);
                         
+                        // Создаём эффект брызг при ударе о землю
+                        createAiSplash(particle.position.clone(), new THREE.Vector3(0, 1, 0));
+                        
+                        // Расплющиваем частицу на земле
                         particle.scale.set(1.5, 0.3, 1.5);
                     }
                 } else {
+                    // Частица на земле - растекается и исчезает
                     particle.userData.spreadTime += 0.05;
                     particle.userData.life -= 0.04;
                     
+                    // Растекание по поверхности
                     const spreadScale = 1.5 + particle.userData.spreadTime * 2;
                     particle.scale.set(spreadScale, 0.2, spreadScale);
                 }
                 
+                // Уменьшение прозрачности
                 particle.material.opacity = particle.userData.life * 0.9;
                 
                 if (particle.userData.life <= 0) {
@@ -536,6 +584,49 @@
                     particle.geometry.dispose();
                     particle.material.dispose();
                     aiHoseParticles.splice(i, 1);
+                    continue;
+                }
+            }
+        }
+        
+        // Обновление частиц разбрызгивания AI
+        function updateAiSplashParticles() {
+            for (let i = aiSplashParticles.length - 1; i >= 0; i--) {
+                const particle = aiSplashParticles[i];
+                
+                // Движение частицы
+                particle.position.add(
+                    particle.userData.velocity.clone().multiplyScalar(particle.userData.speed)
+                );
+                
+                // Гравитация
+                particle.userData.velocity.y -= 0.03;
+                
+                // Проверка столкновения с землёй
+                if (particle.position.y <= 0.05) {
+                    particle.position.y = 0.05;
+                    particle.userData.onGround = true;
+                    particle.userData.velocity.set(0, 0, 0); // Останавливаем движение
+                    
+                    // Рисуем краску на земле от брызг (только один раз при касании)
+                    if (!particle.userData.painted) {
+                        aiPaintOnGround(particle.position.clone(), 0.2);
+                        particle.userData.painted = true;
+                    }
+                    
+                    // Расплющиваем частицу брызг
+                    particle.scale.set(0.8, 0.2, 0.8);
+                }
+                
+                // Уменьшение жизни
+                particle.userData.life -= 0.025;
+                particle.material.opacity = particle.userData.life * 0.85;
+                
+                if (particle.userData.life <= 0) {
+                    scene.remove(particle);
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                    aiSplashParticles.splice(i, 1);
                 }
             }
         }
@@ -975,6 +1066,7 @@
             
             // Обновление частиц AI
             updateAiHoseParticles();
+            updateAiSplashParticles();
 
             // Обработка непрерывной стрельбы - струя следует за курсором
             if (isShooting) {
