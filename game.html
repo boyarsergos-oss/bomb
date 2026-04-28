@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Игра - Персонаж от 3 лица</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        #info h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+        }
+        #info p {
+            margin: 5px 0;
+        }
+        .key {
+            display: inline-block;
+            background: #444;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 0 2px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>🎮 Управление</h2>
+        <p><span class="key">W</span> <span class="key">↑</span> - Движение вперёд</p>
+        <p><span class="key">S</span> <span class="key">↓</span> - Движение назад</p>
+        <p><span class="key">A</span> <span class="key">←</span> - Поворот влево</p>
+        <p><span class="key">D</span> <span class="key">→</span> - Поворот вправо</p>
+        <p><span class="key">Shift</span> - Ускорение</p>
+        <p><span class="key">Пробел</span> - Прыжок</p>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // Сцена
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 20, 100);
+
+        // Камера
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Рендерер
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(50, 100, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 500;
+        directionalLight.shadow.camera.left = -100;
+        directionalLight.shadow.camera.right = 100;
+        directionalLight.shadow.camera.top = 100;
+        directionalLight.shadow.camera.bottom = -100;
+        scene.add(directionalLight);
+
+        // Земля
+        const groundGeometry = new THREE.PlaneGeometry(500, 500);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x3a7d3a,
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Создаём персонажа
+        const playerGroup = new THREE.Group();
+        
+        // Тело
+        const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.6);
+        const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x2196f3 });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 1.5;
+        body.castShadow = true;
+        playerGroup.add(body);
+
+        // Голова
+        const headGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+        const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffccaa });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 2.6;
+        head.castShadow = true;
+        playerGroup.add(head);
+
+        // Ноги
+        const legGeometry = new THREE.BoxGeometry(0.35, 1, 0.35);
+        const legMaterial = new THREE.MeshStandardMaterial({ color: 0x1565c0 });
+        
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.25, 0.5, 0);
+        leftLeg.castShadow = true;
+        playerGroup.add(leftLeg);
+
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.25, 0.5, 0);
+        rightLeg.castShadow = true;
+        playerGroup.add(rightLeg);
+
+        // Руки
+        const armGeometry = new THREE.BoxGeometry(0.3, 0.9, 0.3);
+        const armMaterial = new THREE.MeshStandardMaterial({ color: 0xffccaa });
+        
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-0.7, 1.8, 0);
+        leftArm.castShadow = true;
+        playerGroup.add(leftArm);
+
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(0.7, 1.8, 0);
+        rightArm.castShadow = true;
+        playerGroup.add(rightArm);
+
+        scene.add(playerGroup);
+
+        // Добавим несколько объектов на сцену для ориентира
+        function createObstacle(x, z, width, height, depth, color) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshStandardMaterial({ color: color });
+            const obstacle = new THREE.Mesh(geometry, material);
+            obstacle.position.set(x, height / 2, z);
+            obstacle.castShadow = true;
+            obstacle.receiveShadow = true;
+            scene.add(obstacle);
+            return obstacle;
+        }
+
+        // Создаём препятствия
+        const obstacles = [];
+        obstacles.push(createObstacle(10, 10, 3, 3, 3, 0xff5722));
+        obstacles.push(createObstacle(-15, 20, 4, 5, 4, 0x9c27b0));
+        obstacles.push(createObstacle(20, -10, 5, 2, 5, 0xffc107));
+        obstacles.push(createObstacle(-20, -15, 3, 4, 3, 0x4caf50));
+        obstacles.push(createObstacle(0, 30, 8, 6, 8, 0x00bcd4));
+
+        // Добавим деревья (конусы + цилиндры)
+        function createTree(x, z) {
+            const treeGroup = new THREE.Group();
+            
+            const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 2, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 1;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            const leavesGeometry = new THREE.ConeGeometry(2, 4, 8);
+            const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+            const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+            leaves.position.y = 4;
+            leaves.castShadow = true;
+            treeGroup.add(leaves);
+
+            treeGroup.position.set(x, 0, z);
+            scene.add(treeGroup);
+            return treeGroup;
+        }
+
+        // Создаём несколько деревьев
+        for (let i = 0; i < 15; i++) {
+            const x = (Math.random() - 0.5) * 150;
+            const z = (Math.random() - 0.5) * 150;
+            if (Math.abs(x) > 5 || Math.abs(z) > 5) {
+                createTree(x, z);
+            }
+        }
+
+        // Переменные игрока
+        const player = {
+            position: new THREE.Vector3(0, 0, 0),
+            velocity: new THREE.Vector3(0, 0, 0),
+            rotation: 0,
+            speed: 0.15,
+            runSpeed: 0.3,
+            rotationSpeed: 0.04,
+            jumpForce: 0.3,
+            gravity: 0.015,
+            onGround: true
+        };
+
+        playerGroup.position.copy(player.position);
+
+        // Управление
+        const keys = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false,
+            shift: false,
+            space: false
+        };
+
+        document.addEventListener('keydown', (event) => {
+            switch(event.code) {
+                case 'KeyW':
+                case 'ArrowUp':
+                    keys.forward = true;
+                    break;
+                case 'KeyS':
+                case 'ArrowDown':
+                    keys.backward = true;
+                    break;
+                case 'KeyA':
+                case 'ArrowLeft':
+                    keys.left = true;
+                    break;
+                case 'KeyD':
+                case 'ArrowRight':
+                    keys.right = true;
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    keys.shift = true;
+                    break;
+                case 'Space':
+                    if (player.onGround) {
+                        player.velocity.y = player.jumpForce;
+                        player.onGround = false;
+                    }
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            switch(event.code) {
+                case 'KeyW':
+                case 'ArrowUp':
+                    keys.forward = false;
+                    break;
+                case 'KeyS':
+                case 'ArrowDown':
+                    keys.backward = false;
+                    break;
+                case 'KeyA':
+                case 'ArrowLeft':
+                    keys.left = false;
+                    break;
+                case 'KeyD':
+                case 'ArrowRight':
+                    keys.right = false;
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    keys.shift = false;
+                    break;
+            }
+        });
+
+        // Анимация ходьбы
+        let walkCycle = 0;
+
+        function animatePlayer() {
+            const isMoving = keys.forward || keys.backward || keys.left || keys.right;
+            
+            // Поворот
+            if (keys.left) {
+                player.rotation += player.rotationSpeed;
+            }
+            if (keys.right) {
+                player.rotation -= player.rotationSpeed;
+            }
+
+            // Движение
+            const currentSpeed = keys.shift ? player.runSpeed : player.speed;
+            
+            if (keys.forward) {
+                player.velocity.x = Math.sin(player.rotation) * currentSpeed;
+                player.velocity.z = Math.cos(player.rotation) * currentSpeed;
+            } else if (keys.backward) {
+                player.velocity.x = -Math.sin(player.rotation) * currentSpeed;
+                player.velocity.z = -Math.cos(player.rotation) * currentSpeed;
+            } else {
+                player.velocity.x = 0;
+                player.velocity.z = 0;
+            }
+
+            // Применяем гравитацию
+            player.velocity.y -= player.gravity;
+
+            // Обновляем позицию
+            player.position.x += player.velocity.x;
+            player.position.y += player.velocity.y;
+            player.position.z += player.velocity.z;
+
+            // Проверка земли
+            if (player.position.y <= 0) {
+                player.position.y = 0;
+                player.velocity.y = 0;
+                player.onGround = true;
+            }
+
+            // Ограничение по границам карты
+            const boundary = 240;
+            player.position.x = Math.max(-boundary, Math.min(boundary, player.position.x));
+            player.position.z = Math.max(-boundary, Math.min(boundary, player.position.z));
+
+            // Обновляем позицию группы игрока
+            playerGroup.position.copy(player.position);
+            playerGroup.rotation.y = player.rotation;
+
+            // Анимация ходьбы
+            if (isMoving && player.onGround) {
+                walkCycle += 0.2;
+                leftLeg.rotation.x = Math.sin(walkCycle) * 0.5;
+                rightLeg.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
+                leftArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.3;
+                rightArm.rotation.x = Math.sin(walkCycle) * 0.3;
+            } else {
+                leftLeg.rotation.x = 0;
+                rightLeg.rotation.x = 0;
+                leftArm.rotation.x = 0;
+                rightArm.rotation.x = 0;
+            }
+
+            // Камера следует за игроком (вид от 3 лица)
+            const cameraOffset = new THREE.Vector3(0, 5, -10);
+            cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation);
+            const cameraPosition = playerGroup.position.clone().add(cameraOffset);
+            
+            camera.position.lerp(cameraPosition, 0.1);
+            camera.lookAt(playerGroup.position.clone().add(new THREE.Vector3(0, 2, 0)));
+        }
+
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Игровой цикл
+        function animate() {
+            requestAnimationFrame(animate);
+            animatePlayer();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
