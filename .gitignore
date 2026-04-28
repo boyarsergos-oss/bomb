@@ -1,0 +1,1 @@
+Nothing should be ignored based on the provided file changes. The added files (`game.js` and `index.html`) are source code/config files and should not be added to .gitignore.
