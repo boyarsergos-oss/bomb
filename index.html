@@ -31,6 +31,41 @@
             margin: 5px 0;
             font-size: 14px;
         }
+        #scoreboard {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+            text-align: right;
+        }
+        #scoreboard h3 {
+            margin-bottom: 10px;
+        }
+        .score-item {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffff00;
+        }
+        #fps-counter {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #00ff00;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 100;
+            font-family: monospace;
+            font-size: 16px;
+        }
         canvas {
             display: block;
         }
@@ -45,6 +80,15 @@
         <p>D / Стрелка вправо - Вправо</p>
         <p>ЛКМ / Пробел - Стрелять краской</p>
     </div>
+    
+    <div id="scoreboard">
+        <h3>Счёт</h3>
+        <div class="score-item" style="color: #ff6b6b;">Игрок: <span id="player-score">0</span>%</div>
+        <div class="score-item" style="color: #4a9eff;">Соперник: <span id="ai-score">0</span>%</div>
+        <div id="timer">2:00</div>
+    </div>
+    
+    <div id="fps-counter">FPS: <span id="fps-value">0</span></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -194,13 +238,68 @@
         createRock(-3, 6);
         createRock(4, -8);
 
+        // === ИГРОВЫЕ ПЕРЕМЕННЫЕ ===
+        const playerPaintColor = 0xff1493; // Розовый цвет игрока
+        const aiPaintColor = 0x4a9eff;     // Синий цвет соперника (AI)
+        let gameTime = 120; // 2 минуты в секундах
+        let gameActive = true;
+        
+        // FPS счётчик
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+        let fps = 0;
+        
         // Переменные для мыши
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
-        const paintColor = 0xff1493; // Ярко-розовый цвет краски
         
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
+
+        // === СОПЕРНИК (AI) ===
+        const ai = new THREE.Group();
+        
+        // Тело AI (синий цвет)
+        const aiBodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.6);
+        const aiBodyMaterial = new THREE.MeshLambertMaterial({ color: 0x4a9eff });
+        const aiBody = new THREE.Mesh(aiBodyGeometry, aiBodyMaterial);
+        aiBody.position.y = 0.75;
+        aiBody.castShadow = true;
+        ai.add(aiBody);
+
+        // Голова AI
+        const aiHeadGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+        const aiHeadMaterial = new THREE.MeshLambertMaterial({ color: 0xffccaa });
+        const aiHead = new THREE.Mesh(aiHeadGeometry, aiHeadMaterial);
+        aiHead.position.y = 1.85;
+        aiHead.castShadow = true;
+        ai.add(aiHead);
+
+        // Ноги AI
+        const aiLegGeometry = new THREE.BoxGeometry(0.3, 0.7, 0.3);
+        const aiLegMaterial = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+        
+        const aiLeftLeg = new THREE.Mesh(aiLegGeometry, aiLegMaterial);
+        aiLeftLeg.position.set(-0.25, 0.35, 0);
+        aiLeftLeg.castShadow = true;
+        ai.add(aiLeftLeg);
+
+        const aiRightLeg = new THREE.Mesh(aiLegGeometry, aiLegMaterial);
+        aiRightLeg.position.set(0.25, 0.35, 0);
+        aiRightLeg.castShadow = true;
+        ai.add(aiRightLeg);
+        
+        // Начальная позиция AI (противоположная от игрока)
+        ai.position.set(-15, 0, -15);
+        scene.add(ai);
+        
+        // Переменные AI
+        let aiWalkCycle = 0;
+        let aiTargetPosition = new THREE.Vector3(15, 0, 15);
+        let aiShootCooldown = 0;
+        let aiThinkTimer = 0;
+        let aiState = 'patrol'; // patrol, chase, paint
+        let aiMoveSpeed = 0.12;
 
         // Обработка движения мыши для определения направления стрельбы
         document.addEventListener('mousemove', (event) => {
@@ -220,8 +319,8 @@
             }
         });
 
-        // Функция рисования краски на земле
-        function paintOnGround(position, radius = 0.5) {
+        // Функция рисования краски на земле (с поддержкой цвета)
+        function paintOnGround(position, radius = 0.5, color = '#ff1493') {
             // Преобразуем 3D координаты в 2D координаты текстуры
             const u = (position.x + groundSize / 2) / groundSize * groundResolution;
             const v = (position.z + groundSize / 2) / groundSize * groundResolution;
@@ -229,11 +328,228 @@
             // Рисуем круг на canvas
             groundCtx.beginPath();
             groundCtx.arc(u, v, radius / groundSize * groundResolution, 0, Math.PI * 2);
-            groundCtx.fillStyle = '#ff1493'; // Ярко-розовый цвет краски
+            groundCtx.fillStyle = color;
             groundCtx.fill();
             
             // Обновляем текстуру
             groundTexture.needsUpdate = true;
+        }
+        
+        // Функция для AI - рисование синей краской
+        function aiPaintOnGround(position, radius = 0.5) {
+            paintOnGround(position, radius, '#4a9eff');
+        }
+        
+        // === ЛОГИКА AI СОПЕРНИКА ===
+        function updateAI() {
+            if (!gameActive) return;
+            
+            aiThinkTimer++;
+            
+            // Каждые 30 кадров (~0.5 сек) AI принимает решение
+            if (aiThinkTimer >= 30) {
+                aiThinkTimer = 0;
+                
+                // Находим случайную точку для покраски или ближайшую к игроку
+                const distToPlayer = ai.position.distanceTo(player.position);
+                
+                // Если игрок близко - преследуем и красим рядом с ним
+                if (distToPlayer < 15 && Math.random() > 0.3) {
+                    aiState = 'chase';
+                    // Точка рядом с игроком
+                    const offset = new THREE.Vector3(
+                        (Math.random() - 0.5) * 8,
+                        0,
+                        (Math.random() - 0.5) * 8
+                    );
+                    aiTargetPosition.copy(player.position).add(offset);
+                } else {
+                    // Иначе ищем свободную зону для покраски
+                    aiState = 'paint';
+                    aiTargetPosition.set(
+                        (Math.random() - 0.5) * 40,
+                        0,
+                        (Math.random() - 0.5) * 40
+                    );
+                }
+                
+                // Ограничиваем целевую позицию границами карты
+                aiTargetPosition.x = Math.max(-24, Math.min(24, aiTargetPosition.x));
+                aiTargetPosition.z = Math.max(-24, Math.min(24, aiTargetPosition.z));
+            }
+            
+            // Движение к цели
+            const directionToTarget = new THREE.Vector3()
+                .subVectors(aiTargetPosition, ai.position)
+                .normalize();
+            
+            // Поворот AI в направлении движения
+            if (directionToTarget.length() > 0.01) {
+                const targetRotation = Math.atan2(directionToTarget.x, directionToTarget.z);
+                ai.rotation.y = targetRotation;
+            }
+            
+            // Движение
+            const distToTarget = ai.position.distanceTo(aiTargetPosition);
+            let isAiMoving = false;
+            
+            if (distToTarget > 2) {
+                ai.position.add(directionToTarget.multiplyScalar(aiMoveSpeed));
+                isAiMoving = true;
+                
+                // Анимация ходьбы
+                aiWalkCycle += 0.2;
+                aiLeftLeg.rotation.x = Math.sin(aiWalkCycle) * 0.5;
+                aiRightLeg.rotation.x = Math.sin(aiWalkCycle + Math.PI) * 0.5;
+                aiBody.position.y = 0.75 + Math.sin(aiWalkCycle * 2) * 0.05;
+                aiHead.position.y = 1.85 + Math.sin(aiWalkCycle * 2) * 0.05;
+            } else {
+                // Достиг цели - красим территорию
+                if (aiShootCooldown <= 0) {
+                    aiShootPaint();
+                    aiShootCooldown = 8;
+                }
+                aiShootCooldown--;
+                
+                // Возврат ног в исходное положение
+                aiLeftLeg.rotation.x = THREE.MathUtils.lerp(aiLeftLeg.rotation.x, 0, 0.1);
+                aiRightLeg.rotation.x = THREE.MathUtils.lerp(aiRightLeg.rotation.x, 0, 0.1);
+                aiBody.position.y = THREE.MathUtils.lerp(aiBody.position.y, 0.75, 0.1);
+                aiHead.position.y = THREE.MathUtils.lerp(aiHead.position.y, 1.85, 0.1);
+            }
+            
+            // Ограничение движения границами земли
+            ai.position.x = Math.max(-24, Math.min(24, ai.position.x));
+            ai.position.z = Math.max(-24, Math.min(24, ai.position.z));
+        }
+        
+        // Выстрел краской AI
+        function aiShootPaint() {
+            const rayOrigin = ai.position.clone();
+            rayOrigin.y = 1.2;
+            
+            // AI стреляет в случайную точку перед собой
+            const shootDirection = new THREE.Vector3(
+                Math.sin(ai.rotation.y),
+                0,
+                Math.cos(ai.rotation.y)
+            ).normalize();
+            
+            // Добавляем небольшой разброс
+            shootDirection.x += (Math.random() - 0.5) * 0.5;
+            shootDirection.z += (Math.random() - 0.5) * 0.5;
+            
+            createAiHoseStream(rayOrigin, shootDirection);
+        }
+        
+        // Поток краски AI
+        const aiHoseParticles = [];
+        
+        function createAiHoseStream(origin, direction) {
+            const particleCount = 3;
+            const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particleMaterial = new THREE.MeshBasicMaterial({ 
+                    color: aiPaintColor,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                
+                const spreadOffset = (Math.random() - 0.5) * 0.3;
+                particle.position.copy(origin);
+                particle.position.x += spreadOffset;
+                particle.position.z += spreadOffset;
+                
+                const spreadAngle = (Math.random() - 0.5) * 0.15;
+                const spreadDirection = direction.clone();
+                spreadDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), spreadAngle);
+                particle.userData.velocity = spreadDirection;
+                particle.userData.speed = 1.2 + Math.random() * 0.3;
+                particle.userData.life = 1.0;
+                particle.userData.onGround = false;
+                
+                scene.add(particle);
+                aiHoseParticles.push(particle);
+            }
+        }
+        
+        // Обновление частиц AI
+        function updateAiHoseParticles() {
+            for (let i = aiHoseParticles.length - 1; i >= 0; i--) {
+                const particle = aiHoseParticles[i];
+                
+                if (!particle.userData.onGround) {
+                    particle.position.add(
+                        particle.userData.velocity.clone().multiplyScalar(particle.userData.speed)
+                    );
+                    
+                    particle.userData.velocity.y -= 0.025;
+                    
+                    if (particle.position.y <= 0.1) {
+                        particle.position.y = 0.1;
+                        particle.userData.onGround = true;
+                        particle.userData.spreadTime = 0;
+                        
+                        // AI красит землю своим цветом
+                        aiPaintOnGround(particle.position.clone(), 0.4);
+                        
+                        particle.scale.set(1.5, 0.3, 1.5);
+                    }
+                } else {
+                    particle.userData.spreadTime += 0.05;
+                    particle.userData.life -= 0.04;
+                    
+                    const spreadScale = 1.5 + particle.userData.spreadTime * 2;
+                    particle.scale.set(spreadScale, 0.2, spreadScale);
+                }
+                
+                particle.material.opacity = particle.userData.life * 0.9;
+                
+                if (particle.userData.life <= 0) {
+                    scene.remove(particle);
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                    aiHoseParticles.splice(i, 1);
+                }
+            }
+        }
+        
+        // Подсчёт процентов закрашенной территории
+        function calculateScores() {
+            const imageData = groundCtx.getImageData(0, 0, groundResolution, groundResolution);
+            const data = imageData.data;
+            
+            let playerPixels = 0;
+            let aiPixels = 0;
+            let totalColored = 0;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                
+                // Проверка на розовый цвет игрока (#ff1493)
+                if (r > 200 && g < 50 && b > 100) {
+                    playerPixels++;
+                    totalColored++;
+                }
+                // Проверка на синий цвет AI (#4a9eff)
+                else if (r < 100 && g > 120 && b > 200) {
+                    aiPixels++;
+                    totalColored++;
+                }
+            }
+            
+            const totalPixels = groundResolution * groundResolution;
+            const playerPercent = ((playerPixels / totalPixels) * 100).toFixed(1);
+            const aiPercent = ((aiPixels / totalPixels) * 100).toFixed(1);
+            
+            document.getElementById('player-score').textContent = playerPercent;
+            document.getElementById('ai-score').textContent = aiPercent;
+            
+            return { player: parseFloat(playerPercent), ai: parseFloat(aiPercent) };
         }
         
         // Функция выстрела краской
@@ -260,7 +576,7 @@
             
             for (let i = 0; i < particleCount; i++) {
                 const particleMaterial = new THREE.MeshBasicMaterial({ 
-                    color: paintColor,
+                    color: playerPaintColor,
                     transparent: true,
                     opacity: 0.9
                 });
@@ -295,7 +611,7 @@
             
             for (let i = 0; i < splashCount; i++) {
                 const particleMaterial = new THREE.MeshBasicMaterial({ 
-                    color: paintColor,
+                    color: playerPaintColor,
                     transparent: true,
                     opacity: 0.85
                 });
@@ -576,6 +892,56 @@
             camera.position.z = player.position.z + 20;
             camera.position.y = 20;
             camera.lookAt(player.position);
+
+            // === ОБНОВЛЕНИЕ AI ===
+            updateAI();
+            
+            // Обновление частиц AI
+            updateAiHoseParticles();
+
+            // === ПОДСЧЁТ ОЧКОВ И ТАЙМЕР ===
+            // Подсчёт очков каждые 30 кадров
+            if (frameCount % 30 === 0) {
+                calculateScores();
+            }
+            
+            // Обновление таймера
+            const currentTime = performance.now();
+            if (currentTime - lastFpsUpdate >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = currentTime;
+                
+                // Обновление FPS счётчика
+                document.getElementById('fps-value').textContent = fps;
+                
+                // Обновление игрового таймера (каждую секунду)
+                if (gameActive && gameTime > 0) {
+                    gameTime--;
+                    
+                    // Форматирование времени
+                    const minutes = Math.floor(gameTime / 60);
+                    const seconds = gameTime % 60;
+                    document.getElementById('timer').textContent = 
+                        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    // Конец игры
+                    if (gameTime <= 0) {
+                        gameActive = false;
+                        const scores = calculateScores();
+                        let resultText = '';
+                        if (scores.player > scores.ai) {
+                            resultText = '🎉 ПОБЕДА! 🎉';
+                        } else if (scores.ai > scores.player) {
+                            resultText = '😔 ПОРАЖЕНИЕ 😔';
+                        } else {
+                            resultText = '🤝 НИЧЬЯ 🤝';
+                        }
+                        document.getElementById('timer').textContent = resultText;
+                    }
+                }
+            }
+            frameCount++;
 
             // Обновление частиц шланга
             updateHoseParticles();
