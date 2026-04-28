@@ -185,6 +185,7 @@
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
         let aimDirection = new THREE.Vector3(0, 0, -1); // Направление прицеливания
+        let playerDirection = new THREE.Vector3(0, 0, -1); // Направление персонажа
         
         // Создаём текстуру для брызг краски (процедурно)
         function createPaintTexture() {
