@@ -231,7 +231,14 @@
                     opacity: 0.9
                 });
                 const particle = new THREE.Mesh(particleGeometry, particleMaterial);
-                particle.position.copy(origin);
+                
+                // Начинаем частицы от позиции игрока (рядом и под ним)
+                const spreadAroundPlayer = 0.5; // Разброс вокруг игрока
+                particle.position.set(
+                    origin.x + (Math.random() - 0.5) * spreadAroundPlayer,
+                    origin.y + (Math.random() - 0.5) * 0.3,
+                    origin.z + (Math.random() - 0.5) * spreadAroundPlayer
+                );
                 
                 // Физика струи из шланга:
                 // - Основная скорость в направлении выстрела
