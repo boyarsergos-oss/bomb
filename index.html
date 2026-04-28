@@ -217,6 +217,9 @@
         }
         
         const paintTexture = createPaintTexture();
+        
+        // Геометрия для пятен краски (плоский круг)
+        const paintGeometry = new THREE.CircleGeometry(1, 16);
 
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
@@ -256,31 +259,40 @@
             if (intersects.length > 0) {
                 const hitPoint = intersects[0].point;
 
-                // Создаем спрайт с краской в точке попадания
-                const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                // Создаем меш с краской в точке попадания (плоский круг на земле)
+                const paintMaterial = new THREE.MeshBasicMaterial({ 
                     map: paintTexture, 
                     color: paintColor,
                     transparent: true,
-                    opacity: 0.95
-                }));
+                    opacity: 0.95,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                });
+                
+                const paintMesh = new THREE.Mesh(paintGeometry, paintMaterial);
 
-                paintSprite.position.copy(hitPoint);
-                paintSprite.position.y += 0.08; // Чуть выше поверхности чтобы не мерцало
+                paintMesh.position.copy(hitPoint);
+                paintMesh.position.y += 0.01; // Чуть выше поверхности чтобы не мерцало
+                
+                // Поворачиваем меш чтобы он лежал на земле
+                paintMesh.rotation.x = -Math.PI / 2;
 
                 // Случайный размер пятна
                 const scale = 1.2 + Math.random() * 0.8;
-                paintSprite.scale.set(scale, scale, 1);
+                paintMesh.scale.set(scale, scale, scale);
 
                 // Случайная ориентация
-                paintSprite.material.rotation = Math.random() * Math.PI * 2;
+                paintMesh.rotation.z = Math.random() * Math.PI * 2;
 
-                scene.add(paintSprite);
-                paintMarks.push(paintSprite);
+                scene.add(paintMesh);
+                paintMarks.push(paintMesh);
 
                 // Ограничиваем количество пятен (удаляем старые)
                 if (paintMarks.length > 150) {
                     const oldMark = paintMarks.shift();
                     scene.remove(oldMark);
+                    oldMark.geometry.dispose();
+                    oldMark.material.dispose();
                 }
             }
 
