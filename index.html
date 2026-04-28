@@ -213,41 +213,49 @@
         }
         
         const paintTexture = createPaintTexture();
-        const paintMaterial = new THREE.SpriteMaterial({ 
-            map: paintTexture, 
-            color: paintColor,
-            transparent: true,
-            opacity: 0.9
-        });
 
         // Функция выстрела краской
         function shootPaint() {
-            // Определяем направление выстрела (вперед от игрока)
-            // В изометрии "вперед" - это комбинация направлений
-            const shootDirection = new THREE.Vector3(-1, 0, -1).normalize();
+            // Направление выстрела - от камеры к игроку и дальше вперед
+            // В изометрии камера смотрит на игрока с угла, поэтому "вперед" для игрока
+            // - это направление от камеры к игроку, спроецированное на плоскость XZ
             
-            // Создаем точку начала луча (от позиции игрока, немного выше земли)
+            // Получаем направление взгляда камеры
+            const cameraDirection = new THREE.Vector3();
+            camera.getWorldDirection(cameraDirection);
+            
+            // Проверяем пересечения с землей и объектами
+            const intersectObjects = [ground];
+            
+            // Точка начала луча - позиция игрока + смещение вверх (откуда стреляет)
             const rayOrigin = player.position.clone();
-            rayOrigin.y = 1; // Высота выстрела
+            rayOrigin.y = 1.2; // Высота "руки" или оружия
+            
+            // Направление: от камеры через игрока и вперед по земле
+            // Для изометрии: направление движения игрока при нажатии W
+            const shootDirection = new THREE.Vector3(-1, 0, -1).normalize();
             
             // Используем Raycaster для определения попадания
             const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
             
-            // Проверяем пересечения с землей и объектами
-            const intersectObjects = [ground];
             const intersects = raycaster.intersectObjects(intersectObjects);
             
             if (intersects.length > 0) {
                 const hitPoint = intersects[0].point;
-                const hitNormal = intersects[0].face.normal;
                 
                 // Создаем спрайт с краской в точке попадания
-                const paintSprite = new THREE.Sprite(paintMaterial.clone());
+                const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                    map: paintTexture, 
+                    color: paintColor,
+                    transparent: true,
+                    opacity: 0.95
+                }));
+                
                 paintSprite.position.copy(hitPoint);
-                paintSprite.position.y += 0.05; // Чуть выше поверхности
+                paintSprite.position.y += 0.08; // Чуть выше поверхности чтобы не мерцало
                 
                 // Случайный размер пятна
-                const scale = 0.8 + Math.random() * 0.6;
+                const scale = 1.2 + Math.random() * 0.8;
                 paintSprite.scale.set(scale, scale, 1);
                 
                 // Случайная ориентация
@@ -257,10 +265,68 @@
                 paintMarks.push(paintSprite);
                 
                 // Ограничиваем количество пятен (удаляем старые)
-                if (paintMarks.length > 100) {
+                if (paintMarks.length > 150) {
                     const oldMark = paintMarks.shift();
                     scene.remove(oldMark);
+                    oldMark.material.map.dispose();
+                    oldMark.material.dispose();
                 }
+            }
+            
+            // Добавляем эффект частиц при выстреле
+            createPaintParticles(rayOrigin, shootDirection);
+        }
+        
+        // Эффект частиц краски при выстреле
+        const paintParticles = [];
+        
+        function createPaintParticles(origin, direction) {
+            const particleCount = 8;
+            const particleGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+            const particleMaterial = new THREE.MeshBasicMaterial({ color: paintColor });
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial.clone());
+                particle.position.copy(origin);
+                
+                // Случайное отклонение от направления выстрела
+                particle.userData.velocity = new THREE.Vector3(
+                    direction.x + (Math.random() - 0.5) * 0.3,
+                    0.2 + Math.random() * 0.3,
+                    direction.z + (Math.random() - 0.5) * 0.3
+                );
+                particle.userData.life = 1.0;
+                
+                scene.add(particle);
+                paintParticles.push(particle);
+            }
+        }
+        
+        // Обновление частиц
+        function updatePaintParticles() {
+            for (let i = paintParticles.length - 1; i >= 0; i--) {
+                const particle = paintParticles[i];
+                particle.userData.life -= 0.03;
+                
+                if (particle.userData.life <= 0) {
+                    scene.remove(particle);
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                    paintParticles.splice(i, 1);
+                    continue;
+                }
+                
+                // Движение частицы
+                particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.4));
+                particle.userData.velocity.y -= 0.02; // Гравитация
+                
+                // Уменьшение размера
+                const scale = particle.userData.life;
+                particle.scale.set(scale, scale, scale);
+                
+                // Поворот
+                particle.rotation.x += 0.1;
+                particle.rotation.y += 0.1;
             }
         }
 
@@ -380,6 +446,9 @@
             camera.position.z = player.position.z + 20;
             camera.position.y = 20;
             camera.lookAt(player.position);
+
+            // Обновление частиц краски
+            updatePaintParticles();
 
             renderer.render(scene, camera);
         }
