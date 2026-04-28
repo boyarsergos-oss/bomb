@@ -81,9 +81,24 @@
         directionalLight.shadow.mapSize.height = 2048;
         scene.add(directionalLight);
 
-        // Земля (плоскость)
+        // Земля (плоскость) - создаём с canvas текстурой для динамического окрашивания
+        const groundCanvas = document.createElement('canvas');
+        groundCanvas.width = 1024;
+        groundCanvas.height = 1024;
+        const groundCtx = groundCanvas.getContext('2d');
+        
+        // Изначальный зелёный фон
+        groundCtx.fillStyle = '#3a7d3a';
+        groundCtx.fillRect(0, 0, 1024, 1024);
+        
+        const groundTexture = new THREE.CanvasTexture(groundCanvas);
+        groundTexture.needsUpdate = true;
+        
         const groundGeometry = new THREE.PlaneGeometry(50, 50);
-        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x3a7d3a });
+        const groundMaterial = new THREE.MeshLambertMaterial({ 
+            map: groundTexture,
+            color: 0xffffff
+        });
         const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
@@ -367,8 +382,58 @@
             }
         }
         
+        // Функция для рисования краски на текстуре земли
+        function drawPaintOnGround(worldX, worldZ, radius) {
+            // Конвертируем мировые координаты в координаты канваса
+            const canvasX = ((worldX + 25) / 50) * 1024;
+            const canvasY = ((worldZ + 25) / 50) * 1024;
+            
+            // Рисуем круг с неровными краями
+            groundCtx.save();
+            
+            // Основной круг
+            const gradient = groundCtx.createRadialGradient(
+                canvasX, canvasY, 0,
+                canvasX, canvasY, radius * 20
+            );
+            gradient.addColorStop(0, 'rgba(0, 255, 255, 0.9)');
+            gradient.addColorStop(0.5, 'rgba(0, 255, 255, 0.7)');
+            gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            
+            groundCtx.fillStyle = gradient;
+            groundCtx.beginPath();
+            groundCtx.arc(canvasX, canvasY, radius * 20, 0, Math.PI * 2);
+            groundCtx.fill();
+            
+            // Добавляем случайные выступы по краям
+            for (let i = 0; i < 15; i++) {
+                const angle = (Math.PI * 2 * i) / 15 + Math.random() * 0.3;
+                const blobRadius = radius * 20 * (0.3 + Math.random() * 0.4);
+                const blobX = canvasX + Math.cos(angle) * radius * 15;
+                const blobY = canvasY + Math.sin(angle) * radius * 15;
+                
+                const blobGradient = groundCtx.createRadialGradient(
+                    blobX, blobY, 0,
+                    blobX, blobY, blobRadius
+                );
+                blobGradient.addColorStop(0, 'rgba(0, 255, 255, 0.6)');
+                blobGradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+                
+                groundCtx.fillStyle = blobGradient;
+                groundCtx.beginPath();
+                groundCtx.arc(blobX, blobY, blobRadius, 0, Math.PI * 2);
+                groundCtx.fill();
+            }
+            
+            groundCtx.restore();
+            groundTexture.needsUpdate = true;
+        }
+        
         // Функция отметки области как окрашенной (для симуляции покрытия поверхности)
         function markAreaAsPainted(centerPoint, radius) {
+            // Рисуем краску непосредственно на текстуре земли
+            drawPaintOnGround(centerPoint.x, centerPoint.z, radius);
+            
             const gridX = Math.floor(centerPoint.x / PAINT_GRID_SIZE);
             const gridZ = Math.floor(centerPoint.z / PAINT_GRID_SIZE);
             const gridRadius = Math.ceil(radius / PAINT_GRID_SIZE);
@@ -385,23 +450,6 @@
                         // Если ячейка ещё не окрашена или обновляем существующую
                         if (!paintMap.has(key) || paintMap.get(key) < 1) {
                             paintMap.set(key, Math.min(1, (paintMap.get(key) || 0) + 0.3));
-                            
-                            // Визуально показываем окрашивание - создаём маленькое полупрозрачное пятно
-                            const worldX = checkX * PAINT_GRID_SIZE + PAINT_GRID_SIZE / 2;
-                            const worldZ = checkZ * PAINT_GRID_SIZE + PAINT_GRID_SIZE / 2;
-                            const paintDot = new THREE.Mesh(
-                                new THREE.PlaneGeometry(PAINT_GRID_SIZE * 1.1, PAINT_GRID_SIZE * 1.1),
-                                new THREE.MeshBasicMaterial({
-                                    color: paintColor,
-                                    transparent: true,
-                                    opacity: 0.4,
-                                    side: THREE.DoubleSide
-                                })
-                            );
-                            paintDot.rotation.x = -Math.PI / 2;
-                            paintDot.position.set(worldX, 0.02, worldZ);
-                            scene.add(paintDot);
-                            paintMarks.push(paintDot);
                         }
                     }
                 }
