@@ -181,6 +181,22 @@
         const paintMarks = [];
         const paintColor = 0xff1493; // Ярко-розовый цвет краски
         
+        // Система карты краски для закрашивания поверхности
+        const PAINT_MAP_SIZE = 512;
+        const paintCanvas = document.createElement('canvas');
+        paintCanvas.width = PAINT_MAP_SIZE;
+        paintCanvas.height = PAINT_MAP_SIZE;
+        const paintCtx = paintCanvas.getContext('2d');
+        
+        // Заполняем начальным цветом земли
+        paintCtx.fillStyle = '#3a7d3a';
+        paintCtx.fillRect(0, 0, PAINT_MAP_SIZE, PAINT_MAP_SIZE);
+        
+        // Создаём текстуру для карты краски
+        const paintMapTexture = new THREE.CanvasTexture(paintCanvas);
+        groundMaterial.map = paintMapTexture;
+        groundMaterial.needsUpdate = true;
+        
         // Переменные для мыши
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
@@ -217,6 +233,37 @@
         }
         
         const paintTexture = createPaintTexture();
+        
+        // Функция добавления краски на карту поверхности
+        function addPaintToGround(worldPosition, radius = 1.5) {
+            // Преобразуем мировые координаты в UV координаты текстуры
+            const groundSize = 50;
+            const u = (worldPosition.x + groundSize / 2) / groundSize;
+            const v = (worldPosition.z + groundSize / 2) / groundSize;
+            
+            if (u < 0 || u > 1 || v < 0 || v > 1) return;
+            
+            const px = u * PAINT_MAP_SIZE;
+            const py = (1 - v) * PAINT_MAP_SIZE; // Инвертируем Y для Canvas
+            
+            // Рисуем пятно краски на канвасе
+            const ctx = paintCtx;
+            const pixelRadius = radius * PAINT_MAP_SIZE / groundSize;
+            
+            // Градиент для мягкого края
+            const gradient = ctx.createRadialGradient(px, py, 0, px, py, pixelRadius);
+            gradient.addColorStop(0, 'rgba(255, 20, 147, 0.9)');
+            gradient.addColorStop(0.5, 'rgba(255, 20, 147, 0.7)');
+            gradient.addColorStop(1, 'rgba(255, 20, 147, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(px, py, pixelRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Обновляем текстуру
+            paintMapTexture.needsUpdate = true;
+        }
 
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
@@ -256,6 +303,9 @@
 
             if (intersects.length > 0) {
                 const hitPoint = intersects[0].point;
+
+                // Закрашиваем поверхность в точке попадания
+                addPaintToGround(hitPoint, 1.5 + Math.random() * 0.5);
 
                 // Создаем спрайт с краской в точке попадания
                 const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
@@ -308,6 +358,7 @@
                     direction.z + (Math.random() - 0.5) * 0.3
                 );
                 particle.userData.life = 1.0;
+                particle.userData.onGround = false;
                 
                 scene.add(particle);
                 paintParticles.push(particle);
@@ -331,6 +382,18 @@
                 // Движение частицы
                 particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.4));
                 particle.userData.velocity.y -= 0.02; // Гравитация
+                
+                // Проверка столкновения с землёй
+                if (!particle.userData.onGround && particle.position.y <= 0.1) {
+                    particle.position.y = 0.1;
+                    particle.userData.onGround = true;
+                    
+                    // Закрашиваем поверхность в точке падения частицы
+                    addPaintToGround(particle.position, 0.5 + Math.random() * 0.3);
+                    
+                    // Останавливаем частицу на земле
+                    particle.userData.velocity.set(0, 0, 0);
+                }
                 
                 // Уменьшение размера
                 const scale = particle.userData.life;
