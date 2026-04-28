@@ -41,12 +41,14 @@
 <body>
     <div id="info">
         <h2>🎮 Управление</h2>
-        <p><span class="key">W</span> <span class="key">↑</span> - Движение вперёд</p>
-        <p><span class="key">S</span> <span class="key">↓</span> - Движение назад</p>
-        <p><span class="key">A</span> <span class="key">←</span> - Поворот влево</p>
-        <p><span class="key">D</span> <span class="key">→</span> - Поворот вправо</p>
+        <p><span class="key">W</span> - Движение вперёд</p>
+        <p><span class="key">S</span> - Движение назад</p>
+        <p><span class="key">A</span> - Шаг влево</p>
+        <p><span class="key">D</span> - Шаг вправо</p>
+        <p><span class="key">Мышь</span> - Поворот камеры</p>
         <p><span class="key">Shift</span> - Ускорение</p>
         <p><span class="key">Пробел</span> - Прыжок</p>
+        <p style="color: #ffeb3b; margin-top: 10px;">Кликните для захвата мыши!</p>
     </div>
 
     <script type="importmap">
@@ -153,6 +155,40 @@
         playerGroup.add(rightArm);
 
         scene.add(playerGroup);
+
+        // Переменные игрока
+        const player = {
+            position: new THREE.Vector3(0, 0, 0),
+            velocity: new THREE.Vector3(0, 0, 0),
+            rotation: 0,
+            cameraRotation: 0,
+            speed: 0.15,
+            runSpeed: 0.3,
+            jumpForce: 0.3,
+            gravity: 0.015,
+            onGround: true
+        };
+
+        playerGroup.position.copy(player.position);
+
+        // Управление камерой (Pointer Lock)
+        let isPointerLocked = false;
+
+        document.addEventListener('click', () => {
+            if (!isPointerLocked) {
+                document.body.requestPointerLock();
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            isPointerLocked = document.pointerLockElement === document.body;
+        });
+
+        document.addEventListener('mousemove', (event) => {
+            if (isPointerLocked) {
+                player.cameraRotation -= event.movementX * 0.002;
+            }
+        });
 
         // Добавим несколько объектов на сцену для ориентира
         function createObstacle(x, z, width, height, depth, color) {
@@ -293,24 +329,31 @@
         function animatePlayer() {
             const isMoving = keys.forward || keys.backward || keys.left || keys.right;
             
-            // Поворот
-            if (keys.left) {
-                player.rotation += player.rotationSpeed;
-            }
-            if (keys.right) {
-                player.rotation -= player.rotationSpeed;
-            }
+            // Поворот персонажа вслед за камерой
+            player.rotation = player.cameraRotation;
 
-            // Движение
+            // Движение относительно камеры
             const currentSpeed = keys.shift ? player.runSpeed : player.speed;
             
+            // Вперёд/назад - вдоль направления камеры
             if (keys.forward) {
-                player.velocity.x = Math.sin(player.rotation) * currentSpeed;
-                player.velocity.z = Math.cos(player.rotation) * currentSpeed;
+                player.velocity.x = Math.sin(player.cameraRotation) * currentSpeed;
+                player.velocity.z = Math.cos(player.cameraRotation) * currentSpeed;
             } else if (keys.backward) {
-                player.velocity.x = -Math.sin(player.rotation) * currentSpeed;
-                player.velocity.z = -Math.cos(player.rotation) * currentSpeed;
-            } else {
+                player.velocity.x = -Math.sin(player.cameraRotation) * currentSpeed;
+                player.velocity.z = -Math.cos(player.cameraRotation) * currentSpeed;
+            } 
+            // Влево/вправо - перпендикулярно направлению камеры (стрейф)
+            if (keys.left) {
+                player.velocity.x += Math.sin(player.cameraRotation + Math.PI/2) * currentSpeed;
+                player.velocity.z += Math.cos(player.cameraRotation + Math.PI/2) * currentSpeed;
+            }
+            if (keys.right) {
+                player.velocity.x += Math.sin(player.cameraRotation - Math.PI/2) * currentSpeed;
+                player.velocity.z += Math.cos(player.cameraRotation - Math.PI/2) * currentSpeed;
+            }
+            
+            if (!keys.forward && !keys.backward && !keys.left && !keys.right) {
                 player.velocity.x = 0;
                 player.velocity.z = 0;
             }
@@ -353,12 +396,13 @@
                 rightArm.rotation.x = 0;
             }
 
-            // Камера следует за игроком (вид от 3 лица)
-            const cameraOffset = new THREE.Vector3(0, 5, -10);
-            cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation);
-            const cameraPosition = playerGroup.position.clone().add(cameraOffset);
+            // Камера следует за игроком (вид от 3 лица) с управлением мышью
+            const cameraDistance = 10;
+            const cameraHeight = 5;
+            const cameraX = playerGroup.position.x + Math.sin(player.cameraRotation) * cameraDistance;
+            const cameraZ = playerGroup.position.z + Math.cos(player.cameraRotation) * cameraDistance;
             
-            camera.position.lerp(cameraPosition, 0.1);
+            camera.position.set(cameraX, playerGroup.position.y + cameraHeight, cameraZ);
             camera.lookAt(playerGroup.position.clone().add(new THREE.Vector3(0, 2, 0)));
         }
 
