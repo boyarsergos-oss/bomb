@@ -239,15 +239,19 @@
             }
         });
 
-        // Функция выстрела краской
+        // Функция выстрела краской - теперь стреляем точно в точку под курсором
         function shootPaint() {
             // Точка начала луча - позиция игрока + смещение вверх (откуда стреляет)
             const rayOrigin = player.position.clone();
             rayOrigin.y = 1.2; // Высота "руки" или оружия
 
-            // Направление выстрела - куда смотрит персонаж (на основе позиции мыши)
-            const shootDirection = playerDirection.clone();
-            shootDirection.y = 0; // Стреляем горизонтально
+            // Направление выстрела - ОТ игрока К точке под курсором мыши
+            const shootDirection = new THREE.Vector3();
+            shootDirection.subVectors(targetPoint, rayOrigin).normalize();
+            
+            // Добавляем небольшой угол вверх для более реалистичной траектории
+            shootDirection.y = 0.3;
+            shootDirection.normalize();
 
             // Используем Raycaster для определения попадания в землю
             const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
@@ -293,52 +297,95 @@
         const paintParticles = [];
         
         function createPaintParticles(origin, direction) {
-            const particleCount = 8;
-            const particleGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-            const particleMaterial = new THREE.MeshBasicMaterial({ color: paintColor });
+            const particleCount = 15;
+            const particleGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.12);
             
             for (let i = 0; i < particleCount; i++) {
-                const particle = new THREE.Mesh(particleGeometry, particleMaterial.clone());
+                const particleMaterial = new THREE.MeshBasicMaterial({ 
+                    color: paintColor,
+                    transparent: true,
+                    opacity: 1.0
+                });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
                 particle.position.copy(origin);
                 
-                // Случайное отклонение от направления выстрела
+                // Разброс частиц - имитация разбрызгивания краски
+                const spread = 0.4 + Math.random() * 0.3;
                 particle.userData.velocity = new THREE.Vector3(
-                    direction.x + (Math.random() - 0.5) * 0.3,
-                    0.2 + Math.random() * 0.3,
-                    direction.z + (Math.random() - 0.5) * 0.3
+                    direction.x * spread + (Math.random() - 0.5) * 0.5,
+                    direction.y * spread + 0.1 + Math.random() * 0.2,
+                    direction.z * spread + (Math.random() - 0.5) * 0.5
                 );
+                particle.userData.initialVelocity = particle.userData.velocity.clone();
                 particle.userData.life = 1.0;
+                particle.userData.onGround = false;
                 
                 scene.add(particle);
                 paintParticles.push(particle);
             }
         }
         
-        // Обновление частиц
+        // Обновление частиц с физикой и оставлением следов
         function updatePaintParticles() {
             for (let i = paintParticles.length - 1; i >= 0; i--) {
                 const particle = paintParticles[i];
-                particle.userData.life -= 0.03;
+                particle.userData.life -= 0.02;
+                
+                // Если частица ещё не на земле - применяем физику
+                if (!particle.userData.onGround) {
+                    // Движение частицы
+                    particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.5));
+                    particle.userData.velocity.y -= 0.015; // Гравитация
+                    
+                    // Проверка столкновения с землёй
+                    if (particle.position.y <= 0.1 && particle.userData.velocity.y < 0) {
+                        particle.position.y = 0.1;
+                        particle.userData.onGround = true;
+                        
+                        // Создаем пятно краски в точке падения частицы
+                        const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                            map: paintTexture, 
+                            color: paintColor,
+                            transparent: true,
+                            opacity: 0.85
+                        }));
+                        
+                        paintSprite.position.copy(particle.position);
+                        paintSprite.position.y = 0.08;
+                        
+                        // Размер пятна зависит от скорости падения
+                        const impactSpeed = Math.abs(particle.userData.initialVelocity.y);
+                        const scale = 0.6 + impactSpeed * 1.5 + Math.random() * 0.4;
+                        paintSprite.scale.set(scale, scale, 1);
+                        
+                        paintSprite.material.rotation = Math.random() * Math.PI * 2;
+                        
+                        scene.add(paintSprite);
+                        paintMarks.push(paintSprite);
+                        
+                        // Ограничиваем количество пятен
+                        if (paintMarks.length > 200) {
+                            const oldMark = paintMarks.shift();
+                            scene.remove(oldMark);
+                        }
+                    }
+                    
+                    // Поворот частицы в полёте
+                    particle.rotation.x += 0.15;
+                    particle.rotation.y += 0.15;
+                } else {
+                    // Частица на земле - уменьшается и исчезает
+                    const scale = particle.userData.life * 0.5;
+                    particle.scale.set(scale, scale, scale);
+                    particle.material.opacity = particle.userData.life;
+                }
                 
                 if (particle.userData.life <= 0) {
                     scene.remove(particle);
                     particle.geometry.dispose();
                     particle.material.dispose();
                     paintParticles.splice(i, 1);
-                    continue;
                 }
-                
-                // Движение частицы
-                particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.4));
-                particle.userData.velocity.y -= 0.02; // Гравитация
-                
-                // Уменьшение размера
-                const scale = particle.userData.life;
-                particle.scale.set(scale, scale, scale);
-                
-                // Поворот
-                particle.rotation.x += 0.1;
-                particle.rotation.y += 0.1;
             }
         }
 
