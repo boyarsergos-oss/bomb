@@ -296,60 +296,91 @@
                 }
             }
 
-            // Добавляем эффект частиц при выстреле
-            createPaintParticles(rayOrigin, shootDirection);
+            // Добавляем эффект частиц при выстреле (шланг)
+            createHoseStream(rayOrigin, shootDirection);
         }
         
-        // Эффект частиц краски при выстреле
-        const paintParticles = [];
+        // Эффект "шланга" - поток жидкости
+        const hoseParticles = [];
         
-        function createPaintParticles(origin, direction) {
-            const particleCount = 8;
-            const particleGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-            const particleMaterial = new THREE.MeshBasicMaterial({ color: paintColor });
+        // Функция создания потока жидкости из шланга
+        function createHoseStream(origin, direction) {
+            const particleCount = 5; // Количество частиц за кадр при стрельбе
+            const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
             
             for (let i = 0; i < particleCount; i++) {
-                const particle = new THREE.Mesh(particleGeometry, particleMaterial.clone());
+                const particleMaterial = new THREE.MeshBasicMaterial({ 
+                    color: paintColor,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
                 particle.position.copy(origin);
                 
-                // Случайное отклонение от направления выстрела
+                // Физика струи из шланга:
+                // - Основная скорость в направлении выстрела
+                // - Небольшой случайный разброс для реалистичности
+                // - Начальная вертикальная скорость (струя летит по дуге)
+                const spread = 0.15; // Разброс струи
                 particle.userData.velocity = new THREE.Vector3(
-                    direction.x + (Math.random() - 0.5) * 0.3,
-                    0.2 + Math.random() * 0.3,
-                    direction.z + (Math.random() - 0.5) * 0.3
+                    direction.x + (Math.random() - 0.5) * spread,
+                    0.4 + Math.random() * 0.2, // Начальный импульс вверх
+                    direction.z + (Math.random() - 0.5) * spread
                 );
+                
+                // Скорость потока
+                particle.userData.speed = 0.6 + Math.random() * 0.2;
                 particle.userData.life = 1.0;
+                particle.userData.onGround = false;
                 
                 scene.add(particle);
-                paintParticles.push(particle);
+                hoseParticles.push(particle);
             }
         }
         
-        // Обновление частиц
-        function updatePaintParticles() {
-            for (let i = paintParticles.length - 1; i >= 0; i--) {
-                const particle = paintParticles[i];
-                particle.userData.life -= 0.03;
+        // Обновление частиц шланга
+        function updateHoseParticles() {
+            for (let i = hoseParticles.length - 1; i >= 0; i--) {
+                const particle = hoseParticles[i];
+                
+                if (!particle.userData.onGround) {
+                    // Движение частицы в полёте
+                    particle.position.add(
+                        particle.userData.velocity.clone().multiplyScalar(particle.userData.speed)
+                    );
+                    
+                    // Гравитация (более сильная для эффекта жидкости)
+                    particle.userData.velocity.y -= 0.025;
+                    
+                    // Проверка столкновения с землёй
+                    if (particle.position.y <= 0.1) {
+                        particle.position.y = 0.1;
+                        particle.userData.onGround = true;
+                        particle.userData.spreadTime = 0;
+                        
+                        // Расплющиваем частицу на земле
+                        particle.scale.set(1.5, 0.3, 1.5);
+                    }
+                } else {
+                    // Частица на земле - растекается и исчезает
+                    particle.userData.spreadTime += 0.05;
+                    particle.userData.life -= 0.04;
+                    
+                    // Растекание по поверхности
+                    const spreadScale = 1.5 + particle.userData.spreadTime * 2;
+                    particle.scale.set(spreadScale, 0.2, spreadScale);
+                }
+                
+                // Уменьшение прозрачности
+                particle.material.opacity = particle.userData.life * 0.9;
                 
                 if (particle.userData.life <= 0) {
                     scene.remove(particle);
                     particle.geometry.dispose();
                     particle.material.dispose();
-                    paintParticles.splice(i, 1);
+                    hoseParticles.splice(i, 1);
                     continue;
                 }
-                
-                // Движение частицы
-                particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.4));
-                particle.userData.velocity.y -= 0.02; // Гравитация
-                
-                // Уменьшение размера
-                const scale = particle.userData.life;
-                particle.scale.set(scale, scale, scale);
-                
-                // Поворот
-                particle.rotation.x += 0.1;
-                particle.rotation.y += 0.1;
             }
         }
 
@@ -508,8 +539,8 @@
             camera.position.y = 20;
             camera.lookAt(player.position);
 
-            // Обновление частиц краски
-            updatePaintParticles();
+            // Обновление частиц шланга
+            updateHoseParticles();
 
             // Обработка непрерывной стрельбы
             if (isShooting) {
