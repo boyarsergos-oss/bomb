@@ -146,19 +146,19 @@
         head.castShadow = true;
         bunnyGroup.add(head);
 
-        // Уши (длинные и милые)
-        const earGeometry = new THREE.CapsuleGeometry(0.1, 0.4, 4, 8);
+        // Уши (длинные и милые) - используем Cylinder вместо Capsule для совместимости
+        const earGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 8);
         
         // Левое ухо
         const leftEar = new THREE.Mesh(earGeometry, material);
-        leftEar.position.set(-0.15, 1.0, 0.25);
+        leftEar.position.set(-0.15, 1.05, 0.25);
         leftEar.rotation.z = -0.2;
         leftEar.castShadow = true;
         bunnyGroup.add(leftEar);
 
         // Правое ухо
         const rightEar = new THREE.Mesh(earGeometry, material);
-        rightEar.position.set(0.15, 1.0, 0.25);
+        rightEar.position.set(0.15, 1.05, 0.25);
         rightEar.rotation.z = 0.2;
         rightEar.castShadow = true;
         bunnyGroup.add(rightEar);
