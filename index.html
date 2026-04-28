@@ -298,8 +298,9 @@
         let aiTargetPosition = new THREE.Vector3(15, 0, 15);
         let aiShootCooldown = 0;
         let aiThinkTimer = 0;
-        let aiState = 'patrol'; // patrol, chase, paint
-        let aiMoveSpeed = 0.12;
+        let aiState = 'paint'; // paint, hunt
+        let aiMoveSpeed = 0.15;
+        let aiPaintIntensity = 0; // Для непрерывной покраски
 
         // Обработка движения мыши для определения направления стрельбы
         document.addEventListener('mousemove', (event) => {
@@ -348,36 +349,53 @@
             
             aiThinkTimer++;
             
-            // Каждые 30 кадров (~0.5 сек) AI принимает решение
-            if (aiThinkTimer >= 30) {
+            // AI постоянно стреляет краской - всегда включён режим покраски
+            aiIsShooting = true;
+            
+            // Увеличиваем интенсивность покраски со временем
+            aiPaintIntensity = Math.min(aiPaintIntensity + 0.1, 1.0);
+            
+            // Каждые 15 кадров (~0.25 сек) AI принимает решение о движении
+            if (aiThinkTimer >= 15) {
                 aiThinkTimer = 0;
                 
-                // Находим случайную точку для покраски или ближайшую к игроку
-                const distToPlayer = ai.position.distanceTo(player.position);
+                // Стратегия AI: искать наименее закрашенные синим цветом зоны
+                // или зоны, закрашенные игроком (розовым), чтобы перекрыть их
                 
-                // Если игрок близко - преследуем и красим рядом с ним
-                if (distToPlayer < 15 && Math.random() > 0.3) {
-                    aiState = 'chase';
-                    // Точка рядом с игроком
-                    const offset = new THREE.Vector3(
-                        (Math.random() - 0.5) * 8,
-                        0,
-                        (Math.random() - 0.5) * 8
-                    );
-                    aiTargetPosition.copy(player.position).add(offset);
-                } else {
-                    // Иначе ищем свободную зону для покраски
-                    aiState = 'paint';
+                // С небольшой вероятностью меняем стратегию
+                if (Math.random() < 0.3) {
+                    // Ищем случайную точку на карте
                     aiTargetPosition.set(
-                        (Math.random() - 0.5) * 40,
+                        (Math.random() - 0.5) * 46,
                         0,
-                        (Math.random() - 0.5) * 40
+                        (Math.random() - 0.5) * 46
                     );
+                } else {
+                    // Целенаправленно ищем точки рядом с игроком чтобы перекрыть его краску
+                    const distToPlayer = ai.position.distanceTo(player.position);
+                    
+                    if (distToPlayer < 20 && Math.random() > 0.4) {
+                        // Идём к игроку чтобы закрасить территорию вокруг него
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = 5 + Math.random() * 8;
+                        aiTargetPosition.set(
+                            player.position.x + Math.cos(angle) * distance,
+                            0,
+                            player.position.z + Math.sin(angle) * distance
+                        );
+                    } else {
+                        // Идём в случайную точку карты для покраски
+                        aiTargetPosition.set(
+                            (Math.random() - 0.5) * 46,
+                            0,
+                            (Math.random() - 0.5) * 46
+                        );
+                    }
                 }
                 
                 // Ограничиваем целевую позицию границами карты
-                aiTargetPosition.x = Math.max(-24, Math.min(24, aiTargetPosition.x));
-                aiTargetPosition.z = Math.max(-24, Math.min(24, aiTargetPosition.z));
+                aiTargetPosition.x = Math.max(-23, Math.min(23, aiTargetPosition.x));
+                aiTargetPosition.z = Math.max(-23, Math.min(23, aiTargetPosition.z));
             }
             
             // Движение к цели
@@ -391,26 +409,31 @@
                 ai.rotation.y = targetRotation;
             }
             
-            // Движение
+            // Движение - AI двигается медленно но постоянно
             const distToTarget = ai.position.distanceTo(aiTargetPosition);
             let isAiMoving = false;
             
-            if (distToTarget > 2) {
+            if (distToTarget > 1.5) {
                 ai.position.add(directionToTarget.multiplyScalar(aiMoveSpeed));
                 isAiMoving = true;
                 
                 // Анимация ходьбы
-                aiWalkCycle += 0.2;
+                aiWalkCycle += 0.25;
                 aiLeftLeg.rotation.x = Math.sin(aiWalkCycle) * 0.5;
                 aiRightLeg.rotation.x = Math.sin(aiWalkCycle + Math.PI) * 0.5;
                 aiBody.position.y = 0.75 + Math.sin(aiWalkCycle * 2) * 0.05;
                 aiHead.position.y = 1.85 + Math.sin(aiWalkCycle * 2) * 0.05;
-                
-                // Когда AI движется, он не стреляет
-                aiIsShooting = false;
             } else {
-                // Достиг цели - красим территорию непрерывным потоком
-                aiIsShooting = true;
+                // Достиг цели - выбираем новую точку nearby
+                const angle = Math.random() * Math.PI * 2;
+                const distance = 3 + Math.random() * 6;
+                aiTargetPosition.set(
+                    ai.position.x + Math.cos(angle) * distance,
+                    0,
+                    ai.position.z + Math.sin(angle) * distance
+                );
+                aiTargetPosition.x = Math.max(-23, Math.min(23, aiTargetPosition.x));
+                aiTargetPosition.z = Math.max(-23, Math.min(23, aiTargetPosition.z));
                 
                 // Возврат ног в исходное положение
                 aiLeftLeg.rotation.x = THREE.MathUtils.lerp(aiLeftLeg.rotation.x, 0, 0.1);
@@ -420,8 +443,8 @@
             }
             
             // Ограничение движения границами земли
-            ai.position.x = Math.max(-24, Math.min(24, ai.position.x));
-            ai.position.z = Math.max(-24, Math.min(24, ai.position.z));
+            ai.position.x = Math.max(-23, Math.min(23, ai.position.x));
+            ai.position.z = Math.max(-23, Math.min(23, ai.position.z));
         }
         
         // Выстрел краской AI
@@ -447,7 +470,7 @@
         const aiHoseParticles = [];
         
         function createAiHoseStream(origin, direction) {
-            const particleCount = 3;
+            const particleCount = 5; // Увеличено для более интенсивной покраски как у игрока
             const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
             
             for (let i = 0; i < particleCount; i++) {
@@ -968,7 +991,7 @@
                 createHoseStream(rayOrigin, shootDirection);
             }
             
-            // Обработка непрерывной стрельбы AI
+            // Обработка непрерывной стрельбы AI - теперь AI стреляет каждый кадр как игрок
             if (aiIsShooting) {
                 const aiRayOrigin = ai.position.clone();
                 aiRayOrigin.y = 1.2;
@@ -982,6 +1005,7 @@
                 aiShootDirection.x += (Math.random() - 0.5) * 0.5;
                 aiShootDirection.z += (Math.random() - 0.5) * 0.5;
                 
+                // Создаём поток частиц каждый кадр пока AI активен
                 createAiHoseStream(aiRayOrigin, aiShootDirection);
             }
 
