@@ -292,9 +292,13 @@
             const rayOrigin = player.position.clone();
             rayOrigin.y = 1.2; // Высота "руки" или оружия
 
-            // Направление выстрела - куда смотрит персонаж (на основе позиции мыши)
-            const shootDirection = playerDirection.clone();
-            shootDirection.y = 0; // Стреляем горизонтально
+            // Направление выстрела - от игрока к точке, куда указывает мышь
+            const shootDirection = new THREE.Vector3()
+                .subVectors(targetPoint, rayOrigin)
+                .normalize();
+            
+            // Небольшой подъём направления, чтобы краска летела по дуге
+            shootDirection.y = 0.3;
 
             // Используем Raycaster для определения попадания в землю
             const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
