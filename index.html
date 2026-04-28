@@ -222,7 +222,7 @@
         
         // Функция создания потока жидкости из шланга
         function createHoseStream(origin, direction) {
-            const particleCount = 15; // Увеличено количество частиц за кадр при стрельбе
+            const particleCount = 4; // Уменьшено количество частиц за кадр при стрельбе
             const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
             
             for (let i = 0; i < particleCount; i++) {
@@ -257,7 +257,7 @@
         
         // Функция создания брызг при ударе о землю
         function createSplash(position, normal) {
-            const splashCount = 12; // Количество брызг на одно попадание
+            const splashCount = 5; // Количество брызг на одно попадание (уменьшено)
             const splashGeometry = new THREE.SphereGeometry(0.05, 6, 6);
             
             for (let i = 0; i < splashCount; i++) {
