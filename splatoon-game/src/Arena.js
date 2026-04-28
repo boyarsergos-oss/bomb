@@ -1,7 +1,6 @@
-/**
- * Класс арены
- * Создание и управление игровой ареной, резервуарами, освещением
- */
+import * as THREE from 'three';
+import { CONFIG } from './config.js';
+import { Utils } from './utils.js';
 
 class Arena {
     /**
@@ -240,7 +239,4 @@ class Arena {
     }
 }
 
-// Экспорт класса
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Arena;
-}
+export { Arena };

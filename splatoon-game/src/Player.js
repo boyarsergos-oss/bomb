@@ -1,7 +1,6 @@
-/**
- * Класс игрока
- * Управление движением, стрельбой и состоянием игрока
- */
+import * as THREE from 'three';
+import { CONFIG } from './config.js';
+import { Utils } from './utils.js';
 
 class Player {
     /**
@@ -334,7 +333,4 @@ class Player {
     }
 }
 
-// Экспорт класса
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Player;
-}
+export { Player };

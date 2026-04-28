@@ -137,7 +137,5 @@ const Utils = {
     }
 };
 
-// Экспорт утилит
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Utils;
-}
+// Экспорт утилит для ES6 модулей
+export { Utils };

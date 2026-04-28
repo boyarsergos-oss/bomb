@@ -55,7 +55,5 @@ const CONFIG = {
     }
 };
 
-// Экспорт конфигурации
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = CONFIG;
-}
+// Экспорт конфигурации для ES6 модулей
+export { CONFIG };

@@ -1,7 +1,6 @@
-/**
- * Система краски - управление окрашиванием арены
- * Отвечает за текстуру арены, подсчёт процентов покрытия и частицы
- */
+import * as THREE from 'three';
+import { CONFIG } from './config.js';
+import { Utils } from './utils.js';
 
 class PaintSystem {
     /**
@@ -295,7 +294,4 @@ class PaintSystem {
     }
 }
 
-// Экспорт класса
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = PaintSystem;
-}
+export { PaintSystem };

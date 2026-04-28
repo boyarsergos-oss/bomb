@@ -1,7 +1,9 @@
-/**
- * Основной класс игры
- * Управление игровым циклом, игроками, камерой и состоянием матча
- */
+import * as THREE from 'three';
+import { CONFIG } from './config.js';
+import { Utils } from './utils.js';
+import { PaintSystem } from './PaintSystem.js';
+import { Player } from './Player.js';
+import { Arena } from './Arena.js';
 
 class Game {
     constructor() {
@@ -407,7 +409,5 @@ class Game {
 // Глобальный экземпляр игры
 let game;
 
-// Экспорт класса
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = Game;
-}
+export { Game };
+export { game };
