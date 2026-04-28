@@ -184,31 +184,48 @@
         // Переменные для мыши
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
+        let aimDirection = new THREE.Vector3(0, 0, -1); // Направление прицеливания
         
         // Создаём текстуру для брызг краски (процедурно)
         function createPaintTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 128;
-            canvas.height = 128;
+            canvas.width = 256;
+            canvas.height = 256;
             const ctx = canvas.getContext('2d');
             
-            // Градиент для круглой формы
-            const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+            // Градиент для круглой формы с неровными краями
+            const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
             gradient.addColorStop(0, 'rgba(255, 20, 147, 1)');
-            gradient.addColorStop(0.5, 'rgba(255, 20, 147, 0.8)');
+            gradient.addColorStop(0.4, 'rgba(255, 20, 147, 0.9)');
+            gradient.addColorStop(0.7, 'rgba(255, 20, 147, 0.6)');
             gradient.addColorStop(1, 'rgba(255, 20, 147, 0)');
             
             ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 128, 128);
+            ctx.beginPath();
+            ctx.arc(128, 128, 128, 0, Math.PI * 2);
+            ctx.fill();
             
-            // Добавляем случайные "брызги"
-            for (let i = 0; i < 20; i++) {
-                const x = Math.random() * 128;
-                const y = Math.random() * 128;
-                const radius = Math.random() * 8 + 2;
+            // Добавляем случайные "брызги" по краям
+            for (let i = 0; i < 40; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 80 + Math.random() * 50;
+                const x = 128 + Math.cos(angle) * dist;
+                const y = 128 + Math.sin(angle) * dist;
+                const radius = Math.random() * 15 + 5;
                 ctx.beginPath();
                 ctx.arc(x, y, radius, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(255, 20, 147, ${Math.random() * 0.5 + 0.3})`;
+                ctx.fill();
+            }
+            
+            // Добавляем капли
+            for (let i = 0; i < 15; i++) {
+                const x = Math.random() * 256;
+                const y = Math.random() * 256;
+                const radius = Math.random() * 6 + 2;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 20, 147, ${Math.random() * 0.6 + 0.4})`;
                 ctx.fill();
             }
             
@@ -217,9 +234,6 @@
         }
         
         const paintTexture = createPaintTexture();
-
-        // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
-        let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
 
         // Обработка движения мыши для определения направления стрельбы
         document.addEventListener('mousemove', (event) => {
@@ -236,57 +250,155 @@
             
             if (intersects.length > 0) {
                 targetPoint.copy(intersects[0].point);
+                
+                // Вычисляем направление от игрока к точке прицеливания
+                aimDirection.subVectors(targetPoint, player.position).normalize();
+                aimDirection.y = 0; // Держим направление горизонтальным для поворота персонажа
+                
+                // Обновляем направление персонажа
+                playerDirection.copy(aimDirection);
             }
         });
 
-        // Функция выстрела краской
+        // Массив активных снарядов краски
+        const paintProjectiles = [];
+        
+        // Функция выстрела краской - создаёт снаряд который летит по физике
         function shootPaint() {
             // Точка начала луча - позиция игрока + смещение вверх (откуда стреляет)
             const rayOrigin = player.position.clone();
             rayOrigin.y = 1.2; // Высота "руки" или оружия
 
-            // Направление выстрела - куда смотрит персонаж (на основе позиции мыши)
-            const shootDirection = playerDirection.clone();
-            shootDirection.y = 0; // Стреляем горизонтально
+            // Направление выстрела - к точке прицеливания с учётом возвышения
+            const shootDirection = aimDirection.clone();
+            
+            // Добавляем вертикальную составляющую для баллистики
+            const velocity = shootDirection.multiplyScalar(0.8); // Скорость снаряда
+            velocity.y = 0.3; // Начальная вертикальная скорость (вверх)
 
-            // Используем Raycaster для определения попадания в землю
-            const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
-
-            const intersects = raycaster.intersectObject(ground);
-
-            if (intersects.length > 0) {
-                const hitPoint = intersects[0].point;
-
-                // Создаем спрайт с краской в точке попадания
-                const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
-                    map: paintTexture, 
-                    color: paintColor,
-                    transparent: true,
-                    opacity: 0.95
-                }));
-
-                paintSprite.position.copy(hitPoint);
-                paintSprite.position.y += 0.08; // Чуть выше поверхности чтобы не мерцало
-
-                // Случайный размер пятна
-                const scale = 1.2 + Math.random() * 0.8;
-                paintSprite.scale.set(scale, scale, 1);
-
-                // Случайная ориентация
-                paintSprite.material.rotation = Math.random() * Math.PI * 2;
-
-                scene.add(paintSprite);
-                paintMarks.push(paintSprite);
-
-                // Ограничиваем количество пятен (удаляем старые)
-                if (paintMarks.length > 150) {
-                    const oldMark = paintMarks.shift();
-                    scene.remove(oldMark);
+            // Создаём снаряд краски
+            const projectileGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+            const projectileMaterial = new THREE.MeshBasicMaterial({ color: paintColor });
+            const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+            projectile.position.copy(rayOrigin);
+            projectile.userData.velocity = velocity;
+            projectile.userData.life = 1.0;
+            projectile.userData.isProjectile = true;
+            
+            scene.add(projectile);
+            paintProjectiles.push(projectile);
+        }
+        
+        // Обновление снарядов краски (физика полёта)
+        function updatePaintProjectiles() {
+            const gravity = -0.015; // Гравитация
+            
+            for (let i = paintProjectiles.length - 1; i >= 0; i--) {
+                const projectile = paintProjectiles[i];
+                
+                if (!projectile.userData.isProjectile) continue;
+                
+                // Применяем гравитацию
+                projectile.userData.velocity.y += gravity;
+                
+                // Двигаем снаряд
+                const newPos = projectile.position.clone().add(projectile.userData.velocity);
+                
+                // Проверяем столкновения с землёй
+                const groundRaycaster = new THREE.Raycaster(
+                    projectile.position.clone(),
+                    projectile.userData.velocity.clone().normalize()
+                );
+                const groundIntersects = groundRaycaster.intersectObject(ground);
+                
+                let hitGround = false;
+                if (groundIntersects.length > 0) {
+                    const distToGround = groundIntersects[0].distance;
+                    const moveDist = projectile.userData.velocity.length();
+                    
+                    if (distToGround <= moveDist || newPos.y <= 0) {
+                        hitGround = true;
+                        // Создаем пятно в точке попадания
+                        createPaintMark(groundIntersects[0].point);
+                    }
+                }
+                
+                // Проверяем столкновения с другими объектами (деревья, камни)
+                if (!hitGround) {
+                    const allObjects = [...scene.children.filter(c => c.type === 'Group' || c.geometry)];
+                    const objectRaycaster = new THREE.Raycaster(
+                        projectile.position.clone(),
+                        projectile.userData.velocity.clone().normalize()
+                    );
+                    const objectIntersects = objectRaycaster.intersectObjects(allObjects, true);
+                    
+                    if (objectIntersects.length > 0 && objectIntersects[0].distance <= projectile.userData.velocity.length()) {
+                        // Попали в объект - создаём пятно на поверхности
+                        const hitPoint = objectIntersects[0].point;
+                        const hitNormal = objectIntersects[0].face ? objectIntersects[0].face.normal : new THREE.Vector3(0, 1, 0);
+                        
+                        // Преобразуем нормаль в мировые координаты
+                        const worldNormal = hitNormal.clone().transformDirection(objectIntersects[0].object.matrixWorld).normalize();
+                        
+                        createPaintMark(hitPoint, worldNormal);
+                        hitGround = true;
+                    }
+                }
+                
+                // Если попали - удаляем снаряд
+                if (hitGround || newPos.y < -5) {
+                    scene.remove(projectile);
+                    projectile.geometry.dispose();
+                    projectile.material.dispose();
+                    paintProjectiles.splice(i, 1);
+                } else {
+                    projectile.position.copy(newPos);
+                    
+                    // Вращение снаряда для красоты
+                    projectile.rotation.x += 0.2;
+                    projectile.rotation.y += 0.2;
                 }
             }
+        }
+        
+        // Создание пятна краски
+        function createPaintMark(position, normal = null) {
+            // Если нормаль не указана, считаем что это земля (нормаль вверх)
+            if (!normal) normal = new THREE.Vector3(0, 1, 0);
+            
+            // Создаем спрайт с краской в точке попадания
+            const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                map: paintTexture, 
+                color: paintColor,
+                transparent: true,
+                opacity: 0.95
+            }));
 
-            // Добавляем эффект частиц при выстреле
-            createPaintParticles(rayOrigin, shootDirection);
+            paintSprite.position.copy(position);
+            
+            // Смещаем чуть выше поверхности чтобы не мерцало
+            paintSprite.position.add(normal.clone().multiplyScalar(0.1));
+
+            // Случайный размер пятна
+            const scale = 1.5 + Math.random() * 1.0;
+            paintSprite.scale.set(scale, scale, 1);
+
+            // Случайная ориентация
+            paintSprite.material.rotation = Math.random() * Math.PI * 2;
+            
+            // Поворачиваем спрайт по нормали поверхности
+            // Для этого используем lookAt с точкой смещённой по нормали
+            const lookTarget = position.clone().add(normal);
+            paintSprite.lookAt(lookTarget);
+
+            scene.add(paintSprite);
+            paintMarks.push(paintSprite);
+
+            // Ограничиваем количество пятен (удаляем старые)
+            if (paintMarks.length > 300) {
+                const oldMark = paintMarks.shift();
+                scene.remove(oldMark);
+            }
         }
         
         // Эффект частиц краски при выстреле
@@ -499,6 +611,9 @@
 
             // Обновление частиц краски
             updatePaintParticles();
+            
+            // Обновление снарядов краски (физика полёта)
+            updatePaintProjectiles();
 
             // Обработка непрерывной стрельбы
             if (isShooting) {
