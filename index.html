@@ -319,19 +319,6 @@
             }
         }
 
-        // Обработчики для стрельбы
-        document.addEventListener('mousedown', (event) => {
-            if (event.button === 0) { // Левая кнопка мыши
-                shootPaint();
-            }
-        });
-
-        document.addEventListener('keydown', (event) => {
-            if (event.code === 'Space') {
-                shootPaint();
-            }
-        });
-
         // Управление
         const keys = {
             w: false,
@@ -344,15 +331,35 @@
             ArrowRight: false
         };
 
+        let canShoot = true;
+
         document.addEventListener('keydown', (event) => {
+            // Обработка движения
             if (keys.hasOwnProperty(event.key)) {
                 keys[event.key] = true;
+            }
+            // Обработка стрельбы (Пробел)
+            if (event.code === 'Space' && canShoot) {
+                shootPaint();
+                canShoot = false;
             }
         });
 
         document.addEventListener('keyup', (event) => {
+            // Обработка движения
             if (keys.hasOwnProperty(event.key)) {
                 keys[event.key] = false;
+            }
+            // Разрешаем стрельбу снова при отпускании пробела
+            if (event.code === 'Space') {
+                canShoot = true;
+            }
+        });
+
+        // Стрельба по клику мыши
+        document.addEventListener('mousedown', (event) => {
+            if (event.button === 0) { // Левая кнопка мыши
+                shootPaint();
             }
         });
 
