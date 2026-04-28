@@ -109,10 +109,8 @@
         dirLight.shadow.camera.right = 50;
         scene.add(dirLight);
 
-        // Создание игрока (простой куб)
-        const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
-        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff0055 });
-        player = new THREE.Mesh(playerGeometry, playerMaterial);
+        // Создание игрока (милый кролик)
+        player = createBunny(0xff0055);
         player.position.set(START_POS.x, START_POS.y, START_POS.z);
         player.castShadow = true;
         scene.add(player);
@@ -126,6 +124,75 @@
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
         window.addEventListener('resize', onWindowResize);
+    }
+
+    function createBunny(color) {
+        const bunnyGroup = new THREE.Group();
+
+        // Материал для кролика
+        const material = new THREE.MeshStandardMaterial({ color: color });
+
+        // Тело (овальное)
+        const bodyGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+        const body = new THREE.Mesh(bodyGeometry, material);
+        body.scale.set(1, 1.2, 0.7);
+        body.castShadow = true;
+        bunnyGroup.add(body);
+
+        // Голова
+        const headGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+        const head = new THREE.Mesh(headGeometry, material);
+        head.position.set(0, 0.6, 0.25);
+        head.castShadow = true;
+        bunnyGroup.add(head);
+
+        // Уши (длинные и милые)
+        const earGeometry = new THREE.CapsuleGeometry(0.1, 0.4, 4, 8);
+        
+        // Левое ухо
+        const leftEar = new THREE.Mesh(earGeometry, material);
+        leftEar.position.set(-0.15, 1.0, 0.25);
+        leftEar.rotation.z = -0.2;
+        leftEar.castShadow = true;
+        bunnyGroup.add(leftEar);
+
+        // Правое ухо
+        const rightEar = new THREE.Mesh(earGeometry, material);
+        rightEar.position.set(0.15, 1.0, 0.25);
+        rightEar.rotation.z = 0.2;
+        rightEar.castShadow = true;
+        bunnyGroup.add(rightEar);
+
+        // Глаза (черные бусинки)
+        const eyeGeometry = new THREE.SphereGeometry(0.06, 8, 8);
+        const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        
+        // Левый глаз
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.12, 0.65, 0.5);
+        bunnyGroup.add(leftEye);
+
+        // Правый глаз
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(0.12, 0.65, 0.5);
+        bunnyGroup.add(rightEye);
+
+        // Нос (розовый)
+        const noseGeometry = new THREE.SphereGeometry(0.04, 8, 8);
+        const noseMaterial = new THREE.MeshBasicMaterial({ color: 0xffaaaa });
+        const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+        nose.position.set(0, 0.58, 0.55);
+        bunnyGroup.add(nose);
+
+        // Хвостик (пушистый белый шарик)
+        const tailGeometry = new THREE.SphereGeometry(0.12, 8, 8);
+        const tailMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+        tail.position.set(0, 0.2, -0.6);
+        tail.castShadow = true;
+        bunnyGroup.add(tail);
+
+        return bunnyGroup;
     }
 
     function createPlatform(x, y, z, w, h, d, color) {
@@ -214,9 +281,12 @@
 
     function checkCollisions(newPos) {
         const playerBox = new THREE.Box3();
-        const playerSize = new THREE.Vector3(1, 1, 1);
-        // Центрируем бокс вокруг новой позиции
-        playerBox.setFromCenterAndSize(newPos, playerSize);
+        // Учитываем размер кролика: высота ~1.5 (с ушами), ширина ~0.6
+        const playerSize = new THREE.Vector3(0.6, 1.5, 0.7);
+        // Центрируем бокс вокруг новой позиции (немного смещаем по Y вниз, так как центр кролика ближе к телу)
+        const adjustedPos = newPos.clone();
+        adjustedPos.y -= 0.2;
+        playerBox.setFromCenterAndSize(adjustedPos, playerSize);
 
         let groundedTemp = false;
 
@@ -226,13 +296,13 @@
             if (playerBox.intersectsBox(platformBox)) {
                 // Простейшая коллизия: если мы падали вниз и пересекли платформу сверху
                 // Проверяем предыдущую позицию Y, чтобы понять направление
-                const prevBottom = player.position.y - 0.5;
+                const prevBottom = player.position.y - 0.7;
                 const platTop = platformBox.max.y;
                 
                 // Если раньше были выше платформы, а теперь внутри -> приземление
                 if (prevBottom >= platTop - 0.2 && playerVelocity.y <= 0) {
                     groundedTemp = true;
-                    newPos.y = platTop + 0.5; // Ставим ровно на поверхность
+                    newPos.y = platTop + 0.7; // Ставим ровно на поверхность
                     playerVelocity.y = 0;
                 } else {
                     // Боковое столкновение или удар головой (упрощенно: просто отталкиваем по X/Z или останавливаем)
@@ -320,7 +390,10 @@
         
         // Плавное следование (Lerp)
         camera.position.lerp(cameraOffset, 0.1);
-        camera.lookAt(player.position);
+        // Камера смотрит на центр кролика (чуть выше позиции)
+        const lookAtPos = player.position.clone();
+        lookAtPos.y += 0.5;
+        camera.lookAt(lookAtPos);
 
         renderer.render(scene, camera);
     }
