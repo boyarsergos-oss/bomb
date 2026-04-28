@@ -181,6 +181,10 @@
         const paintMarks = [];
         const paintColor = 0xff1493; // Ярко-розовый цвет краски
         
+        // Переменные для мыши
+        const mouse = new THREE.Vector2();
+        let targetPoint = new THREE.Vector3(0, 0, 0);
+        
         // Создаём текстуру для брызг краски (процедурно)
         function createPaintTexture() {
             const canvas = document.createElement('canvas');
@@ -217,19 +221,46 @@
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
 
+        // Обработка движения мыши для определения направления стрельбы
+        document.addEventListener('mousemove', (event) => {
+            // Нормализованные координаты мыши (-1 до +1)
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Создаем луч из камеры через позицию мыши
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Находим пересечение с землей
+            const intersects = raycaster.intersectObject(ground);
+            
+            if (intersects.length > 0) {
+                targetPoint.copy(intersects[0].point);
+                
+                // Вычисляем направление от игрока к точке под мышкой
+                const directionToMouse = new THREE.Vector3()
+                    .subVectors(targetPoint, player.position)
+                    .normalize();
+                
+                // Обновляем направление персонажа (только по горизонтали)
+                playerDirection.set(directionToMouse.x, 0, directionToMouse.z).normalize();
+            }
+        });
+
         // Функция выстрела краской
         function shootPaint() {
             // Точка начала луча - позиция игрока + смещение вверх (откуда стреляет)
             const rayOrigin = player.position.clone();
             rayOrigin.y = 1.2; // Высота "руки" или оружия
 
-            // Направление выстрела - куда смотрит персонаж
+            // Направление выстрела - куда смотрит персонаж (на основе позиции мыши)
             const shootDirection = playerDirection.clone();
+            shootDirection.y = 0; // Стреляем горизонтально
 
-            // Используем Raycaster для определения попадания
+            // Используем Raycaster для определения попадания в землю
             const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
 
-            const intersects = raycaster.intersectObjects([ground]);
+            const intersects = raycaster.intersectObject(ground);
 
             if (intersects.length > 0) {
                 const hitPoint = intersects[0].point;
