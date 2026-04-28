@@ -138,20 +138,20 @@
         body.castShadow = true;
         bunnyGroup.add(body);
 
-        // Уши - два цилиндра сверху
-        const earGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.4, 8);
+        // Уши - два длинных цилиндра, свисающие по бокам
+        const earGeometry = new THREE.CylinderGeometry(0.06, 0.08, 0.7, 8);
         
-        // Левое ухо
+        // Левое ухо - свисает слева вниз
         const leftEar = new THREE.Mesh(earGeometry, material);
-        leftEar.position.set(-0.15, 0.7, 0);
-        leftEar.rotation.z = -0.3;
+        leftEar.position.set(-0.35, 0.3, 0);
+        leftEar.rotation.z = -0.8; // Сильный наклон влево-вниз
         leftEar.castShadow = true;
         bunnyGroup.add(leftEar);
 
-        // Правое ухо
+        // Правое ухо - свисает справа вниз
         const rightEar = new THREE.Mesh(earGeometry, material);
-        rightEar.position.set(0.15, 0.7, 0);
-        rightEar.rotation.z = 0.3;
+        rightEar.position.set(0.35, 0.3, 0);
+        rightEar.rotation.z = 0.8; // Сильный наклон вправо-вниз
         rightEar.castShadow = true;
         bunnyGroup.add(rightEar);
 
