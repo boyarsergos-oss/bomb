@@ -331,17 +331,18 @@
             ArrowRight: false
         };
 
-        let canShoot = true;
+        let isShooting = false;
+        let shootCooldown = 0;
+        const shootDelay = 8; // Задержка между выстрелами (чем меньше, тем быстрее)
 
         document.addEventListener('keydown', (event) => {
             // Обработка движения
             if (keys.hasOwnProperty(event.key)) {
                 keys[event.key] = true;
             }
-            // Обработка стрельбы (Пробел)
-            if (event.code === 'Space' && canShoot) {
-                shootPaint();
-                canShoot = false;
+            // Обработка начала стрельбы (Пробел)
+            if (event.code === 'Space') {
+                isShooting = true;
             }
         });
 
@@ -350,16 +351,23 @@
             if (keys.hasOwnProperty(event.key)) {
                 keys[event.key] = false;
             }
-            // Разрешаем стрельбу снова при отпускании пробела
+            // Остановка стрельбы при отпускании пробела
             if (event.code === 'Space') {
-                canShoot = true;
+                isShooting = false;
             }
         });
 
-        // Стрельба по клику мыши
+        // Стрельба по клику мыши (начало)
         document.addEventListener('mousedown', (event) => {
             if (event.button === 0) { // Левая кнопка мыши
-                shootPaint();
+                isShooting = true;
+            }
+        });
+
+        // Остановка стрельбы при отпускании кнопки мыши
+        document.addEventListener('mouseup', (event) => {
+            if (event.button === 0) { // Левая кнопка мыши
+                isShooting = false;
             }
         });
 
@@ -453,6 +461,16 @@
 
             // Обновление частиц краски
             updatePaintParticles();
+
+            // Обработка непрерывной стрельбы
+            if (isShooting) {
+                if (shootCooldown <= 0) {
+                    shootPaint();
+                    shootCooldown = shootDelay;
+                } else {
+                    shootCooldown--;
+                }
+            }
 
             renderer.render(scene, camera);
         }
