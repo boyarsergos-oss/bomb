@@ -288,59 +288,59 @@
 
         // Функция выстрела краской
         function shootPaint() {
-            // Точка начала луча - позиция игрока + смещение вверх (откуда стреляет)
-            const rayOrigin = player.position.clone();
-            rayOrigin.y = 1.2; // Высота "руки" или оружия
-
-            // Направление выстрела - от игрока к точке, куда указывает мышь
-            const shootDirection = new THREE.Vector3()
-                .subVectors(targetPoint, rayOrigin)
-                .normalize();
+            // Пускаем луч из камеры через позицию мыши прямо на землю
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
             
-            // Небольшой подъём направления, чтобы краска летела по дуге
-            shootDirection.y = 0.3;
-
-            // Используем Raycaster для определения попадания в землю
-            const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
-
             const intersects = raycaster.intersectObject(ground);
+            
+            if (intersects.length === 0) return;
+            
+            // Точка попадания - это именно то место, куда указывает курсор мыши на земле
+            const hitPoint = intersects[0].point;
 
-            if (intersects.length > 0) {
-                const hitPoint = intersects[0].point;
+            // Закрашиваем поверхность в точке попадания
+            addPaintToGround(hitPoint, 1.5 + Math.random() * 0.5);
 
-                // Закрашиваем поверхность в точке попадания
-                addPaintToGround(hitPoint, 1.5 + Math.random() * 0.5);
+            // Создаем спрайт с краской в точке попадания
+            const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                map: paintTexture, 
+                color: paintColor,
+                transparent: true,
+                opacity: 0.95
+            }));
 
-                // Создаем спрайт с краской в точке попадания
-                const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
-                    map: paintTexture, 
-                    color: paintColor,
-                    transparent: true,
-                    opacity: 0.95
-                }));
+            paintSprite.position.copy(hitPoint);
+            paintSprite.position.y += 0.08; // Чуть выше поверхности чтобы не мерцало
 
-                paintSprite.position.copy(hitPoint);
-                paintSprite.position.y += 0.08; // Чуть выше поверхности чтобы не мерцало
+            // Случайный размер пятна
+            const scale = 1.2 + Math.random() * 0.8;
+            paintSprite.scale.set(scale, scale, 1);
 
-                // Случайный размер пятна
-                const scale = 1.2 + Math.random() * 0.8;
-                paintSprite.scale.set(scale, scale, 1);
+            // Случайная ориентация
+            paintSprite.material.rotation = Math.random() * Math.PI * 2;
 
-                // Случайная ориентация
-                paintSprite.material.rotation = Math.random() * Math.PI * 2;
+            scene.add(paintSprite);
+            paintMarks.push(paintSprite);
 
-                scene.add(paintSprite);
-                paintMarks.push(paintSprite);
-
-                // Ограничиваем количество пятен (удаляем старые)
-                if (paintMarks.length > 150) {
-                    const oldMark = paintMarks.shift();
-                    scene.remove(oldMark);
-                }
+            // Ограничиваем количество пятен (удаляем старые)
+            if (paintMarks.length > 150) {
+                const oldMark = paintMarks.shift();
+                scene.remove(oldMark);
             }
 
             // Добавляем эффект частиц при выстреле
-            createPaintParticles(rayOrigin, shootDirection);
+            // Точка начала частиц - позиция игрока
+            const particleOrigin = player.position.clone();
+            particleOrigin.y = 1.2;
+            
+            // Направление частиц - от игрока к точке попадания
+            const particleDirection = new THREE.Vector3()
+                .subVectors(hitPoint, particleOrigin)
+                .normalize();
+            particleDirection.y = 0.3; // Небольшой подъём
+            
+            createPaintParticles(particleOrigin, particleDirection);
         }
         
         // Эффект частиц краски при выстреле
