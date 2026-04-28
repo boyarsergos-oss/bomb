@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Splatoon-like 3D Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #gameCanvas {
+            display: block;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        
+        #inkBar {
+            width: 200px;
+            height: 30px;
+            background: rgba(0,0,0,0.5);
+            border: 3px solid white;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        #inkFill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #0088ff);
+            width: 100%;
+            transition: width 0.1s;
+        }
+        
+        #score {
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            font-size: 14px;
+        }
+        
+        #refillIndicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 32px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="ui">
+        <div>КРАСКА</div>
+        <div id="inkBar">
+            <div id="inkFill"></div>
+        </div>
+        <div id="score">Счёт: 0%</div>
+    </div>
+    
+    <div id="controls">
+        WASD - Движение | ЛКМ - Стрелять краской | Пробел - У резервуара для заправки
+    </div>
+    
+    <div id="refillIndicator">ЗАПРАВКА...</div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Инициализация сцены
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 30, 30);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 50, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        // Параметры игры
+        const arenaSize = 100;
+        const teamColors = [
+            0x00ffff, // Циан (игрок)
+            0xff00ff, // Маджента
+            0xffff00, // Жёлтый
+            0x00ff00  // Зелёный
+        ];
+        const playerTeamIndex = 0;
+        const playersPerTeam = 3;
+        
+        // Создаём текстуру арены для отслеживания краски
+        const textureSize = 512;
+        const paintTexture = new THREE.DataTexture(
+            new Uint8Array(textureSize * textureSize * 3),
+            textureSize,
+            textureSize,
+            THREE.RGBFormat
+        );
+        paintTexture.needsUpdate = true;
+        
+        // Создаём арену
+        const arenaGeometry = new THREE.PlaneGeometry(arenaSize, arenaSize);
+        const arenaMaterial = new THREE.MeshStandardMaterial({ 
+            map: paintTexture,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const arena = new THREE.Mesh(arenaGeometry, arenaMaterial);
+        arena.rotation.x = -Math.PI / 2;
+        arena.receiveShadow = true;
+        scene.add(arena);
+        
+        // Функция для покраски арены
+        function paintArena(x, z, radius, color, teamIndex) {
+            const data = paintTexture.image.data;
+            const centerX = Math.floor((x / arenaSize + 0.5) * textureSize);
+            const centerZ = Math.floor((z / arenaSize + 0.5) * textureSize);
+            const texRadius = Math.floor(radius / arenaSize * textureSize);
+            
+            for (let i = -texRadius; i <= texRadius; i++) {
+                for (let j = -texRadius; j <= texRadius; j++) {
+                    if (i * i + j * j <= texRadius * texRadius) {
+                        const px = centerX + i;
+                        const pz = centerZ + j;
+                        
+                        if (px >= 0 && px < textureSize && pz >= 0 && pz < textureSize) {
+                            const index = (pz * textureSize + px) * 3;
+                            const r = ((color >> 16) & 255);
+                            const g = ((color >> 8) & 255);
+                            const b = (color & 255);
+                            
+                            // Смешиваем цвета
+                            data[index] = r;
+                            data[index + 1] = g;
+                            data[index + 2] = b;
+                        }
+                    }
+                }
+            }
+            
+            paintTexture.needsUpdate = true;
+        }
+        
+        // Создаём резервуары для каждой команды
+        const refillStations = [];
+        const stationPositions = [
+            { x: -40, z: -40 },
+            { x: 40, z: -40 },
+            { x: 40, z: 40 },
+            { x: -40, z: 40 }
+        ];
+        
+        stationPositions.forEach((pos, index) => {
+            const geometry = new THREE.CylinderGeometry(3, 3, 8, 8);
+            const material = new THREE.MeshStandardMaterial({ color: teamColors[index] });
+            const station = new THREE.Mesh(geometry, material);
+            station.position.set(pos.x, 4, pos.z);
+            station.castShadow = true;
+            scene.add(station);
+            
+            refillStations.push({
+                mesh: station,
+                teamIndex: index,
+                position: new THREE.Vector3(pos.x, 0, pos.z)
+            });
+        });
+        
+        // Класс игрока
+        class Player {
+            constructor(teamIndex, isPlayer = false, startX, startZ) {
+                this.teamIndex = teamIndex;
+                this.isPlayer = isPlayer;
+                this.color = teamColors[teamIndex];
+                this.inkLevel = 100;
+                this.speed = 0.3;
+                this.radius = 1.5;
+                
+                // Создаём меш игрока
+                const geometry = new THREE.SphereGeometry(this.radius, 16, 16);
+                const material = new THREE.MeshStandardMaterial({ color: this.color });
+                this.mesh = new THREE.Mesh(geometry, material);
+                this.mesh.position.set(startX, this.radius, startZ);
+                this.mesh.castShadow = true;
+                scene.add(this.mesh);
+                
+                // Направление движения для ботов
+                this.direction = new THREE.Vector3(
+                    Math.random() - 0.5,
+                    0,
+                    Math.random() - 0.5
+                ).normalize();
+                this.changeDirectionTime = 0;
+            }
+            
+            update(deltaTime, keys, mousePosition) {
+                let moveSpeed = this.speed;
+                
+                // Определяем скорость в зависимости от поверхности
+                const surfaceColor = this.getSurfaceColor();
+                if (surfaceColor === this.teamIndex) {
+                    moveSpeed = this.speed * 1.5; // Быстро по своей территории
+                } else if (surfaceColor === -1) {
+                    moveSpeed = this.speed; // Нормально по нейтральной
+                } else {
+                    moveSpeed = this.speed * 0.5; // Медленно по вражеской
+                }
+                
+                if (this.isPlayer) {
+                    // Управление игроком
+                    let moveX = 0;
+                    let moveZ = 0;
+                    
+                    if (keys['KeyW'] || keys['ArrowUp']) moveZ = -1;
+                    if (keys['KeyS'] || keys['ArrowDown']) moveZ = 1;
+                    if (keys['KeyA'] || keys['ArrowLeft']) moveX = -1;
+                    if (keys['KeyD'] || keys['ArrowRight']) moveX = 1;
+                    
+                    if (moveX !== 0 || moveZ !== 0) {
+                        const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
+                        moveX /= length;
+                        moveZ /= length;
+                        
+                        this.mesh.position.x += moveX * moveSpeed;
+                        this.mesh.position.z += moveZ * moveSpeed;
+                    }
+                    
+                    // Стрельба краской
+                    if (mousePosition.down && this.inkLevel > 0) {
+                        this.shoot(mousePosition.worldX, mousePosition.worldZ);
+                    }
+                    
+                    // Заправка у резервуара
+                    const nearRefill = this.checkRefillStation();
+                    if (nearRefill && keys['Space'] && this.inkLevel < 100) {
+                        this.inkLevel = Math.min(100, this.inkLevel + 2);
+                        document.getElementById('refillIndicator').style.display = 'block';
+                    } else {
+                        document.getElementById('refillIndicator').style.display = 'none';
+                    }
+                } else {
+                    // ИИ для ботов
+                    this.changeDirectionTime -= deltaTime;
+                    if (this.changeDirectionTime <= 0) {
+                        this.direction = new THREE.Vector3(
+                            Math.random() - 0.5,
+                            0,
+                            Math.random() - 0.5
+                        ).normalize();
+                        this.changeDirectionTime = 2 + Math.random() * 3;
+                    }
+                    
+                    // Движение к резервуару если мало краски
+                    if (this.inkLevel < 30) {
+                        const station = refillStations[this.teamIndex];
+                        const toStation = new THREE.Vector3().subVectors(
+                            station.position,
+                            this.mesh.position
+                        ).normalize();
+                        this.direction = toStation;
+                        
+                        if (toStation.length() < 5) {
+                            this.inkLevel = Math.min(100, this.inkLevel + 1);
+                        }
+                    }
+                    
+                    this.mesh.position.x += this.direction.x * moveSpeed;
+                    this.mesh.position.z += this.direction.z * moveSpeed;
+                    
+                    // Стрельба в случайном направлении иногда
+                    if (Math.random() < 0.02 && this.inkLevel > 10) {
+                        this.shoot(
+                            this.mesh.position.x + this.direction.x * 10,
+                            this.mesh.position.z + this.direction.z * 10
+                        );
+                    }
+                }
+                
+                // Ограничение арены
+                this.mesh.position.x = Math.max(-arenaSize/2 + this.radius, 
+                    Math.min(arenaSize/2 - this.radius, this.mesh.position.x));
+                this.mesh.position.z = Math.max(-arenaSize/2 + this.radius, 
+                    Math.min(arenaSize/2 - this.radius, this.mesh.position.z));
+                
+                // Покраска под ногами
+                paintArena(this.mesh.position.x, this.mesh.position.z, this.radius * 2, this.color, this.teamIndex);
+                
+                // Трата краски при движении
+                if (this.isPlayer && (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'])) {
+                    this.inkLevel = Math.max(0, this.inkLevel - 0.05);
+                }
+            }
+            
+            shoot(targetX, targetZ) {
+                if (this.inkLevel <= 0) return;
+                
+                const direction = new THREE.Vector3(targetX - this.mesh.position.x, 0, targetZ - this.mesh.position.z).normalize();
+                const distance = 15;
+                const endX = this.mesh.position.x + direction.x * distance;
+                const endZ = this.mesh.position.z + direction.z * distance;
+                
+                paintArena(endX, endZ, 3, this.color, this.teamIndex);
+                this.inkLevel -= 2;
+            }
+            
+            getSurfaceColor() {
+                const px = Math.floor((this.mesh.position.x / arenaSize + 0.5) * textureSize);
+                const pz = Math.floor((this.mesh.position.z / arenaSize + 0.5) * textureSize);
+                
+                if (px < 0 || px >= textureSize || pz < 0 || pz >= textureSize) return -1;
+                
+                const index = (pz * textureSize + px) * 3;
+                const r = paintTexture.image.data[index];
+                const g = paintTexture.image.data[index + 1];
+                const b = paintTexture.image.data[index + 2];
+                
+                // Проверяем какой это цвет команды
+                for (let i = 0; i < teamColors.length; i++) {
+                    const tr = ((teamColors[i] >> 16) & 255);
+                    const tg = ((teamColors[i] >> 8) & 255);
+                    const tb = (teamColors[i] & 255);
+                    
+                    if (Math.abs(r - tr) < 50 && Math.abs(g - tg) < 50 && Math.abs(b - tb) < 50) {
+                        return i;
+                    }
+                }
+                
+                return -1; // Нейтральная территория
+            }
+            
+            checkRefillStation() {
+                const station = refillStations[this.teamIndex];
+                const distance = this.mesh.position.distanceTo(station.position);
+                return distance < 6;
+            }
+            
+            updateUI() {
+                if (this.isPlayer) {
+                    document.getElementById('inkFill').style.width = this.inkLevel + '%';
+                }
+            }
+        }
+        
+        // Создаём игроков
+        const players = [];
+        const startPositions = [
+            { x: -30, z: -30 },
+            { x: 30, z: -30 },
+            { x: 30, z: 30 },
+            { x: -30, z: 30 }
+        ];
+        
+        for (let team = 0; team < 4; team++) {
+            for (let i = 0; i < playersPerTeam; i++) {
+                const isPlayer = (team === playerTeamIndex && i === 0);
+                const offset = i * 5;
+                const startX = startPositions[team].x + (i % 2 === 0 ? offset : -offset);
+                const startZ = startPositions[team].z + (i < 2 ? offset : -offset);
+                
+                players.push(new Player(team, isPlayer, startX, startZ));
+            }
+        }
+        
+        const player = players[0]; // Игрок всегда первый
+        
+        // Управление
+        const keys = {};
+        const mousePosition = { x: 0, z: 0, down: false, worldX: 0, worldZ: 0 };
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            mousePosition.x = e.clientX;
+            mousePosition.y = e.clientY;
+            
+            // Конвертируем позицию мыши в мировые координаты
+            const vector = new THREE.Vector3(
+                (e.clientX / window.innerWidth) * 2 - 1,
+                -(e.clientY / window.innerHeight) * 2 + 1,
+                0.5
+            );
+            vector.unproject(camera);
+            
+            const dir = vector.sub(camera.position).normalize();
+            const distance = -camera.position.y / dir.y;
+            const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+            
+            mousePosition.worldX = pos.x;
+            mousePosition.worldZ = pos.z;
+        });
+        
+        document.addEventListener('mousedown', () => {
+            mousePosition.down = true;
+        });
+        
+        document.addEventListener('mouseup', () => {
+            mousePosition.down = false;
+        });
+        
+        // Подсчёт очков
+        function calculateScore() {
+            const data = paintTexture.image.data;
+            const teamPixels = [0, 0, 0, 0];
+            let totalColored = 0;
+            
+            for (let i = 0; i < data.length; i += 3) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                
+                // Пропускаем неокрашенные пиксели
+                if (r < 50 && g < 50 && b < 50) continue;
+                
+                totalColored++;
+                
+                // Определяем команду
+                for (let t = 0; t < teamColors.length; t++) {
+                    const tr = ((teamColors[t] >> 16) & 255);
+                    const tg = ((teamColors[t] >> 8) & 255);
+                    const tb = (teamColors[t] & 255);
+                    
+                    if (Math.abs(r - tr) < 50 && Math.abs(g - tg) < 50 && Math.abs(b - tb) < 50) {
+                        teamPixels[t]++;
+                        break;
+                    }
+                }
+            }
+            
+            if (totalColored > 0) {
+                const percentage = Math.round((teamPixels[playerTeamIndex] / totalColored) * 100);
+                document.getElementById('score').textContent = `Счёт: ${percentage}% (${teamPixels[playerTeamIndex]} из ${totalColored})`;
+            }
+        }
+        
+        // Игровой цикл
+        let lastTime = 0;
+        function animate(currentTime) {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+            
+            // Обновляем всех игроков
+            players.forEach(p => p.update(deltaTime, keys, mousePosition));
+            
+            // Обновляем UI
+            player.updateUI();
+            
+            // Камера следует за игроком
+            camera.position.x = player.mesh.position.x;
+            camera.position.z = player.mesh.position.z + 30;
+            camera.lookAt(player.mesh.position.x, 0, player.mesh.position.z);
+            
+            // Подсчитываем очки
+            if (Math.floor(currentTime) % 60 === 0) {
+                calculateScore();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Запуск игры
+        animate(0);
+    </script>
+</body>
+</html>
