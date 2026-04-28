@@ -316,8 +316,28 @@
             const baseSpeed = 0.15;
             const slowSpeed = 0.05;
             
-            // Проверяем центральную точку под игроком
-            if (isCellPainted(x, z)) {
+            // Размер основания игрока (примерно)
+            const playerRadius = 0.8;
+            
+            // Проверяем несколько точек под игроком: центр и 4 точки вокруг
+            const checkPoints = [
+                { x: x, z: z }, // центр
+                { x: x + playerRadius, z: z }, // право
+                { x: x - playerRadius, z: z }, // лево
+                { x: x, z: z + playerRadius }, // низ
+                { x: x, z: z - playerRadius }  // верх
+            ];
+            
+            // Считаем количество закрашенных точек
+            let paintedCount = 0;
+            for (const point of checkPoints) {
+                if (isCellPainted(point.x, point.z)) {
+                    paintedCount++;
+                }
+            }
+            
+            // Если больше половины точек на закрашенной территории - быстро, иначе медленно
+            if (paintedCount >= 3) {
                 return baseSpeed;
             } else {
                 return slowSpeed;
