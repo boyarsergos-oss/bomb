@@ -1,5 +1,1 @@
-(index.html is a source file, so no changes needed to .gitignore)
-
-```text
-
-```
+(index.html is a source file, so according to rule 6, output nothing)

@@ -296,7 +296,7 @@
                 }
             }
 
-            // Добавляем эффект частиц при выстреле (шланг)
+            // Добавляем эффект частиц при выстреле (шланг) - теперь создаём поток постоянно
             createHoseStream(rayOrigin, shootDirection);
         }
         
@@ -305,7 +305,7 @@
         
         // Функция создания потока жидкости из шланга
         function createHoseStream(origin, direction) {
-            const particleCount = 5; // Количество частиц за кадр при стрельбе
+            const particleCount = 3; // Количество частиц за кадр при стрельбе
             const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
             
             for (let i = 0; i < particleCount; i++) {
@@ -321,15 +321,15 @@
                 // - Основная скорость в направлении выстрела
                 // - Небольшой случайный разброс для реалистичности
                 // - Начальная вертикальная скорость (струя летит по дуге)
-                const spread = 0.15; // Разброс струи
+                const spread = 0.12; // Разброс струи
                 particle.userData.velocity = new THREE.Vector3(
                     direction.x + (Math.random() - 0.5) * spread,
-                    0.4 + Math.random() * 0.2, // Начальный импульс вверх
+                    0.3 + Math.random() * 0.15, // Начальный импульс вверх
                     direction.z + (Math.random() - 0.5) * spread
                 );
                 
                 // Скорость потока
-                particle.userData.speed = 0.6 + Math.random() * 0.2;
+                particle.userData.speed = 0.5 + Math.random() * 0.15;
                 particle.userData.life = 1.0;
                 particle.userData.onGround = false;
                 
@@ -398,7 +398,7 @@
 
         let isShooting = false;
         let shootCooldown = 0;
-        const shootDelay = 8; // Задержка между выстрелами (чем меньше, тем быстрее)
+        const shootDelay = 2; // Задержка между выстрелами (чем меньше, тем быстрее)
 
         document.addEventListener('keydown', (event) => {
             // Обработка движения
@@ -542,7 +542,7 @@
             // Обновление частиц шланга
             updateHoseParticles();
 
-            // Обработка непрерывной стрельбы
+            // Обработка непрерывной стрельбы - струя следует за курсором
             if (isShooting) {
                 if (shootCooldown <= 0) {
                     shootPaint();
@@ -550,6 +550,11 @@
                 } else {
                     shootCooldown--;
                 }
+                // Создаём поток частиц каждый кадр пока нажата кнопка
+                const rayOrigin = player.position.clone();
+                rayOrigin.y = 1.2;
+                const shootDirection = targetPoint.clone().sub(rayOrigin).normalize();
+                createHoseStream(rayOrigin, shootDirection);
             }
 
             renderer.render(scene, camera);
