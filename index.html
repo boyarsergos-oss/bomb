@@ -43,6 +43,7 @@
         <p>S / Стрелка вниз - Назад</p>
         <p>A / Стрелка влево - Влево</p>
         <p>D / Стрелка вправо - Вправо</p>
+        <p>ЛКМ / Пробел - Стрелять краской</p>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -175,6 +176,106 @@
         createRock(6, 4);
         createRock(-3, 6);
         createRock(4, -8);
+
+        // Массив для хранения следов краски
+        const paintMarks = [];
+        const paintColor = 0xff1493; // Ярко-розовый цвет краски
+        
+        // Создаём текстуру для брызг краски (процедурно)
+        function createPaintTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            
+            // Градиент для круглой формы
+            const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+            gradient.addColorStop(0, 'rgba(255, 20, 147, 1)');
+            gradient.addColorStop(0.5, 'rgba(255, 20, 147, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 20, 147, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 128, 128);
+            
+            // Добавляем случайные "брызги"
+            for (let i = 0; i < 20; i++) {
+                const x = Math.random() * 128;
+                const y = Math.random() * 128;
+                const radius = Math.random() * 8 + 2;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 20, 147, ${Math.random() * 0.5 + 0.3})`;
+                ctx.fill();
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+        
+        const paintTexture = createPaintTexture();
+        const paintMaterial = new THREE.SpriteMaterial({ 
+            map: paintTexture, 
+            color: paintColor,
+            transparent: true,
+            opacity: 0.9
+        });
+
+        // Функция выстрела краской
+        function shootPaint() {
+            // Определяем направление выстрела (вперед от игрока)
+            // В изометрии "вперед" - это комбинация направлений
+            const shootDirection = new THREE.Vector3(-1, 0, -1).normalize();
+            
+            // Создаем точку начала луча (от позиции игрока, немного выше земли)
+            const rayOrigin = player.position.clone();
+            rayOrigin.y = 1; // Высота выстрела
+            
+            // Используем Raycaster для определения попадания
+            const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
+            
+            // Проверяем пересечения с землей и объектами
+            const intersectObjects = [ground];
+            const intersects = raycaster.intersectObjects(intersectObjects);
+            
+            if (intersects.length > 0) {
+                const hitPoint = intersects[0].point;
+                const hitNormal = intersects[0].face.normal;
+                
+                // Создаем спрайт с краской в точке попадания
+                const paintSprite = new THREE.Sprite(paintMaterial.clone());
+                paintSprite.position.copy(hitPoint);
+                paintSprite.position.y += 0.05; // Чуть выше поверхности
+                
+                // Случайный размер пятна
+                const scale = 0.8 + Math.random() * 0.6;
+                paintSprite.scale.set(scale, scale, 1);
+                
+                // Случайная ориентация
+                paintSprite.material.rotation = Math.random() * Math.PI * 2;
+                
+                scene.add(paintSprite);
+                paintMarks.push(paintSprite);
+                
+                // Ограничиваем количество пятен (удаляем старые)
+                if (paintMarks.length > 100) {
+                    const oldMark = paintMarks.shift();
+                    scene.remove(oldMark);
+                }
+            }
+        }
+
+        // Обработчики для стрельбы
+        document.addEventListener('mousedown', (event) => {
+            if (event.button === 0) { // Левая кнопка мыши
+                shootPaint();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                shootPaint();
+            }
+        });
 
         // Управление
         const keys = {
