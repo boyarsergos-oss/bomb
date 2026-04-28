@@ -218,10 +218,11 @@
         
         // Эффект "шланга" - поток жидкости
         const hoseParticles = [];
+        const splashParticles = []; // Частицы для эффекта разбрызгивания
         
         // Функция создания потока жидкости из шланга
         function createHoseStream(origin, direction) {
-            const particleCount = 8; // Количество частиц за кадр при стрельбе
+            const particleCount = 15; // Увеличено количество частиц за кадр при стрельбе
             const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
             
             for (let i = 0; i < particleCount; i++) {
@@ -232,19 +233,62 @@
                 });
                 const particle = new THREE.Mesh(particleGeometry, particleMaterial);
                 
-                // Все частицы начинают движение от игрока
+                // Все частицы начинают движение от игрока с небольшим разбросом
+                const spreadOffset = (Math.random() - 0.5) * 0.3;
                 particle.position.copy(origin);
+                particle.position.x += spreadOffset;
+                particle.position.z += spreadOffset;
                 
-                // Направление строго к цели - без разброса
-                particle.userData.velocity = direction.clone();
+                // Направление с небольшим разбросом для более естественного потока
+                const spreadAngle = (Math.random() - 0.5) * 0.15;
+                const spreadDirection = direction.clone();
+                spreadDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), spreadAngle);
+                particle.userData.velocity = spreadDirection;
                 
                 // Скорость потока - высокая для быстрой доставки к цели
-                particle.userData.speed = 1.2;
+                particle.userData.speed = 1.2 + Math.random() * 0.3;
                 particle.userData.life = 1.0;
                 particle.userData.onGround = false;
                 
                 scene.add(particle);
                 hoseParticles.push(particle);
+            }
+        }
+        
+        // Функция создания брызг при ударе о землю
+        function createSplash(position, normal) {
+            const splashCount = 12; // Количество брызг на одно попадание
+            const splashGeometry = new THREE.SphereGeometry(0.05, 6, 6);
+            
+            for (let i = 0; i < splashCount; i++) {
+                const particleMaterial = new THREE.MeshBasicMaterial({ 
+                    color: paintColor,
+                    transparent: true,
+                    opacity: 0.85
+                });
+                const particle = new THREE.Mesh(splashGeometry, particleMaterial);
+                
+                particle.position.copy(position);
+                particle.position.y += 0.1;
+                
+                // Случайное направление разбрызгивания вверх и в стороны
+                const angle = Math.random() * Math.PI * 2;
+                const horizontalSpeed = 0.1 + Math.random() * 0.25;
+                const verticalSpeed = 0.2 + Math.random() * 0.3;
+                
+                particle.userData.velocity = new THREE.Vector3(
+                    Math.cos(angle) * horizontalSpeed,
+                    verticalSpeed,
+                    Math.sin(angle) * horizontalSpeed
+                );
+                
+                particle.userData.speed = 1.0;
+                particle.userData.life = 0.6 + Math.random() * 0.3;
+                particle.userData.onGround = false;
+                particle.userData.isSplash = true;
+                
+                scene.add(particle);
+                splashParticles.push(particle);
             }
         }
         
@@ -268,6 +312,9 @@
                         particle.userData.onGround = true;
                         particle.userData.spreadTime = 0;
                         
+                        // Создаём эффект брызг при ударе о землю
+                        createSplash(particle.position.clone(), new THREE.Vector3(0, 1, 0));
+                        
                         // Расплющиваем частицу на земле
                         particle.scale.set(1.5, 0.3, 1.5);
                     }
@@ -289,6 +336,45 @@
                     particle.geometry.dispose();
                     particle.material.dispose();
                     hoseParticles.splice(i, 1);
+                    continue;
+                }
+            }
+        }
+        
+        // Обновление частиц разбрызгивания
+        function updateSplashParticles() {
+            for (let i = splashParticles.length - 1; i >= 0; i--) {
+                const particle = splashParticles[i];
+                
+                // Движение частицы
+                particle.position.add(
+                    particle.userData.velocity.clone().multiplyScalar(particle.userData.speed)
+                );
+                
+                // Гравитация
+                particle.userData.velocity.y -= 0.03;
+                
+                // Проверка столкновения с землёй
+                if (particle.position.y <= 0.05) {
+                    particle.position.y = 0.05;
+                    particle.userData.onGround = true;
+                    particle.userData.velocity.set(0, 0, 0); // Останавливаем движение
+                    
+                    // Расплющиваем частицу брызг
+                    particle.scale.set(0.8, 0.2, 0.8);
+                }
+                
+                // Уменьшение жизни
+                particle.userData.life -= 0.025;
+                
+                // Уменьшение прозрачности
+                particle.material.opacity = particle.userData.life * 0.85;
+                
+                if (particle.userData.life <= 0) {
+                    scene.remove(particle);
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                    splashParticles.splice(i, 1);
                     continue;
                 }
             }
@@ -451,6 +537,9 @@
 
             // Обновление частиц шланга
             updateHoseParticles();
+            
+            // Обновление частиц разбрызгивания
+            updateSplashParticles();
 
             // Обработка непрерывной стрельбы - струя следует за курсором
             if (isShooting) {
