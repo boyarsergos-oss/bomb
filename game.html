@@ -242,21 +242,6 @@
             }
         }
 
-        // Переменные игрока
-        const player = {
-            position: new THREE.Vector3(0, 0, 0),
-            velocity: new THREE.Vector3(0, 0, 0),
-            rotation: 0,
-            speed: 0.15,
-            runSpeed: 0.3,
-            rotationSpeed: 0.04,
-            jumpForce: 0.3,
-            gravity: 0.015,
-            onGround: true
-        };
-
-        playerGroup.position.copy(player.position);
-
         // Управление
         const keys = {
             forward: false,
