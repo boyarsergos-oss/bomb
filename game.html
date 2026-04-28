@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Obby Parkour Prototype</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
+        #info {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000000;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #controls-hint {
+            font-size: 16px;
+            color: #ddd;
+            margin-top: 10px;
+        }
+        #win-screen {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 255, 0, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            z-index: 20;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            background: white;
+            border: none;
+            border-radius: 5px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div id="info">
+    <div>3D OBBY PARKOUR</div>
+    <div id="controls-hint">WASD / Стрелки - Движение | ПРОБЕЛ - Прыжок</div>
+</div>
+
+<div id="win-screen">
+    ПОБЕДА!<br>
+    <button onclick="location.reload()">Играть снова</button>
+</div>
+
+<!-- Подключаем Three.js через CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+    // --- КОНФИГУРАЦИЯ ИГРЫ ---
+    const PLAYER_SPEED = 15;
+    const JUMP_FORCE = 18;
+    const GRAVITY = 40;
+    const START_POS = { x: 0, y: 5, z: 0 };
+
+    let camera, scene, renderer;
+    let player, playerVelocity;
+    let platforms = [];
+    let isGrounded = false;
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let canJump = false;
+    let prevTime = performance.now();
+    let gameWon = false;
+
+    init();
+    animate();
+
+    function init() {
+        // Сцена
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Небесно-голубой
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+
+        // Камера
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Рендерер
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Свет
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 50, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.top = 50;
+        dirLight.shadow.camera.bottom = -50;
+        dirLight.shadow.camera.left = -50;
+        dirLight.shadow.camera.right = 50;
+        scene.add(dirLight);
+
+        // Создание игрока (простой куб)
+        const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff0055 });
+        player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.set(START_POS.x, START_POS.y, START_POS.z);
+        player.castShadow = true;
+        scene.add(player);
+
+        playerVelocity = new THREE.Vector3(0, 0, 0);
+
+        // Создание уровня
+        createLevel();
+
+        // Обработчики событий
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    function createPlatform(x, y, z, w, h, d, color) {
+        const geometry = new THREE.BoxGeometry(w, h, d);
+        const material = new THREE.MeshStandardMaterial({ color: color });
+        const platform = new THREE.Mesh(geometry, material);
+        platform.position.set(x, y, z);
+        platform.receiveShadow = true;
+        platform.castShadow = true;
+        scene.add(platform);
+        
+        // Добавляем платформу в массив для проверки коллизий
+        // Сохраняем bounding box для оптимизации
+        platform.geometry.computeBoundingBox();
+        platforms.push(platform);
+        return platform;
+    }
+
+    function createLevel() {
+        // Стартовая платформа
+        createPlatform(0, -1, 0, 10, 2, 10, 0x888888);
+
+        // Серия прыжков
+        createPlatform(0, -1, -12, 4, 1, 4, 0xffaa00);
+        createPlatform(0, 0, -22, 4, 1, 4, 0xffaa00);
+        
+        // Узкая дорожка
+        createPlatform(0, 1, -32, 2, 1, 10, 0x00ffaa);
+
+        // Лестница вверх
+        createPlatform(-6, 2, -38, 3, 1, 3, 0x0088ff);
+        createPlatform(-6, 4, -44, 3, 1, 3, 0x0088ff);
+        createPlatform(-6, 6, -50, 3, 1, 3, 0x0088ff);
+
+        // Большая платформа с дырой (надо обойти)
+        const bigPlat = createPlatform(5, 6, -60, 15, 1, 15, 0xaa00ff);
+        
+        // Финишная платформа (зеленая)
+        const finishPlat = createPlatform(20, 6, -60, 6, 1, 6, 0x00ff00);
+        
+        // Декорация финиша (флаг/столб)
+        const flagGeo = new THREE.CylinderGeometry(0.2, 0.2, 4, 8);
+        const flagMat = new THREE.MeshStandardMaterial({color: 0xffff00});
+        const flag = new THREE.Mesh(flagGeo, flagMat);
+        flag.position.set(20, 8, -60);
+        scene.add(flag);
+    }
+
+    function onKeyDown(event) {
+        switch (event.code) {
+            case 'ArrowUp':
+            case 'KeyW': moveForward = true; break;
+            case 'ArrowLeft':
+            case 'KeyA': moveLeft = true; break;
+            case 'ArrowDown':
+            case 'KeyS': moveBackward = true; break;
+            case 'ArrowRight':
+            case 'KeyD': moveRight = true; break;
+            case 'Space': 
+                if (canJump) {
+                    playerVelocity.y = JUMP_FORCE;
+                    canJump = false;
+                }
+                break;
+        }
+    }
+
+    function onKeyUp(event) {
+        switch (event.code) {
+            case 'ArrowUp':
+            case 'KeyW': moveForward = false; break;
+            case 'ArrowLeft':
+            case 'KeyA': moveLeft = false; break;
+            case 'ArrowDown':
+            case 'KeyS': moveBackward = false; break;
+            case 'ArrowRight':
+            case 'KeyD': moveRight = false; break;
+        }
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function checkCollisions(newPos) {
+        const playerBox = new THREE.Box3();
+        const playerSize = new THREE.Vector3(1, 1, 1);
+        // Центрируем бокс вокруг новой позиции
+        playerBox.setFromCenterAndSize(newPos, playerSize);
+
+        let groundedTemp = false;
+
+        for (let platform of platforms) {
+            const platformBox = new THREE.Box3().setFromObject(platform);
+
+            if (playerBox.intersectsBox(platformBox)) {
+                // Простейшая коллизия: если мы падали вниз и пересекли платформу сверху
+                // Проверяем предыдущую позицию Y, чтобы понять направление
+                const prevBottom = player.position.y - 0.5;
+                const platTop = platformBox.max.y;
+                
+                // Если раньше были выше платформы, а теперь внутри -> приземление
+                if (prevBottom >= platTop - 0.2 && playerVelocity.y <= 0) {
+                    groundedTemp = true;
+                    newPos.y = platTop + 0.5; // Ставим ровно на поверхность
+                    playerVelocity.y = 0;
+                } else {
+                    // Боковое столкновение или удар головой (упрощенно: просто отталкиваем по X/Z или останавливаем)
+                    // Для простоты обби разрешаем немного "врезаться", но не проваливаться
+                    // В полноценном движке здесь нужна сложная математика векторов
+                }
+            }
+        }
+        return groundedTemp;
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        if (gameWon) return;
+
+        const time = performance.now();
+        const delta = (time - prevTime) / 1000;
+        prevTime = time;
+
+        // --- ФИЗИКА ДВИЖЕНИЯ ---
+        
+        // Затухание скорости по горизонтали (трение)
+        playerVelocity.x -= playerVelocity.x * 10.0 * delta;
+        playerVelocity.z -= playerVelocity.z * 10.0 * delta;
+        
+        // Гравитация
+        playerVelocity.y -= GRAVITY * delta;
+
+        // Управление
+        const direction = new THREE.Vector3();
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+        
+        // Убираем влияние наклона камеры по Y для движения (чтобы не лететь вверх/вниз при нажатии W)
+        forward.y = 0; forward.normalize();
+        right.y = 0; right.normalize();
+
+        if (moveForward) direction.add(forward);
+        if (moveBackward) direction.sub(forward);
+        if (moveLeft) direction.sub(right);
+        if (moveRight) direction.add(right);
+
+        if (direction.length() > 0) {
+            direction.normalize();
+            playerVelocity.x += direction.x * PLAYER_SPEED * 10 * delta;
+            playerVelocity.z += direction.z * PLAYER_SPEED * 10 * delta;
+        }
+
+        // Применяем скорость к позиции
+        const oldPos = player.position.clone();
+        
+        // Движение по X и Z
+        player.position.x += playerVelocity.x * delta;
+        player.position.z += playerVelocity.z * delta;
+        
+        // Проверка коллизий по горизонтали (очень упрощенно: если ушли слишком далеко, возвращаем)
+        // В данном примере мы полагаемся больше на вертикальную коллизию для простоты кода
+        
+        // Движение по Y
+        player.position.y += playerVelocity.y * delta;
+
+        // Проверка приземления
+        isGrounded = checkCollisions(player.position);
+        if (isGrounded) {
+            canJump = true;
+        }
+
+        // Проверка падения в бездну
+        if (player.position.y < -20) {
+            resetPlayer();
+        }
+
+        // Проверка победы (расстояние до финишной платформы)
+        const distToFinish = player.position.distanceTo(new THREE.Vector3(20, 6, -60));
+        if (distToFinish < 2) {
+            gameWon = true;
+            document.getElementById('win-screen').style.display = 'block';
+        }
+
+        // --- КАМЕРА ---
+        // Камера следует за игроком сзади и сверху
+        const relativeCameraOffset = new THREE.Vector3(0, 5, 10);
+        const cameraOffset = relativeCameraOffset.applyMatrix4(player.matrixWorld);
+        
+        // Плавное следование (Lerp)
+        camera.position.lerp(cameraOffset, 0.1);
+        camera.lookAt(player.position);
+
+        renderer.render(scene, camera);
+    }
+
+    function resetPlayer() {
+        player.position.set(START_POS.x, START_POS.y, START_POS.z);
+        playerVelocity.set(0, 0, 0);
+    }
+
+</script>
+</body>
+</html>
