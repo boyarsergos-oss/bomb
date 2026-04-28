@@ -181,6 +181,9 @@
         const paintMarks = [];
         const paintColor = 0xff1493; // Ярко-розовый цвет краски
         
+        // Массив частиц краски (снаряды)
+        const paintParticles = [];
+        
         // Система карты краски для закрашивания поверхности
         const PAINT_MAP_SIZE = 512;
         const paintCanvas = document.createElement('canvas');
@@ -299,73 +302,31 @@
             // Точка попадания - это именно то место, куда указывает курсор мыши на земле
             const hitPoint = intersects[0].point;
 
-            // Закрашиваем поверхность в точке попадания
-            addPaintToGround(hitPoint, 1.5 + Math.random() * 0.5);
-
-            // Создаем спрайт с краской в точке попадания
-            const paintSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
-                map: paintTexture, 
-                color: paintColor,
-                transparent: true,
-                opacity: 0.95
-            }));
-
-            paintSprite.position.copy(hitPoint);
-            paintSprite.position.y += 0.08; // Чуть выше поверхности чтобы не мерцало
-
-            // Случайный размер пятна
-            const scale = 1.2 + Math.random() * 0.8;
-            paintSprite.scale.set(scale, scale, 1);
-
-            // Случайная ориентация
-            paintSprite.material.rotation = Math.random() * Math.PI * 2;
-
-            scene.add(paintSprite);
-            paintMarks.push(paintSprite);
-
-            // Ограничиваем количество пятен (удаляем старые)
-            if (paintMarks.length > 150) {
-                const oldMark = paintMarks.shift();
-                scene.remove(oldMark);
-            }
-
-            // Добавляем эффект частиц при выстреле
-            // Точка начала частиц - позиция игрока
-            const particleOrigin = player.position.clone();
-            particleOrigin.y = 1.2;
+            // Точка старта выстрела (позиция игрока + чуть выше)
+            const startPos = player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
             
-            // Направление частиц - от игрока к точке попадания
-            const particleDirection = new THREE.Vector3()
-                .subVectors(hitPoint, particleOrigin)
-                .normalize();
-            particleDirection.y = 0.3; // Небольшой подъём
-            
-            createPaintParticles(particleOrigin, particleDirection);
-        }
-        
-        // Эффект частиц краски при выстреле
-        const paintParticles = [];
-        
-        function createPaintParticles(origin, direction) {
-            const particleCount = 8;
-            const particleGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-            const particleMaterial = new THREE.MeshBasicMaterial({ color: paintColor });
-            
-            for (let i = 0; i < particleCount; i++) {
-                const particle = new THREE.Mesh(particleGeometry, particleMaterial.clone());
-                particle.position.copy(origin);
-                
-                // Случайное отклонение от направления выстрела
-                particle.userData.velocity = new THREE.Vector3(
-                    direction.x + (Math.random() - 0.5) * 0.3,
-                    0.2 + Math.random() * 0.3,
-                    direction.z + (Math.random() - 0.5) * 0.3
-                );
-                particle.userData.life = 1.0;
-                particle.userData.onGround = false;
-                
-                scene.add(particle);
-                paintParticles.push(particle);
+            // Направление к точке прицеливания
+            const direction = new THREE.Vector3().subVectors(hitPoint, startPos).normalize();
+
+            // Создаем снаряды (быстрые частицы)
+            const projectileCount = 3;
+            for (let i = 0; i < projectileCount; i++) {
+                const spread = 0.05;
+                const velocity = direction.clone().add(new THREE.Vector3(
+                    (Math.random() - 0.5) * spread,
+                    (Math.random() * 0.3) + 0.1,
+                    (Math.random() - 0.5) * spread
+                )).normalize().multiplyScalar(35 + Math.random() * 10);
+
+                paintParticles.push({
+                    position: startPos.clone(),
+                    velocity: velocity,
+                    color: paintColor,
+                    size: 0.2 + Math.random() * 0.2,
+                    life: 1.5,
+                    maxLife: 1.5,
+                    onGround: false
+                });
             }
         }
         
@@ -373,39 +334,28 @@
         function updatePaintParticles() {
             for (let i = paintParticles.length - 1; i >= 0; i--) {
                 const particle = paintParticles[i];
-                particle.userData.life -= 0.03;
+                particle.life -= 0.02;
                 
-                if (particle.userData.life <= 0) {
-                    scene.remove(particle);
-                    particle.geometry.dispose();
-                    particle.material.dispose();
+                if (particle.life <= 0) {
                     paintParticles.splice(i, 1);
                     continue;
                 }
                 
                 // Движение частицы
-                particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.4));
-                particle.userData.velocity.y -= 0.02; // Гравитация
+                particle.position.add(particle.velocity.clone().multiplyScalar(0.03));
+                particle.velocity.y -= 0.015; // Гравитация
                 
                 // Проверка столкновения с землёй
-                if (!particle.userData.onGround && particle.position.y <= 0.1) {
+                if (!particle.onGround && particle.position.y <= 0.1) {
                     particle.position.y = 0.1;
-                    particle.userData.onGround = true;
+                    particle.onGround = true;
                     
                     // Закрашиваем поверхность в точке падения частицы
-                    addPaintToGround(particle.position, 0.5 + Math.random() * 0.3);
+                    addPaintToGround(particle.position, 0.8 + Math.random() * 0.4);
                     
                     // Останавливаем частицу на земле
-                    particle.userData.velocity.set(0, 0, 0);
+                    particle.velocity.set(0, 0, 0);
                 }
-                
-                // Уменьшение размера
-                const scale = particle.userData.life;
-                particle.scale.set(scale, scale, scale);
-                
-                // Поворот
-                particle.rotation.x += 0.1;
-                particle.rotation.y += 0.1;
             }
         }
 
