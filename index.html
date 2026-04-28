@@ -236,14 +236,6 @@
             
             if (intersects.length > 0) {
                 targetPoint.copy(intersects[0].point);
-                
-                // Вычисляем направление от игрока к точке под мышкой
-                const directionToMouse = new THREE.Vector3()
-                    .subVectors(targetPoint, player.position)
-                    .normalize();
-                
-                // Обновляем направление персонажа (только по горизонтали)
-                playerDirection.set(directionToMouse.x, 0, directionToMouse.z).normalize();
             }
         });
 
@@ -466,6 +458,27 @@
             // Ограничение движения границами земли
             player.position.x = Math.max(-24, Math.min(24, player.position.x));
             player.position.z = Math.max(-24, Math.min(24, player.position.z));
+
+            // Поворот персонажа за мышкой (только если не нажаты клавиши движения)
+            if (!isMoving) {
+                // Вычисляем направление от игрока к точке под мышкой
+                const directionToMouse = new THREE.Vector3()
+                    .subVectors(targetPoint, player.position)
+                    .normalize();
+                
+                // Обновляем направление персонажа (только по горизонтали)
+                playerDirection.set(directionToMouse.x, 0, directionToMouse.z).normalize();
+                
+                // Поворачиваем персонажа в направлении мыши
+                if (directionToMouse.length() > 0.01) {
+                    const targetRotation = Math.atan2(directionToMouse.x, directionToMouse.z);
+                    player.rotation.y = targetRotation;
+                }
+            } else {
+                // Поворот персонажа по направлению движения
+                const moveRotation = Math.atan2(playerDirection.x, playerDirection.z);
+                player.rotation.y = moveRotation;
+            }
 
             // Анимация ходьбы
             if (isMoving) {
