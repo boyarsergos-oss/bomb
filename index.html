@@ -201,7 +201,6 @@
         });
 
         // Переменные для движения
-        const speed = 0.15;
         let walkCycle = 0;
 
         // Обработка изменения размера окна
@@ -220,22 +219,37 @@
             requestAnimationFrame(animate);
 
             let isMoving = false;
+            const moveSpeed = 0.15;
 
-            // Движение персонажа
+            // Движение персонажа в изометрической проекции
+            // В изометрии: 
+            // - Вверх по экрану = комбинация -X и -Z
+            // - Вниз по экрану = комбинация +X и +Z
+            // - Влево по экрану = комбинация -X и +Z
+            // - Вправо по экрану = комбинация +X и -Z
+            
             if (keys.w || keys.ArrowUp) {
-                player.position.z -= speed;
+                // Визуально вверх по экрану
+                player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
+                player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
             }
             if (keys.s || keys.ArrowDown) {
-                player.position.z += speed;
+                // Визуально вниз по экрану
+                player.position.x += moveSpeed * Math.cos(Math.PI / 4);
+                player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
             }
             if (keys.a || keys.ArrowLeft) {
-                player.position.x -= speed;
+                // Визуально влево по экрану
+                player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
+                player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
             }
             if (keys.d || keys.ArrowRight) {
-                player.position.x += speed;
+                // Визуально вправо по экрану
+                player.position.x += moveSpeed * Math.cos(Math.PI / 4);
+                player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
             }
 
