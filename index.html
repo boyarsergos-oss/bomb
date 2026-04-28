@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Изометрическая Сцена</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+        }
+        #info h3 {
+            margin-bottom: 10px;
+        }
+        #info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>Управление</h3>
+        <p>W / Стрелка вверх - Вперёд</p>
+        <p>S / Стрелка вниз - Назад</p>
+        <p>A / Стрелка влево - Влево</p>
+        <p>D / Стрелка вправо - Вправо</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Инициализация сцены
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+
+        // Камера с изометрической проекцией (ортографическая)
+        const aspect = window.innerWidth / window.innerHeight;
+        const d = 20;
+        const camera = new THREE.OrthographicCamera(
+            -d * aspect, d * aspect, d, -d, 1, 1000
+        );
+        
+        // Изометрический угол
+        camera.position.set(20, 20, 20);
+        camera.lookAt(scene.position);
+
+        // Рендерер
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        // Земля (плоскость)
+        const groundGeometry = new THREE.PlaneGeometry(50, 50);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x3a7d3a });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Сетка на земле
+        const gridHelper = new THREE.GridHelper(50, 10, 0x000000, 0x000000);
+        gridHelper.material.opacity = 0.2;
+        gridHelper.material.transparent = true;
+        scene.add(gridHelper);
+
+        // Создаём персонажа (группа объектов)
+        const player = new THREE.Group();
+
+        // Тело
+        const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.6);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xff6b6b });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 0.75;
+        body.castShadow = true;
+        player.add(body);
+
+        // Голова
+        const headGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+        const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffccaa });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 1.85;
+        head.castShadow = true;
+        player.add(head);
+
+        // Ноги
+        const legGeometry = new THREE.BoxGeometry(0.3, 0.7, 0.3);
+        const legMaterial = new THREE.MeshLambertMaterial({ color: 0x4a4a4a });
+        
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.25, 0.35, 0);
+        leftLeg.castShadow = true;
+        player.add(leftLeg);
+
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.25, 0.35, 0);
+        rightLeg.castShadow = true;
+        player.add(rightLeg);
+
+        scene.add(player);
+
+        // Добавим несколько декоративных объектов
+        function createTree(x, z) {
+            const treeGroup = new THREE.Group();
+            
+            // Ствол
+            const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8);
+            const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 0.75;
+            trunk.castShadow = true;
+            treeGroup.add(trunk);
+
+            // Крона
+            const leavesGeometry = new THREE.ConeGeometry(1, 2, 8);
+            const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x228b22 });
+            const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+            leaves.position.y = 2.5;
+            leaves.castShadow = true;
+            treeGroup.add(leaves);
+
+            treeGroup.position.set(x, 0, z);
+            scene.add(treeGroup);
+        }
+
+        // Создаём несколько деревьев
+        createTree(-8, -8);
+        createTree(8, -6);
+        createTree(-6, 8);
+        createTree(7, 7);
+        createTree(-10, 5);
+        createTree(10, -10);
+
+        // Добавим камни
+        function createRock(x, z) {
+            const rockGeometry = new THREE.DodecahedronGeometry(0.5, 0);
+            const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
+            const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+            rock.position.set(x, 0.3, z);
+            rock.scale.set(1 + Math.random() * 0.5, 0.8 + Math.random() * 0.4, 1 + Math.random() * 0.5);
+            rock.castShadow = true;
+            scene.add(rock);
+        }
+
+        createRock(-5, -3);
+        createRock(6, 4);
+        createRock(-3, 6);
+        createRock(4, -8);
+
+        // Управление
+        const keys = {
+            w: false,
+            a: false,
+            s: false,
+            d: false,
+            ArrowUp: false,
+            ArrowDown: false,
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+
+        document.addEventListener('keydown', (event) => {
+            if (keys.hasOwnProperty(event.key)) {
+                keys[event.key] = true;
+            }
+        });
+
+        document.addEventListener('keyup', (event) => {
+            if (keys.hasOwnProperty(event.key)) {
+                keys[event.key] = false;
+            }
+        });
+
+        // Переменные для движения
+        const speed = 0.15;
+        let walkCycle = 0;
+
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.left = -d * aspect;
+            camera.right = d * aspect;
+            camera.top = d;
+            camera.bottom = -d;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+
+            let isMoving = false;
+
+            // Движение персонажа
+            if (keys.w || keys.ArrowUp) {
+                player.position.z -= speed;
+                isMoving = true;
+            }
+            if (keys.s || keys.ArrowDown) {
+                player.position.z += speed;
+                isMoving = true;
+            }
+            if (keys.a || keys.ArrowLeft) {
+                player.position.x -= speed;
+                isMoving = true;
+            }
+            if (keys.d || keys.ArrowRight) {
+                player.position.x += speed;
+                isMoving = true;
+            }
+
+            // Ограничение движения границами земли
+            player.position.x = Math.max(-24, Math.min(24, player.position.x));
+            player.position.z = Math.max(-24, Math.min(24, player.position.z));
+
+            // Анимация ходьбы
+            if (isMoving) {
+                walkCycle += 0.2;
+                leftLeg.rotation.x = Math.sin(walkCycle) * 0.5;
+                rightLeg.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
+                
+                // Небольшое покачивание тела
+                body.position.y = 0.75 + Math.sin(walkCycle * 2) * 0.05;
+                head.position.y = 1.85 + Math.sin(walkCycle * 2) * 0.05;
+            } else {
+                // Возврат ног в исходное положение
+                leftLeg.rotation.x = THREE.MathUtils.lerp(leftLeg.rotation.x, 0, 0.1);
+                rightLeg.rotation.x = THREE.MathUtils.lerp(rightLeg.rotation.x, 0, 0.1);
+                body.position.y = THREE.MathUtils.lerp(body.position.y, 0.75, 0.1);
+                head.position.y = THREE.MathUtils.lerp(head.position.y, 1.85, 0.1);
+            }
+
+            // Камера следует за игроком
+            camera.position.x = player.position.x + 20;
+            camera.position.z = player.position.z + 20;
+            camera.position.y = 20;
+            camera.lookAt(player.position);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
