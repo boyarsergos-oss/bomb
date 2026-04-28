@@ -237,16 +237,16 @@
                 const distanceAlongTrajectory = Math.random() * maxDistance;
                 const basePosition = origin.clone().add(direction.clone().multiplyScalar(distanceAlongTrajectory));
                 
-                // Конусообразный разброс: чем ближе к игроку, тем шире площадь покрытия
+                // Конусообразный разброс: чем ближе к игроку, тем уже площадь покрытия (концентрируется в точке)
                 // Используем нормализованную дистанцию (0 у игрока, 1 на макс. дистанции)
                 const normalizedDistance = distanceAlongTrajectory / maxDistance;
                 
-                // Широкий разброс у игрока (конус), сужающийся к концу траектории
-                // У игрока (normalizedDistance=0): spread = maxSpread
-                // На конце (normalizedDistance=1): spread = minSpread
-                const maxSpread = 1.8; // Максимальный разброс у игрока (широкая область)
-                const minSpread = 0.15; // Минимальный разброс на конце (направленная струя)
-                const currentSpread = maxSpread - (maxSpread - minSpread) * normalizedDistance;
+                // Узкий разброс у игрока (точечная струя), расширяющийся к концу траектории
+                // У игрока (normalizedDistance=0): spread = minSpread (маленький)
+                // На конце (normalizedDistance=1): spread = maxSpread (большой)
+                const minSpread = 0.15; // Минимальный разброс у игрока (струя концентрируется в точке)
+                const maxSpread = 1.8; // Максимальный разброс на конце (широкая область)
+                const currentSpread = minSpread + (maxSpread - minSpread) * normalizedDistance;
                 
                 // Случайное направление в конусе вокруг основного направления
                 const angle = Math.random() * Math.PI * 2; // Случайный угол вокруг оси
@@ -261,8 +261,8 @@
                 const offsetX = perpendicular1.x * radius * Math.cos(angle) + perpendicular2.x * radius * Math.sin(angle);
                 const offsetZ = perpendicular1.z * radius * Math.cos(angle) + perpendicular2.z * radius * Math.sin(angle);
                 
-                // Вертикальное смещение: больше у игрока, меньше к концу
-                const verticalSpread = (maxSpread * 0.4) * (1 - normalizedDistance * 0.7);
+                // Вертикальное смещение: меньше у игрока, больше к концу траектории
+                const verticalSpread = (maxSpread * 0.4) * (0.3 + normalizedDistance * 0.7);
                 const offsetY = Math.abs((Math.random() - 0.5) * verticalSpread) + Math.max(0, 0.2 - distanceAlongTrajectory * 0.015);
                 
                 const perpendicularOffset = new THREE.Vector3(offsetX, offsetY, offsetZ);
@@ -271,8 +271,8 @@
                 
                 // Физика струи из шланга:
                 // - Основная скорость в направлении выстрела
-                // - Разброс зависит от расстояния до игрока (чем ближе, тем больше разброс)
-                const spread = 0.06 + normalizedDistance * 0.04; // Меньший разброс скорости для более направленной струи
+                // - Разброс зависит от расстояния до игрока (чем ближе, тем меньше разброс)
+                const spread = 0.02 + normalizedDistance * 0.08; // Меньший разброс скорости у игрока для точечной струи
                 particle.userData.velocity = new THREE.Vector3(
                     direction.x + (Math.random() - 0.5) * spread,
                     0.2 + Math.random() * 0.1 - normalizedDistance * 0.08, // Начальный импульс вверх, уменьшается к концу
