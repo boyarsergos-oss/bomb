@@ -223,7 +223,6 @@
         function createHoseStream(origin, direction) {
             const particleCount = 8; // Количество частиц за кадр при стрельбе
             const particleGeometry = new THREE.SphereGeometry(0.08, 8, 8);
-            const maxDistance = 15; // Максимальная дистанция полёта краски
             
             for (let i = 0; i < particleCount; i++) {
                 const particleMaterial = new THREE.MeshBasicMaterial({ 
@@ -236,40 +235,11 @@
                 // Все частицы начинают движение от игрока
                 particle.position.copy(origin);
                 
-                // Минимальный разброс для точной струи
-                const minSpread = 0.05; // Очень маленький разброс у игрока
-                
-                // Случайное направление в узком конусе вокруг основного направления
-                const angle = Math.random() * Math.PI * 2; // Случайный угол вокруг оси
-                const radius = Math.random() * minSpread; // Случайный радиус в пределах узкого конуса
-                
-                // Вычисляем перпендикулярные векторы для разброса
-                // Создаём вектор, перпендикулярный направлению
-                const perpendicular1 = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
-                const perpendicular2 = new THREE.Vector3().crossVectors(direction, perpendicular1).normalize();
-                
-                // Смещение в узком конусе
-                const offsetX = perpendicular1.x * radius * Math.cos(angle) + perpendicular2.x * radius * Math.sin(angle);
-                const offsetZ = perpendicular1.z * radius * Math.cos(angle) + perpendicular2.z * radius * Math.sin(angle);
-                const offsetY = (Math.random() - 0.5) * minSpread * 0.3;
-                
-                const perpendicularOffset = new THREE.Vector3(offsetX, offsetY, offsetZ);
-                
-                // Начальная позиция с минимальным смещением
-                particle.position.add(perpendicularOffset);
-                
-                // Физика струи из шланга:
-                // - Основная скорость строго по направлению к курсору
-                // - Минимальный разброс скорости для чёткой струи
-                const spread = 0.01; // Очень маленький разброс скорости
-                particle.userData.velocity = new THREE.Vector3(
-                    direction.x + (Math.random() - 0.5) * spread,
-                    0.15 + Math.random() * 0.05, // Небольшой импульс вверх
-                    direction.z + (Math.random() - 0.5) * spread
-                );
+                // Направление строго к цели - без разброса
+                particle.userData.velocity = direction.clone();
                 
                 // Скорость потока - высокая для быстрой доставки к цели
-                particle.userData.speed = 0.8 + Math.random() * 0.1;
+                particle.userData.speed = 1.2;
                 particle.userData.life = 1.0;
                 particle.userData.onGround = false;
                 
