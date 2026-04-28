@@ -77,6 +77,17 @@ class Game {
      * Настройка обработчиков событий
      */
     setupEventListeners() {
+        // Обработчики для кнопок выбора команды
+        const teamButtons = document.querySelectorAll('.team-btn');
+        teamButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const team = button.getAttribute('data-team');
+                if (team && this.state === 'selection') {
+                    this.selectTeam(team);
+                }
+            });
+        });
+        
         // Клавиатура
         window.addEventListener('keydown', (e) => {
             this.keys[e.code] = true;

@@ -25,13 +25,13 @@ class PaintSystem {
         this.canvas.height = segments;
         this.ctx = this.canvas.getContext('2d');
         
-        // Инициализация текстуры нейтральным цветом
-        this.fillNeutral();
-        
-        // Создание THREE текстуры
+        // Создание THREE текстуры ДО заполнения
         this.texture = new THREE.CanvasTexture(this.canvas);
         this.texture.minFilter = THREE.LinearFilter;
         this.texture.magFilter = THREE.LinearFilter;
+        
+        // Инициализация текстуры нейтральным цветом
+        this.fillNeutral();
         
         // Создание меша арены
         this.createArenaMesh();
