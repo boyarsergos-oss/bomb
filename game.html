@@ -132,65 +132,28 @@
         // Материал для кролика
         const material = new THREE.MeshStandardMaterial({ color: color });
 
-        // Тело (овальное)
+        // Тело - просто шарик
         const bodyGeometry = new THREE.SphereGeometry(0.5, 16, 16);
         const body = new THREE.Mesh(bodyGeometry, material);
-        body.scale.set(1, 1.2, 0.7);
         body.castShadow = true;
         bunnyGroup.add(body);
 
-        // Голова
-        const headGeometry = new THREE.SphereGeometry(0.35, 16, 16);
-        const head = new THREE.Mesh(headGeometry, material);
-        head.position.set(0, 0.6, 0.25);
-        head.castShadow = true;
-        bunnyGroup.add(head);
-
-        // Уши (длинные и милые) - используем Cylinder вместо Capsule для совместимости
-        const earGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.5, 8);
+        // Уши - два цилиндра сверху
+        const earGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.4, 8);
         
         // Левое ухо
         const leftEar = new THREE.Mesh(earGeometry, material);
-        leftEar.position.set(-0.15, 1.05, 0.25);
-        leftEar.rotation.z = -0.2;
+        leftEar.position.set(-0.15, 0.7, 0);
+        leftEar.rotation.z = -0.3;
         leftEar.castShadow = true;
         bunnyGroup.add(leftEar);
 
         // Правое ухо
         const rightEar = new THREE.Mesh(earGeometry, material);
-        rightEar.position.set(0.15, 1.05, 0.25);
-        rightEar.rotation.z = 0.2;
+        rightEar.position.set(0.15, 0.7, 0);
+        rightEar.rotation.z = 0.3;
         rightEar.castShadow = true;
         bunnyGroup.add(rightEar);
-
-        // Глаза (черные бусинки)
-        const eyeGeometry = new THREE.SphereGeometry(0.06, 8, 8);
-        const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        
-        // Левый глаз
-        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        leftEye.position.set(-0.12, 0.65, 0.5);
-        bunnyGroup.add(leftEye);
-
-        // Правый глаз
-        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        rightEye.position.set(0.12, 0.65, 0.5);
-        bunnyGroup.add(rightEye);
-
-        // Нос (розовый)
-        const noseGeometry = new THREE.SphereGeometry(0.04, 8, 8);
-        const noseMaterial = new THREE.MeshBasicMaterial({ color: 0xffaaaa });
-        const nose = new THREE.Mesh(noseGeometry, noseMaterial);
-        nose.position.set(0, 0.58, 0.55);
-        bunnyGroup.add(nose);
-
-        // Хвостик (пушистый белый шарик)
-        const tailGeometry = new THREE.SphereGeometry(0.12, 8, 8);
-        const tailMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-        const tail = new THREE.Mesh(tailGeometry, tailMaterial);
-        tail.position.set(0, 0.2, -0.6);
-        tail.castShadow = true;
-        bunnyGroup.add(tail);
 
         return bunnyGroup;
     }
@@ -281,11 +244,11 @@
 
     function checkCollisions(newPos) {
         const playerBox = new THREE.Box3();
-        // Учитываем размер кролика: высота ~1.5 (с ушами), ширина ~0.6
-        const playerSize = new THREE.Vector3(0.6, 1.5, 0.7);
-        // Центрируем бокс вокруг новой позиции (немного смещаем по Y вниз, так как центр кролика ближе к телу)
+        // Учитываем размер кролика: высота ~1.2 (шарик 0.5 + уши), ширина ~0.6
+        const playerSize = new THREE.Vector3(0.6, 1.2, 0.6);
+        // Центрируем бокс вокруг новой позиции
         const adjustedPos = newPos.clone();
-        adjustedPos.y -= 0.2;
+        adjustedPos.y -= 0.1;
         playerBox.setFromCenterAndSize(adjustedPos, playerSize);
 
         let groundedTemp = false;
@@ -296,13 +259,13 @@
             if (playerBox.intersectsBox(platformBox)) {
                 // Простейшая коллизия: если мы падали вниз и пересекли платформу сверху
                 // Проверяем предыдущую позицию Y, чтобы понять направление
-                const prevBottom = player.position.y - 0.7;
+                const prevBottom = player.position.y - 0.5;
                 const platTop = platformBox.max.y;
                 
                 // Если раньше были выше платформы, а теперь внутри -> приземление
                 if (prevBottom >= platTop - 0.2 && playerVelocity.y <= 0) {
                     groundedTemp = true;
-                    newPos.y = platTop + 0.7; // Ставим ровно на поверхность
+                    newPos.y = platTop + 0.5; // Ставим ровно на поверхность (радиус шарика 0.5)
                     playerVelocity.y = 0;
                 } else {
                     // Боковое столкновение или удар головой (упрощенно: просто отталкиваем по X/Z или останавливаем)
