@@ -177,50 +177,11 @@
         createRock(-3, 6);
         createRock(4, -8);
 
-        // Массив для хранения следов краски
-        const paintMarks = [];
-        const paintColor = 0xff1493; // Ярко-розовый цвет краски
-        
         // Переменные для мыши
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
+        const paintColor = 0xff1493; // Ярко-розовый цвет краски
         
-        // Создаём текстуру для брызг краски (процедурно)
-        function createPaintTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 128;
-            canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            
-            // Градиент для круглой формы
-            const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-            gradient.addColorStop(0, 'rgba(255, 20, 147, 1)');
-            gradient.addColorStop(0.5, 'rgba(255, 20, 147, 0.8)');
-            gradient.addColorStop(1, 'rgba(255, 20, 147, 0)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 128, 128);
-            
-            // Добавляем случайные "брызги"
-            for (let i = 0; i < 20; i++) {
-                const x = Math.random() * 128;
-                const y = Math.random() * 128;
-                const radius = Math.random() * 8 + 2;
-                ctx.beginPath();
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(255, 20, 147, ${Math.random() * 0.5 + 0.3})`;
-                ctx.fill();
-            }
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            return texture;
-        }
-        
-        const paintTexture = createPaintTexture();
-        
-        // Геометрия для пятен краски (плоский круг)
-        const paintGeometry = new THREE.CircleGeometry(1, 16);
-
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
 
@@ -250,51 +211,6 @@
 
             // Направление выстрела - к точке, куда указывает курсор мыши
             const shootDirection = targetPoint.clone().sub(rayOrigin).normalize();
-
-            // Используем Raycaster для определения попадания в землю
-            const raycaster = new THREE.Raycaster(rayOrigin, shootDirection);
-
-            const intersects = raycaster.intersectObject(ground);
-
-            if (intersects.length > 0) {
-                const hitPoint = intersects[0].point;
-
-                // Создаем меш с краской в точке попадания (плоский круг на земле)
-                const paintMaterial = new THREE.MeshBasicMaterial({ 
-                    map: paintTexture, 
-                    color: paintColor,
-                    transparent: true,
-                    opacity: 0.95,
-                    side: THREE.DoubleSide,
-                    depthWrite: false
-                });
-                
-                const paintMesh = new THREE.Mesh(paintGeometry, paintMaterial);
-
-                paintMesh.position.copy(hitPoint);
-                paintMesh.position.y += 0.01; // Чуть выше поверхности чтобы не мерцало
-                
-                // Поворачиваем меш чтобы он лежал на земле
-                paintMesh.rotation.x = -Math.PI / 2;
-
-                // Случайный размер пятна
-                const scale = 1.2 + Math.random() * 0.8;
-                paintMesh.scale.set(scale, scale, scale);
-
-                // Случайная ориентация
-                paintMesh.rotation.z = Math.random() * Math.PI * 2;
-
-                scene.add(paintMesh);
-                paintMarks.push(paintMesh);
-
-                // Ограничиваем количество пятен (удаляем старые)
-                if (paintMarks.length > 150) {
-                    const oldMark = paintMarks.shift();
-                    scene.remove(oldMark);
-                    oldMark.geometry.dispose();
-                    oldMark.material.dispose();
-                }
-            }
 
             // Добавляем эффект частиц при выстреле (шланг) - теперь создаём поток постоянно
             createHoseStream(rayOrigin, shootDirection);
