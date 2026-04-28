@@ -1,5 +1,9 @@
 ```
-# Logs and temp files
+# Logs
 *.log
-server.log
+
+# Environment
+.env
+.env.local
+*.env.*
 ```
