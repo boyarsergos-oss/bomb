@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Splatoon 3D: 4 Teams Battle</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .score-box {
+            display: inline-block;
+            margin-right: 15px;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        #timer {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+        }
+        h1 { font-size: 48px; margin-bottom: 10px; }
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            background: #ff9800;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        button:hover { background: #e68900; }
+        #controls-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: rgba(255,255,255,0.7);
+            font-size: 14px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="ui">
+    <div class="score-box" style="background: #ff3333;">Красные (Вы): <span id="score-red">0%</span></div>
+    <div class="score-box" style="background: #3333ff;">Синие: <span id="score-blue">0%</span></div>
+    <div class="score-box" style="background: #33ff33;">Зелёные: <span id="score-green">0%</span></div>
+    <div class="score-box" style="background: #ffff33; color: black;">Жёлтые: <span id="score-yellow">0%</span></div>
+</div>
+
+<div id="timer">03:00</div>
+
+<div id="controls-hint">
+    WASD - Движение | Мышь - Обзор | ЛКМ - Стрельба | Пробел - Прыжок
+</div>
+
+<div id="game-over">
+    <h1 id="winner-text">ПОБЕДА!</h1>
+    <p id="final-stats"></p>
+    <button onclick="location.reload()">Играть снова</button>
+</div>
+
+<!-- Подключаем Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+    // --- КОНФИГУРАЦИЯ ИГРЫ ---
+    const TEAM_COLORS = [
+        0xff3333, // Красный (Игрок)
+        0x3333ff, // Синий
+        0x33ff33, // Зелёный
+        0xffff33  // Жёлтый
+    ];
+    const TEAM_NAMES = ["Красные", "Синие", "Зелёные", "Жёлтые"];
+    const MAP_SIZE = 60;
+    const TILE_SIZE = 1; // Размер ячейки краски
+    const PLAYER_SPEED = 0.3;
+    const BULLET_SPEED = 0.8;
+    const GAME_DURATION = 180; // секунды
+
+    // Глобальные переменные
+    let scene, camera, renderer;
+    let player, floorMesh;
+    let bullets = [];
+    let bots = [];
+    let lastTime = 0;
+    let gameTime = GAME_DURATION;
+    let isGameOver = false;
+    
+    // Сетка краски (логическое представление)
+    // Каждый элемент: { team: number (0-3), intensity: number }
+    let paintGrid = []; 
+    const GRID_W = Math.floor(MAP_SIZE / TILE_SIZE);
+    const GRID_H = Math.floor(MAP_SIZE / TILE_SIZE);
+
+    // Ввод
+    const keys = {};
+    const mouse = new THREE.Vector2();
+    let raycaster = new THREE.Raycaster();
+
+    // Инициализация
+    function init() {
+        // Сцена
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Небо
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 70);
+
+        // Камера
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Рендерер
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Свет
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -MAP_SIZE;
+        dirLight.shadow.camera.right = MAP_SIZE;
+        dirLight.shadow.camera.top = MAP_SIZE;
+        dirLight.shadow.camera.bottom = -MAP_SIZE;
+        scene.add(dirLight);
+
+        // Пол (основа)
+        const geometry = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
+        const material = new THREE.MeshStandardMaterial({ color: 0x808080, roughness: 0.8 });
+        floorMesh = new THREE.Mesh(geometry, material);
+        floorMesh.rotation.x = -Math.PI / 2;
+        floorMesh.receiveShadow = true;
+        scene.add(floorMesh);
+
+        // Сетка краски (текстура будет обновляться)
+        // Создаем динамическую текстуру
+        const canvas = document.createElement('canvas');
+        canvas.width = GRID_W;
+        canvas.height = GRID_H;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(0, 0, GRID_W, GRID_H);
+        
+        const paintTexture = new THREE.CanvasTexture(canvas);
+        paintTexture.magFilter = THREE.NearestFilter;
+        paintTexture.minFilter = THREE.NearestFilter;
+        
+        // Слой краски поверх пола
+        const paintGeo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
+        const paintMat = new THREE.MeshBasicMaterial({ 
+            map: paintTexture, 
+            transparent: true, 
+            opacity: 0.9,
+            polygonOffset: true,
+            polygonOffsetFactor: -1 
+        });
+        const paintLayer = new THREE.Mesh(paintGeo, paintMat);
+        paintLayer.rotation.x = -Math.PI / 2;
+        paintLayer.position.y = 0.01; // Чуть выше пола
+        scene.add(paintLayer);
+        
+        // Сохраняем ссылку на контекст и текстуру для обновления
+        window.paintCtx = ctx;
+        window.paintTexture = paintTexture;
+
+        // Инициализация логической сетки
+        for(let x=0; x<GRID_W; x++) {
+            paintGrid[x] = [];
+            for(let y=0; y<GRID_H; y++) {
+                paintGrid[x][y] = { team: -1, intensity: 0 };
+            }
+        }
+
+        // Создание игрока
+        createPlayer();
+
+        // Создание ботов
+        for(let i=0; i<12; i++) {
+            createBot(i);
+        }
+
+        // Обработчики событий
+        window.addEventListener('resize', onWindowResize, false);
+        document.addEventListener('keydown', (e) => keys[e.code] = true);
+        document.addEventListener('keyup', (e) => keys[e.code] = false);
+        document.addEventListener('mousemove', onMouseMove, false);
+        document.addEventListener('mousedown', onMouseDown, false);
+
+        // Запуск цикла
+        requestAnimationFrame(animate);
+        
+        // Таймер игры
+        setInterval(() => {
+            if(!isGameOver) {
+                gameTime--;
+                updateTimerUI();
+                if(gameTime <= 0) endGame();
+            }
+        }, 1000);
+    }
+
+    function createPlayer() {
+        const geo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+        const mat = new THREE.MeshStandardMaterial({ color: TEAM_COLORS[0] });
+        player = new THREE.Mesh(geo, mat);
+        player.position.set(0, 1, 0);
+        player.castShadow = true;
+        player.userData = { team: 0, velocity: new THREE.Vector3(), canJump: false };
+        scene.add(player);
+    }
+
+    function createBot(index) {
+        const teamId = (index % 3) + 1; // 1, 2, 3 (не 0, т.к. 0 - игрок)
+        const geo = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+        const mat = new THREE.MeshStandardMaterial({ color: TEAM_COLORS[teamId] });
+        const bot = new THREE.Mesh(geo, mat);
+        
+        // Случайная позиция, но не слишком близко к центру
+        let angle = Math.random() * Math.PI * 2;
+        let radius = 10 + Math.random() * 20;
+        bot.position.set(Math.cos(angle)*radius, 1, Math.sin(angle)*radius);
+        
+        bot.castShadow = true;
+        bot.userData = { 
+            team: teamId, 
+            velocity: new THREE.Vector3(),
+            changeDirTimer: 0,
+            shootTimer: Math.random() * 2,
+            direction: new THREE.Vector3(Math.random()-0.5, 0, Math.random()-0.5).normalize()
+        };
+        scene.add(bot);
+        bots.push(bot);
+    }
+
+    function spawnBullet(owner, position, direction) {
+        const geo = new THREE.SphereGeometry(0.3, 8, 8);
+        const mat = new THREE.MeshBasicMaterial({ color: TEAM_COLORS[owner.userData.team] });
+        const bullet = new THREE.Mesh(geo, mat);
+        bullet.position.copy(position);
+        bullet.position.y += 0.5; // Уровень груди
+        bullet.userData = { 
+            owner: owner.userData.team, 
+            velocity: direction.clone().multiplyScalar(BULLET_SPEED),
+            life: 60 // кадров жизни
+        };
+        scene.add(bullet);
+        bullets.push(bullet);
+    }
+
+    function updatePaint(x, z, teamId, radius = 2) {
+        // Преобразуем мировые координаты в координаты сетки
+        const gx = Math.floor((x + MAP_SIZE/2) / TILE_SIZE);
+        const gy = Math.floor((z + MAP_SIZE/2) / TILE_SIZE);
+
+        if(gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H) return;
+
+        const r = Math.floor(radius / TILE_SIZE);
+        
+        for(let ix = gx - r; ix <= gx + r; ix++) {
+            for(let iy = gy - r; iy <= gy + r; iy++) {
+                if(ix >= 0 && ix < GRID_W && iy >= 0 && iy < GRID_H) {
+                    // Простая логика: новая команда перекрашивает, или усиливает свою
+                    const cell = paintGrid[ix][iy];
+                    if(cell.team !== teamId) {
+                        cell.team = teamId;
+                        cell.intensity = 1;
+                    } else {
+                        cell.intensity = Math.min(cell.intensity + 0.1, 1);
+                    }
+                }
+            }
+        }
+        updatePaintTexture();
+    }
+
+    function updatePaintTexture() {
+        const ctx = window.paintCtx;
+        const w = GRID_W;
+        const h = GRID_H;
+        
+        // Очистка не нужна, рисуем поверх
+        // Но для производительности лучше перерисовывать только изменения, 
+        // здесь же для простоты перерисуем всё (для 60x60 это быстро)
+        
+        // Оптимизация: рисуем прямоугольниками одинакового цвета
+        // Для демо просто пройдемся по пикселям (медленно, но надежно для старта)
+        // В реальном проекте нужно использовать буфер изображения
+        
+        const imgData = ctx.createImageData(w, h);
+        const data = imgData.data;
+
+        for(let x=0; x<w; x++) {
+            for(let y=0; y<h; y++) {
+                const cell = paintGrid[x][y];
+                let r=128, g=128, b=128; // Серый по умолчанию
+                
+                if(cell.team !== -1) {
+                    const color = TEAM_COLORS[cell.team];
+                    r = (color >> 16) & 255;
+                    g = (color >> 8) & 255;
+                    b = color & 255;
+                    
+                    // Немного варьируем яркость от интенсивности
+                    const factor = 0.5 + (cell.intensity * 0.5);
+                    r *= factor; g *= factor; b *= factor;
+                }
+
+                const index = (y * w + x) * 4;
+                data[index] = r;
+                data[index+1] = g;
+                data[index+2] = b;
+                data[index+3] = 255;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        window.paintTexture.needsUpdate = true;
+    }
+
+    function calculateScores() {
+        let counts = [0, 0, 0, 0];
+        let total = 0;
+        
+        for(let x=0; x<GRID_W; x++) {
+            for(let y=0; y<GRID_H; y++) {
+                const t = paintGrid[x][y].team;
+                if(t !== -1) {
+                    counts[t]++;
+                    total++;
+                }
+            }
+        }
+        
+        if(total === 0) total = 1;
+
+        const percentages = counts.map(c => ((c / (GRID_W*GRID_H)) * 100).toFixed(1));
+        
+        document.getElementById('score-red').innerText = percentages[0] + '%';
+        document.getElementById('score-blue').innerText = percentages[1] + '%';
+        document.getElementById('score-green').innerText = percentages[2] + '%';
+        document.getElementById('score-yellow').innerText = percentages[3] + '%';
+        
+        return counts;
+    }
+
+    function updateTimerUI() {
+        const m = Math.floor(gameTime / 60);
+        const s = gameTime % 60;
+        document.getElementById('timer').innerText = 
+            `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
+    function endGame() {
+        isGameOver = true;
+        const scores = calculateScores();
+        let maxScore = -1;
+        let winners = [];
+        
+        for(let i=0; i<4; i++) {
+            if(scores[i] > maxScore) {
+                maxScore = scores[i];
+                winners = [i];
+            } else if(scores[i] === maxScore) {
+                winners.push(i);
+            }
+        }
+        
+        const gameOverScreen = document.getElementById('game-over');
+        const winnerText = document.getElementById('winner-text');
+        const finalStats = document.getElementById('final-stats');
+        
+        gameOverScreen.style.display = 'flex';
+        
+        if(winners.includes(0)) {
+            winnerText.innerText = "ПОБЕДА ВАШЕЙ КОМАНДЫ!";
+            winnerText.style.color = "#ff3333";
+        } else {
+            winnerText.innerText = "ПОБЕДИЛА КОМАНДА: " + TEAM_NAMES[winners[0]];
+            winnerText.style.color = "#" + TEAM_COLORS[winners[0]].toString(16);
+        }
+        
+        finalStats.innerHTML = `
+            Красные: ${scores[0]} кл.<br>
+            Синие: ${scores[1]} кл.<br>
+            Зелёные: ${scores[2]} кл.<br>
+            Жёлтые: ${scores[3]} кл.
+        `;
+    }
+
+    function onMouseMove(event) {
+        // Нормализация мыши для рейкаста (-1 до +1)
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        
+        // Вращение игрока за мышью (только по Y)
+        if(player) {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(floorMesh);
+            if(intersects.length > 0) {
+                const point = intersects[0].point;
+                player.lookAt(point.x, player.position.y, point.z);
+            }
+        }
+    }
+
+    function onMouseDown(event) {
+        if(isGameOver || !player) return;
+        // Стрельба
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(player.quaternion);
+        spawnBullet(player, player.position, direction);
+        
+        // Сразу немного красим под собой при выстреле (спрей)
+        updatePaint(player.position.x, player.position.z, player.userData.team, 1.5);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function updatePhysics(entity, dt) {
+        const speed = PLAYER_SPEED;
+        const vel = entity.userData.velocity;
+        
+        // Гравитация
+        if(entity.position.y > 1) {
+            vel.y -= 0.02;
+        } else {
+            vel.y = 0;
+            entity.position.y = 1;
+            entity.userData.canJump = true;
+        }
+
+        // Движение
+        entity.position.add(vel);
+        
+        // Границы карты
+        const limit = MAP_SIZE/2 - 0.5;
+        if(entity.position.x > limit) entity.position.x = limit;
+        if(entity.position.x < -limit) entity.position.x = -limit;
+        if(entity.position.z > limit) entity.position.z = limit;
+        if(entity.position.z < -limit) entity.position.z = -limit;
+
+        // След краски при движении
+        if(Math.abs(vel.x) > 0.01 || Math.abs(vel.z) > 0.01) {
+            if(Math.random() > 0.5) { // Не каждый кадр для оптимизации
+                updatePaint(entity.position.x, entity.position.z, entity.userData.team, 0.8);
+            }
+        }
+    }
+
+    function updateBot(bot, dt) {
+        const data = bot.userData;
+        
+        // ИИ: случайное блуждание + стремление к незакрашенной территории
+        data.changeDirTimer -= dt;
+        if(data.changeDirTimer <= 0) {
+            data.changeDirTimer = 1 + Math.random() * 2;
+            // Найти случайную точку
+            const angle = Math.random() * Math.PI * 2;
+            data.direction.set(Math.cos(angle), 0, Math.sin(angle));
+            bot.lookAt(bot.position.clone().add(data.direction));
+        }
+        
+        // Движение вперед
+        const moveVec = data.direction.clone().multiplyScalar(PLAYER_SPEED * 0.6);
+        data.velocity.x = moveVec.x;
+        data.velocity.z = moveVec.z;
+        
+        // Стрельба
+        data.shootTimer -= dt;
+        if(data.shootTimer <= 0) {
+            data.shootTimer = 1 + Math.random(); // Скорострельность
+            spawnBullet(bot, bot.position, data.direction);
+            updatePaint(bot.position.x, bot.position.z, data.team, 1.5);
+        }
+
+        updatePhysics(bot, dt);
+    }
+
+    function animate(time) {
+        requestAnimationFrame(animate);
+        
+        if(isGameOver) return;
+
+        const dt = 1; // Упрощенный дельта-тайм (фиксированный шаг)
+
+        // Игрок
+        if(player) {
+            const vel = player.userData.velocity;
+            vel.x = 0;
+            vel.z = 0;
+            
+            // Относительно камеры или направления взгляда? 
+            // Сделаем относительно направления взгляда игрока (W всегда вперед)
+            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(player.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(player.quaternion);
+            
+            if(keys['KeyW'] || keys['ArrowUp']) {
+                vel.add(forward.multiplyScalar(PLAYER_SPEED));
+            }
+            if(keys['KeyS'] || keys['ArrowDown']) {
+                vel.add(forward.multiplyScalar(-PLAYER_SPEED));
+            }
+            if(keys['KeyA'] || keys['ArrowLeft']) {
+                vel.add(right.multiplyScalar(-PLAYER_SPEED));
+            }
+            if(keys['KeyD'] || keys['ArrowRight']) {
+                vel.add(right.multiplyScalar(PLAYER_SPEED));
+            }
+            if((keys['Space']) && player.userData.canJump) {
+                vel.y = 0.4;
+                player.userData.canJump = false;
+            }
+            
+            updatePhysics(player, dt);
+            
+            // Камера следует за игроком (вид от 3-го лица сверху-сзади)
+            const relativeOffset = new THREE.Vector3(0, 8, 12);
+            // Можно добавить вращение камеры за мышью, но пока просто фиксировано сверху
+            const cameraPos = player.position.clone().add(relativeOffset);
+            camera.position.lerp(cameraPos, 0.1);
+            camera.lookAt(player.position);
+        }
+
+        // Боты
+        bots.forEach(bot => updateBot(bot, dt));
+
+        // Пули
+        for(let i = bullets.length - 1; i >= 0; i--) {
+            const b = bullets[i];
+            b.position.add(b.userData.velocity);
+            b.userData.life--;
+            
+            // Попадание в пол
+            if(b.position.y <= 0 || b.userData.life <= 0) {
+                updatePaint(b.position.x, b.position.z, b.userData.owner, 1.2);
+                scene.remove(b);
+                bullets.splice(i, 1);
+            }
+        }
+
+        // Обновление счета каждые несколько кадров (не каждый кадр для производительности)
+        if(Math.floor(time) % 10 === 0) {
+            calculateScores();
+        }
+
+        renderer.render(scene, camera);
+    }
+
+    // Старт
+    init();
+
+</script>
+</body>
+</html>
