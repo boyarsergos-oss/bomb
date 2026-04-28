@@ -31,6 +31,44 @@
             margin: 5px 0;
             font-size: 14px;
         }
+        #paint-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+        }
+        #paint-bar-container {
+            width: 200px;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        #paint-bar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff1493, #ff69b4);
+            transition: width 0.1s;
+        }
+        #reload-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff1493;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+            z-index: 100;
+        }
         canvas {
             display: block;
         }
@@ -45,6 +83,16 @@
         <p>D / Стрелка вправо - Вправо</p>
         <p>ЛКМ / Пробел - Стрелять краской</p>
     </div>
+    
+    <div id="paint-indicator">
+        <h3>Краска: <span id="paint-percent">100</span>%</h3>
+        <div id="paint-bar-container">
+            <div id="paint-bar"></div>
+        </div>
+        <p style="margin-top: 10px; font-size: 12px;">Подойдите к резервуару для перезарядки</p>
+    </div>
+    
+    <div id="reload-message">Зажмите E для перезарядки</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -146,6 +194,54 @@
 
         scene.add(player);
 
+        // Создаём резервуар для перезарядки краски с коллизиями
+        const tankGroup = new THREE.Group();
+        
+        // Основной бак (цилиндр)
+        const tankBaseGeometry = new THREE.CylinderGeometry(2, 2, 3, 16);
+        const tankBaseMaterial = new THREE.MeshLambertMaterial({ color: 0x4a90e2 });
+        const tankBase = new THREE.Mesh(tankBaseGeometry, tankBaseMaterial);
+        tankBase.position.y = 1.5;
+        tankBase.castShadow = true;
+        tankGroup.add(tankBase);
+        
+        // Верхняя часть бака
+        const tankTopGeometry = new THREE.CylinderGeometry(1.5, 2, 1, 16);
+        const tankTop = new THREE.Mesh(tankTopGeometry, tankBaseMaterial);
+        tankTop.position.y = 3.5;
+        tankTop.castShadow = true;
+        tankGroup.add(tankTop);
+        
+        // Трубы/вентили сверху
+        const valveGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8);
+        const valveMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
+        const valve1 = new THREE.Mesh(valveGeometry, valveMaterial);
+        valve1.position.set(0.8, 4.2, 0);
+        valve1.rotation.z = Math.PI / 4;
+        tankGroup.add(valve1);
+        
+        const valve2 = new THREE.Mesh(valveGeometry, valveMaterial);
+        valve2.position.set(-0.8, 4.2, 0);
+        valve2.rotation.z = -Math.PI / 4;
+        tankGroup.add(valve2);
+        
+        // Платформа под резервуаром
+        const platformGeometry = new THREE.BoxGeometry(5, 0.3, 5);
+        const platformMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
+        const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+        platform.position.y = 0.15;
+        platform.receiveShadow = true;
+        tankGroup.add(platform);
+        
+        // Устанавливаем позицию резервуара
+        tankGroup.position.set(15, 0, 15);
+        scene.add(tankGroup);
+        
+        // Коллайдер для резервуара (невидимый box для проверки столкновений)
+        const tankCollider = new THREE.Box3();
+        const tankSize = new THREE.Vector3(2.5, 4, 2.5); // Размер зоны коллизии
+        tankCollider.setFromCenterAndSize(tankGroup.position, tankSize);
+
         // Добавим несколько декоративных объектов
         function createTree(x, z) {
             const treeGroup = new THREE.Group();
@@ -201,6 +297,15 @@
         
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
+        
+        // Переменные для системы краски
+        let maxPaint = 100;
+        let currentPaint = 100;
+        const paintConsumptionRate = 0.8; // Расход краски за кадр при стрельбе
+        const reloadSpeed = 1.5; // Скорость перезарядки у резервуара
+        let isReloading = false;
+        let canShoot = true;
+
 
         // Обработка движения мыши для определения направления стрельбы
         document.addEventListener('mousemove', (event) => {
@@ -458,6 +563,10 @@
             if (event.code === 'Space') {
                 isShooting = false;
             }
+            // Остановка перезарядки при отпускании E
+            if (event.code === 'KeyE') {
+                isReloading = false;
+            }
         });
 
         // Стрельба по клику мыши (начало)
@@ -471,6 +580,20 @@
         document.addEventListener('mouseup', (event) => {
             if (event.button === 0) { // Левая кнопка мыши
                 isShooting = false;
+            }
+        });
+        
+        // Начало перезарядки при нажатии E
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'KeyE') {
+                isReloading = true;
+            }
+        });
+        
+        // Остановка перезарядки при отпускании E
+        document.addEventListener('keyup', (event) => {
+            if (event.code === 'KeyE') {
+                isReloading = false;
             }
         });
 
@@ -582,9 +705,35 @@
             
             // Обновление частиц разбрызгивания
             updateSplashParticles();
-
-            // Обработка непрерывной стрельбы - струя следует за курсором
-            if (isShooting) {
+            
+            // Проверка коллизии с резервуаром для перезарядки
+            const playerCollider = new THREE.Box3().setFromObject(body);
+            const distanceToTank = player.position.distanceTo(tankGroup.position);
+            const isNearTank = distanceToTank < 5; // Расстояние до резервуара для активации перезарядки
+            
+            // Показываем сообщение о перезарядке, если игрок рядом с резервуаром
+            const reloadMessage = document.getElementById('reload-message');
+            if (isNearTank && currentPaint < maxPaint) {
+                reloadMessage.style.display = 'block';
+            } else {
+                reloadMessage.style.display = 'none';
+            }
+            
+            // Перезарядка краски у резервуара
+            if (isReloading && isNearTank && currentPaint < maxPaint) {
+                currentPaint = Math.min(maxPaint, currentPaint + reloadSpeed);
+                updatePaintIndicator();
+            }
+            
+            // Расход краски при стрельбе
+            if (isShooting && canShoot && currentPaint > 0) {
+                currentPaint -= paintConsumptionRate;
+                if (currentPaint <= 0) {
+                    currentPaint = 0;
+                    canShoot = false; // Блокируем стрельбу, когда краска закончилась
+                }
+                updatePaintIndicator();
+                
                 if (shootCooldown <= 0) {
                     shootPaint();
                     shootCooldown = shootDelay;
@@ -597,8 +746,40 @@
                 const shootDirection = targetPoint.clone().sub(rayOrigin).normalize();
                 createHoseStream(rayOrigin, shootDirection);
             }
+            
+            // Разблокируем стрельбу, если есть краска
+            if (currentPaint > 0) {
+                canShoot = true;
+            }
+            
+            // Обновляем текст сообщения в зависимости от состояния
+            const reloadMessage = document.getElementById('reload-message');
+            if (!canShoot && currentPaint <= 0) {
+                reloadMessage.textContent = 'Краска закончилась! Подойдите к резервуару и зажмите E';
+            } else if (isNearTank && currentPaint < maxPaint) {
+                reloadMessage.textContent = 'Зажмите E для перезарядки';
+            }
 
             renderer.render(scene, camera);
+        }
+        
+        // Функция обновления индикатора краски
+        function updatePaintIndicator() {
+            const paintBar = document.getElementById('paint-bar');
+            const paintPercent = document.getElementById('paint-percent');
+            const percent = (currentPaint / maxPaint) * 100;
+            
+            paintBar.style.width = percent + '%';
+            paintPercent.textContent = Math.round(percent);
+            
+            // Изменяем цвет полоски в зависимости от уровня краски
+            if (percent > 60) {
+                paintBar.style.background = 'linear-gradient(90deg, #ff1493, #ff69b4)';
+            } else if (percent > 30) {
+                paintBar.style.background = 'linear-gradient(90deg, #ffa500, #ffd700)';
+            } else {
+                paintBar.style.background = 'linear-gradient(90deg, #ff0000, #ff6347)';
+            }
         }
 
         animate();
