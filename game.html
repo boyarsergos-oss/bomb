@@ -162,6 +162,7 @@
             velocity: new THREE.Vector3(0, 0, 0),
             rotation: 0,
             cameraRotation: 0,
+            cameraVerticalRotation: 0,
             speed: 0.15,
             runSpeed: 0.3,
             jumpForce: 0.3,
@@ -187,6 +188,9 @@
         document.addEventListener('mousemove', (event) => {
             if (isPointerLocked) {
                 player.cameraRotation -= event.movementX * 0.002;
+                player.cameraVerticalRotation -= event.movementY * 0.002;
+                // Ограничение вертикального угла камеры (вверх/вниз)
+                player.cameraVerticalRotation = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, player.cameraVerticalRotation));
             }
         });
 
@@ -320,15 +324,15 @@
             // Движение относительно камеры
             const currentSpeed = keys.shift ? player.runSpeed : player.speed;
             
-            // Вперёд/назад - вдоль направления камеры
-            if (keys.forward) {
+            // Вперёд/назад - вдоль направления камеры (инверсия: W - назад, S - вперёд)
+            if (keys.backward) {
                 player.velocity.x = Math.sin(player.cameraRotation) * currentSpeed;
                 player.velocity.z = Math.cos(player.cameraRotation) * currentSpeed;
-            } else if (keys.backward) {
+            } else if (keys.forward) {
                 player.velocity.x = -Math.sin(player.cameraRotation) * currentSpeed;
                 player.velocity.z = -Math.cos(player.cameraRotation) * currentSpeed;
             } 
-            // Влево/вправо - перпендикулярно направлению камеры (стрейф)
+            // Влево/вправо - перпендикулярно направлению камеры (стрейф) с той же скоростью
             if (keys.left) {
                 player.velocity.x += Math.sin(player.cameraRotation + Math.PI/2) * currentSpeed;
                 player.velocity.z += Math.cos(player.cameraRotation + Math.PI/2) * currentSpeed;
@@ -381,11 +385,12 @@
                 rightArm.rotation.x = 0;
             }
 
-            // Камера следует за игроком (вид от 3 лица) с управлением мышью
+            // Камера следует за игроком (вид от 3 лица) с управлением мышью вверх/вниз
             const cameraDistance = 10;
-            const cameraHeight = 5;
-            const cameraX = playerGroup.position.x + Math.sin(player.cameraRotation) * cameraDistance;
-            const cameraZ = playerGroup.position.z + Math.cos(player.cameraRotation) * cameraDistance;
+            const cameraHeight = 5 + Math.sin(player.cameraVerticalRotation) * cameraDistance;
+            const horizontalDistance = Math.cos(player.cameraVerticalRotation) * cameraDistance;
+            const cameraX = playerGroup.position.x + Math.sin(player.cameraRotation) * horizontalDistance;
+            const cameraZ = playerGroup.position.z + Math.cos(player.cameraRotation) * horizontalDistance;
             
             camera.position.set(cameraX, playerGroup.position.y + cameraHeight, cameraZ);
             camera.lookAt(playerGroup.position.clone().add(new THREE.Vector3(0, 2, 0)));
