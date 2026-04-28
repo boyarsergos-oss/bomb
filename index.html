@@ -295,6 +295,45 @@
         let targetPoint = new THREE.Vector3(0, 0, 0);
         const paintColor = 0xff1493; // Ярко-розовый цвет краски
         
+        // Массив для отслеживания закрашенных клеток (сетка 32x32)
+        const gridResolution = 32;
+        const paintedGrid = new Array(gridResolution).fill(null).map(() => new Array(gridResolution).fill(false));
+        
+        // Функция проверки, закрашена ли клетка
+        function isCellPainted(x, z) {
+            const gridX = Math.floor((x + groundSize / 2) / groundSize * gridResolution);
+            const gridZ = Math.floor((z + groundSize / 2) / groundSize * gridResolution);
+            
+            if (gridX < 0 || gridX >= gridResolution || gridZ < 0 || gridZ >= gridResolution) {
+                return false;
+            }
+            
+            return paintedGrid[gridX][gridZ];
+        }
+        
+        // Функция получения скорости в зависимости от покрытия под ногами
+        function getMovementSpeed(x, z) {
+            const baseSpeed = 0.15;
+            const slowSpeed = 0.05;
+            
+            // Проверяем несколько точек вокруг игрока
+            const checkRadius = 0.5;
+            let paintedCount = 0;
+            const totalChecks = 9;
+            
+            for (let dx = -checkRadius; dx <= checkRadius; dx += checkRadius) {
+                for (let dz = -checkRadius; dz <= checkRadius; dz += checkRadius) {
+                    if (isCellPainted(x + dx, z + dz)) {
+                        paintedCount++;
+                    }
+                }
+            }
+            
+            // Чем больше закрашенной территории под ногами, тем быстрее движение
+            const ratio = paintedCount / totalChecks;
+            return slowSpeed + (baseSpeed - slowSpeed) * ratio;
+        }
+        
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
         
@@ -339,6 +378,22 @@
             
             // Обновляем текстуру
             groundTexture.needsUpdate = true;
+            
+            // Обновляем сетку закрашенных клеток
+            const gridX = Math.floor((position.x + groundSize / 2) / groundSize * gridResolution);
+            const gridZ = Math.floor((position.z + groundSize / 2) / groundSize * gridResolution);
+            
+            // Закрашиваем клетку и соседние клетки в зависимости от радиуса
+            const cellsToPaint = Math.ceil(radius / groundSize * gridResolution);
+            for (let dx = -cellsToPaint; dx <= cellsToPaint; dx++) {
+                for (let dz = -cellsToPaint; dz <= cellsToPaint; dz++) {
+                    const nx = gridX + dx;
+                    const nz = gridZ + dz;
+                    if (nx >= 0 && nx < gridResolution && nz >= 0 && nz < gridResolution) {
+                        paintedGrid[nx][nz] = true;
+                    }
+                }
+            }
         }
         
         // Функция выстрела краской
@@ -616,7 +671,8 @@
             requestAnimationFrame(animate);
 
             let isMoving = false;
-            const moveSpeed = 0.15;
+            // Вычисляем скорость в зависимости от закрашенности территории под ногами игрока
+            const moveSpeed = getMovementSpeed(player.position.x, player.position.z);
 
             // Движение персонажа в изометрической проекции
             // В изометрии: 
