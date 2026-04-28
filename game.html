@@ -43,8 +43,8 @@
         <h2>🎮 Управление</h2>
         <p><span class="key">W</span> - Движение вперёд</p>
         <p><span class="key">S</span> - Движение назад</p>
-        <p><span class="key">A</span> - Шаг влево</p>
-        <p><span class="key">D</span> - Шаг вправо</p>
+        <p><span class="key">D</span> - Шаг влево</p>
+        <p><span class="key">A</span> - Шаг вправо</p>
         <p><span class="key">Мышь</span> - Поворот камеры</p>
         <p><span class="key">Shift</span> - Ускорение</p>
         <p><span class="key">Пробел</span> - Прыжок</p>
@@ -266,11 +266,11 @@
                 case 'ArrowDown':
                     keys.backward = true;
                     break;
-                case 'KeyA':
+                case 'KeyD':
                 case 'ArrowLeft':
                     keys.left = true;
                     break;
-                case 'KeyD':
+                case 'KeyA':
                 case 'ArrowRight':
                     keys.right = true;
                     break;
@@ -297,11 +297,11 @@
                 case 'ArrowDown':
                     keys.backward = false;
                     break;
-                case 'KeyA':
+                case 'KeyD':
                 case 'ArrowLeft':
                     keys.left = false;
                     break;
-                case 'KeyD':
+                case 'KeyA':
                 case 'ArrowRight':
                     keys.right = false;
                     break;
@@ -332,14 +332,15 @@
                 player.velocity.x = -Math.sin(player.cameraRotation) * currentSpeed;
                 player.velocity.z = -Math.cos(player.cameraRotation) * currentSpeed;
             } 
-            // Влево/вправо - перпендикулярно направлению камеры (стрейф) с той же скоростью
+            // Влево/вправо - перпендикулярно направлению камеры (стрейф) с повышенной скоростью
+            const strafeSpeed = currentSpeed * 1.5;
             if (keys.left) {
-                player.velocity.x += Math.sin(player.cameraRotation + Math.PI/2) * currentSpeed;
-                player.velocity.z += Math.cos(player.cameraRotation + Math.PI/2) * currentSpeed;
+                player.velocity.x += Math.sin(player.cameraRotation + Math.PI/2) * strafeSpeed;
+                player.velocity.z += Math.cos(player.cameraRotation + Math.PI/2) * strafeSpeed;
             }
             if (keys.right) {
-                player.velocity.x += Math.sin(player.cameraRotation - Math.PI/2) * currentSpeed;
-                player.velocity.z += Math.cos(player.cameraRotation - Math.PI/2) * currentSpeed;
+                player.velocity.x += Math.sin(player.cameraRotation - Math.PI/2) * strafeSpeed;
+                player.velocity.z += Math.cos(player.cameraRotation - Math.PI/2) * strafeSpeed;
             }
             
             if (!keys.forward && !keys.backward && !keys.left && !keys.right) {
