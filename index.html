@@ -548,8 +548,9 @@
             }
 
             // Ограничение движения границами земли
-            player.position.x = Math.max(-24, Math.min(24, player.position.x));
-            player.position.z = Math.max(-24, Math.min(24, player.position.z));
+            const boundary = groundSize / 2 - 1;
+            player.position.x = Math.max(-boundary, Math.min(boundary, player.position.x));
+            player.position.z = Math.max(-boundary, Math.min(boundary, player.position.z));
 
             // Поворот персонажа за мышкой (всегда, независимо от движения)
             // Вычисляем направление от игрока к точке под мышкой
