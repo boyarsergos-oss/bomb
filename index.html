@@ -205,11 +205,15 @@
             player.position.z = Math.max(-limit, Math.min(limit, player.position.z));
 
             // Камера следует за игроком (вид от 3-го лица сверху-сзади)
-            // Жесткая привязка, чтобы камера не отдалялась сама по себе
-            const relativeCameraOffset = new THREE.Vector3(0, 8, 12);
-            const cameraOffset = relativeCameraOffset.applyMatrix4(player.matrixWorld);
+            // Простая и надежная математика для камеры
+            const cameraDistance = 12;
+            const cameraHeight = 8;
             
-            camera.position.copy(cameraOffset);
+            // Вычисляем позицию камеры позади игрока
+            camera.position.x = player.position.x - Math.sin(player.rotation.y) * cameraDistance;
+            camera.position.z = player.position.z - Math.cos(player.rotation.y) * cameraDistance;
+            camera.position.y = player.position.y + cameraHeight;
+            
             camera.lookAt(player.position);
 
             renderer.render(scene, camera);
