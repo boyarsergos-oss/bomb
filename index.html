@@ -381,14 +381,14 @@
             const liquidColor = paintColor;
             
             if (tankType === 0) {
-                // Цилиндрический резервуар
-                liquidGeometry = new THREE.CylinderGeometry(1.45, 1.45, 0.1, 16);
+                // Цилиндрический резервуар - жидкость цилиндр чуть меньше резервуара
+                liquidGeometry = new THREE.CylinderGeometry(1.45, 1.45, 2.9, 16);
             } else if (tankType === 1) {
-                // Кубический резервуар
-                liquidGeometry = new THREE.BoxGeometry(2.4, 0.1, 2.4);
+                // Кубический резервуар - жидкость полный куб
+                liquidGeometry = new THREE.BoxGeometry(2.4, 3.4, 2.4);
             } else {
-                // Конусообразный резервуар
-                liquidGeometry = new THREE.CylinderGeometry(1.9, 0.9, 0.1, 8);
+                // Конусообразный резервуар - жидкость конус
+                liquidGeometry = new THREE.CylinderGeometry(1.9, 0.9, 3.9, 8);
             }
             
             liquidMaterial = new THREE.MeshPhongMaterial({
@@ -400,8 +400,10 @@
             });
             
             const liquidMesh = new THREE.Mesh(liquidGeometry, liquidMaterial);
-            liquidMesh.position.y = 0.05; // Начинаем с дна
-            liquidMesh.visible = false; // Скрыт пока пустой
+            // Позиционируем так, чтобы при scale.y = 0 жидкость была на дне
+            liquidMesh.position.y = 3.9 / 2 + 0.05; // Половина максимальной высоты + небольшое смещение
+            liquidMesh.scale.y = 0; // Начинаем с нуля
+            liquidMesh.visible = true;
             
             tankGroup.add(liquidMesh);
             tankFillData[index].liquidMesh = liquidMesh;
@@ -477,37 +479,27 @@
             const tankGroup = tank.group;
             const tankType = tankIndex;
             
-            let maxHeight;
+            let maxHeight, meshHeight;
             if (tankType === 0) {
-                maxHeight = 2.9; // Чуть меньше высоты цилиндра
+                maxHeight = 2.9; // Высота цилиндрического резервуара
+                meshHeight = 2.9;
             } else if (tankType === 1) {
-                maxHeight = 3.4; // Чуть меньше высоты куба
+                maxHeight = 3.4; // Высота кубического резервуара
+                meshHeight = 3.4;
             } else {
-                maxHeight = 3.9; // Чуть меньше высоты конуса
+                maxHeight = 3.9; // Высота конусообразного резервуара
+                meshHeight = 3.9;
             }
             
             // Вычисляем текущую высоту жидкости
             const currentHeight = maxHeight * fillData.fillLevel;
             
-            // Обновляем позицию Y (центр меши должен быть на половине высоты)
+            // Обновляем позицию Y - база на дне + половина текущей высоты
+            // При scale.y = fillLevel, центр меши должен быть на currentHeight/2 + дно
             liquidMesh.position.y = currentHeight / 2 + 0.05;
             
-            // Обновляем масштаб по Y для изменения высоты
-            if (tankType === 0 || tankType === 2) {
-                // Для цилиндров меняем только высоту
-                liquidMesh.scale.y = Math.max(0.01, fillData.fillLevel);
-            } else {
-                // Для куба меняем высоту
-                liquidMesh.scale.y = Math.max(0.01, fillData.fillLevel);
-            }
-            
-            // Для конуса также меняем радиусы
-            if (tankType === 2) {
-                const bottomRadius = 1.9 * fillData.fillLevel;
-                const topRadius = 0.9 * fillData.fillLevel;
-                // Нужно пересоздать геометрию для конуса с изменяющимися радиусами
-                // Но для простоты оставим масштабирование
-            }
+            // Обновляем масштаб по Y для изменения высоты заполнения
+            liquidMesh.scale.y = Math.max(0.01, fillData.fillLevel);
         }
 
         // Обработка движения мыши для определения направления стрельбы
