@@ -442,11 +442,16 @@
                     tankRadius = 2; // максимальный радиус у основания
                 }
                 
-                // Проверяем пересечение с резервуаром
+                // Проверяем пересечение с резервуаром - используем все дети группы
                 const intersects = raycaster.intersectObjects(tankGroup.children, true);
+                
+                console.log(`Tank ${i}: intersects count = ${intersects.length}`);
                 
                 if (intersects.length > 0 && intersects[0].distance < 30) {
                     const hitPoint = intersects[0].point;
+                    
+                    console.log(`Tank ${i}: Hit at distance ${intersects[0].distance}, point: (${hitPoint.x.toFixed(2)}, ${hitPoint.y.toFixed(2)}, ${hitPoint.z.toFixed(2)})`);
+                    console.log(`Tank ${i}: Tank center: (${tankX}, 0, ${tankZ})`);
                     
                     // Проверяем, что попали именно в ёмкость (не слишком высоко и в пределах радиуса)
                     const dx = hitPoint.x - tankX;
@@ -454,17 +459,23 @@
                     const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
                     const hitHeight = hitPoint.y;
                     
+                    console.log(`Tank ${i}: horizontalDistance = ${horizontalDistance.toFixed(2)}, hitHeight = ${hitHeight.toFixed(2)}`);
+                    
                     // Попадание считается valid если:
                     // 1. Горизонтальное расстояние до центра меньше радиуса резервуара
                     // 2. Высота попадания в пределах резервуара (от 0.2 до tankHeight - 0.2)
                     if (horizontalDistance < tankRadius * 0.9 && 
                         hitHeight > 0.2 && hitHeight < tankHeight - 0.1) {
+                        console.log(`Tank ${i}: VALID HIT!`);
                         // Попали в резервуар!
                         return { hit: true, tankIndex: i, point: hitPoint };
+                    } else {
+                        console.log(`Tank ${i}: Hit but outside valid area`);
                     }
                 }
             }
             
+            console.log('No tank hit');
             return { hit: false, tankIndex: -1, point: null };
         }
         
@@ -472,13 +483,18 @@
         function startTankFilling(tankIndex) {
             const fillData = tankFillData[tankIndex];
             
+            console.log(`startTankFilling called for tank ${tankIndex}, isFilling=${fillData.isFilling}, fillLevel=${fillData.fillLevel}`);
+            
             if (!fillData.isFilling && fillData.fillLevel < 1) {
                 fillData.isFilling = true;
                 fillData.fillStartTime = Date.now();
                 
+                console.log(`Tank ${tankIndex} started filling at ${fillData.fillStartTime}`);
+                
                 // Показываем жидкость
                 if (fillData.liquidMesh) {
                     fillData.liquidMesh.visible = true;
+                    console.log(`Liquid mesh made visible for tank ${tankIndex}`);
                 }
             }
         }
@@ -492,6 +508,8 @@
                     const elapsed = currentTime - fillData.fillStartTime;
                     const progress = Math.min(elapsed / fillData.fillDuration, 1);
                     
+                    console.log(`Tank ${index}: elapsed=${elapsed}ms, progress=${progress.toFixed(3)}, fillLevel=${fillData.fillLevel.toFixed(3)}`);
+                    
                     // Плавное заполнение с easing
                     const easedProgress = 1 - Math.pow(1 - progress, 2); // ease-out quadratic
                     
@@ -503,6 +521,7 @@
                     if (progress >= 1) {
                         fillData.isFilling = false;
                         fillData.fillLevel = 1;
+                        console.log(`Tank ${index} is now full!`);
                     }
                 }
             });
@@ -532,12 +551,17 @@
             // Вычисляем текущую высоту жидкости
             const currentHeight = maxHeight * fillData.fillLevel;
             
+            console.log(`updateLiquidMesh tank ${tankIndex}: fillLevel=${fillData.fillLevel.toFixed(3)}, currentHeight=${currentHeight.toFixed(3)}`);
+            console.log(`  liquidMesh position.y=${liquidMesh.position.y.toFixed(3)}, scale.y=${liquidMesh.scale.y.toFixed(3)}`);
+            
             // Обновляем позицию Y - база на дне + половина текущей высоты
             // При scale.y = fillLevel, центр меши должен быть на currentHeight/2 + дно
             liquidMesh.position.y = currentHeight / 2 + 0.05;
             
             // Обновляем масштаб по Y для изменения высоты заполнения
             liquidMesh.scale.y = Math.max(0.01, fillData.fillLevel);
+            
+            console.log(`  -> new position.y=${liquidMesh.position.y.toFixed(3)}, scale.y=${liquidMesh.scale.y.toFixed(3)}`);
         }
 
         // Обработка движения мыши для определения направления стрельбы
