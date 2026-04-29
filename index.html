@@ -196,7 +196,7 @@
 
         // Переменные для мыши
         const mouse = new THREE.Vector2();
-        let targetPoint = new THREE.Vector3(0, 0, 0);
+        let currentMouseWorldPos = new THREE.Vector3(0, 0, 0); // Текущая позиция курсора в мире
         const paintColor = 0xff1493; // Ярко-розовый цвет краски
         
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
@@ -216,7 +216,7 @@
             const intersects = raycaster.intersectObject(ground);
             
             if (intersects.length > 0) {
-                targetPoint.copy(intersects[0].point);
+                currentMouseWorldPos.copy(intersects[0].point);
             }
         });
 
@@ -519,57 +519,42 @@
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(-1, 0, -1).normalize();
             }
             if (keys.s || keys.ArrowDown) {
                 // Визуально вниз по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(1, 0, 1).normalize();
             }
             if (keys.a || keys.ArrowLeft) {
                 // Визуально влево по экрану
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(-1, 0, 1).normalize();
             }
             if (keys.d || keys.ArrowRight) {
                 // Визуально вправо по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(1, 0, -1).normalize();
             }
 
             // Ограничение движения границами земли
             player.position.x = Math.max(-24, Math.min(24, player.position.x));
             player.position.z = Math.max(-24, Math.min(24, player.position.z));
 
-            // Поворот персонажа: если движемся с клавиатуры - по направлению движения, иначе - за мышкой
-            if (isMoving) {
-                // Поворачиваем персонажа по направлению движения
-                const targetRotation = Math.atan2(playerDirection.x, playerDirection.z);
+            // Поворот персонажа: всегда поворачиваем за мышкой (направление стрельбы)
+            const directionToMouse = new THREE.Vector3()
+                .subVectors(currentMouseWorldPos, player.position)
+                .normalize();
+            
+            // Обновляем направление персонажа (только по горизонтали)
+            playerDirection.set(directionToMouse.x, 0, directionToMouse.z).normalize();
+            
+            // Поворачиваем персонажа в направлении мыши
+            if (directionToMouse.length() > 0.01) {
+                const targetRotation = Math.atan2(directionToMouse.x, directionToMouse.z);
                 player.rotation.y = targetRotation;
-            } else {
-                // Если не движемся, поворачиваем за мышкой
-                const directionToMouse = new THREE.Vector3()
-                    .subVectors(targetPoint, player.position)
-                    .normalize();
-                
-                // Обновляем направление персонажа (только по горизонтали)
-                playerDirection.set(directionToMouse.x, 0, directionToMouse.z).normalize();
-                
-                // Поворачиваем персонажа в направлении мыши
-                if (directionToMouse.length() > 0.01) {
-                    const targetRotation = Math.atan2(directionToMouse.x, directionToMouse.z);
-                    player.rotation.y = targetRotation;
-                }
             }
 
             // Анимация ходьбы
@@ -612,7 +597,7 @@
                 // Создаём поток частиц каждый кадр пока нажата кнопка
                 const rayOrigin = player.position.clone();
                 rayOrigin.y = 1.2;
-                const shootDirection = targetPoint.clone().sub(rayOrigin).normalize();
+                const shootDirection = currentMouseWorldPos.clone().sub(rayOrigin).normalize();
                 createHoseStream(rayOrigin, shootDirection);
             }
 
