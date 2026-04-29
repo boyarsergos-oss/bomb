@@ -231,7 +231,10 @@
                 transparent: true,
                 opacity: 0.3,
                 side: THREE.DoubleSide,
-                depthWrite: false
+                depthWrite: false,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1
             });
             
             const tank = new THREE.Mesh(tankGeometry, glassMaterial);
@@ -247,7 +250,10 @@
                 color: tankColor,
                 transparent: true,
                 opacity: 0.4,
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1
             });
             
             // Нижняя крышка
@@ -391,17 +397,15 @@
                 liquidGeometry = new THREE.CylinderGeometry(1.9, 0.9, 3.9, 8);
             }
             
-            liquidMaterial = new THREE.MeshPhongMaterial({
+            liquidMaterial = new THREE.MeshLambertMaterial({
                 color: liquidColor,
                 transparent: true,
-                opacity: 0.8,
-                emissive: liquidColor,
-                emissiveIntensity: 0.3
+                opacity: 0.9
             });
             
             const liquidMesh = new THREE.Mesh(liquidGeometry, liquidMaterial);
             // Позиционируем так, чтобы при scale.y = 0 жидкость была на дне
-            liquidMesh.position.y = 3.9 / 2 + 0.05; // Половина максимальной высоты + небольшое смещение
+            liquidMesh.position.y = 0.05; // Начинаем с самого дна
             liquidMesh.scale.y = 0; // Начинаем с нуля
             liquidMesh.visible = true;
             
@@ -500,6 +504,9 @@
             
             // Обновляем масштаб по Y для изменения высоты заполнения
             liquidMesh.scale.y = Math.max(0.01, fillData.fillLevel);
+            
+            // Обновляем материал для корректного отображения
+            liquidMesh.material.needsUpdate = true;
         }
 
         // Обработка движения мыши для определения направления стрельбы
