@@ -17,9 +17,66 @@
         canvas {
             display: block;
         }
+        /* UI контейнер - часть игровой сцены, но фиксированный на экране */
+        #ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        /* Панель управления в левом верхнем углу */
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            padding: 20px 30px;
+            color: white;
+            pointer-events: none;
+        }
+        #info-panel h2 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        #info-panel p {
+            font-size: 16px;
+            margin: 8px 0;
+        }
+        /* Сообщение о перезарядке по центру */
+        #reload-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            padding: 20px 40px;
+            color: #ff1493;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            pointer-events: none;
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <!-- UI контейнер -->
+    <div id="ui-container">
+        <div id="info-panel">
+            <h2>Управление</h2>
+            <p>W / ↑ - Вперёд</p>
+            <p>S / ↓ - Назад</p>
+            <p>A / ← - Влево</p>
+            <p>D / → - Вправо</p>
+            <p>ЛКМ / Пробел - Стрелять</p>
+        </div>
+        <div id="reload-message">Краска закончилась! Подойдите к резервуару и зажмите E</div>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -119,7 +176,7 @@
         rightLeg.castShadow = true;
         player.add(rightLeg);
 
-        // Индикатор краски над игроком (полоска)
+        // Индикатор краски над игроком (полоска) - остаётся в 3D сцене
         const paintIndicatorWidth = 1.2;
         const paintIndicatorHeight = 0.15;
         const paintIndicatorBgGeometry = new THREE.BoxGeometry(paintIndicatorWidth, paintIndicatorHeight, 0.1);
@@ -135,127 +192,6 @@
         paintIndicatorFill.position.set(0, 2.8, 0.01);
         paintIndicatorFill.renderOrder = 2;
         player.add(paintIndicatorFill);
-
-        // Создаём UI элементы как часть игровой сцены (3D текст и панели)
-        function createTextSprite(message, fontSize = 40, color = '#ffffff', backgroundColor = 'rgba(0, 0, 0, 0.7)') {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 512;
-            canvas.height = 128;
-            
-            ctx.fillStyle = backgroundColor;
-            ctx.roundRect(10, 10, 492, 108, 20);
-            ctx.fill();
-            
-            ctx.font = `bold ${fontSize}px Arial`;
-            ctx.fillStyle = color;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(message, 30, 64);
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-            const sprite = new THREE.Sprite(material);
-            sprite.scale.set(8, 2, 1);
-            
-            return sprite;
-        }
-
-        function createInfoPanel() {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 512;
-            canvas.height = 256;
-            
-            // Фон
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.roundRect(10, 10, 492, 236, 20);
-            ctx.fill();
-            
-            // Заголовок
-            ctx.font = 'bold 36px Arial';
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'left';
-            ctx.fillText('Управление', 30, 50);
-            
-            // Список команд
-            ctx.font = '24px Arial';
-            const commands = [
-                'W / ↑ - Вперёд',
-                'S / ↓ - Назад',
-                'A / ← - Влево',
-                'D / → - Вправо',
-                'ЛКМ / Пробел - Стрелять'
-            ];
-            commands.forEach((cmd, i) => {
-                ctx.fillText(cmd, 30, 90 + i * 35);
-            });
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-            const sprite = new THREE.Sprite(material);
-            sprite.scale.set(10, 5, 1);
-            
-            return sprite;
-        }
-
-        function createReloadMessageSprite() {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 512;
-            canvas.height = 128;
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-            const sprite = new THREE.Sprite(material);
-            sprite.scale.set(12, 3, 1);
-            
-            // Сохраняем контекст для обновления текста
-            sprite.userData.ctx = ctx;
-            sprite.userData.canvas = canvas;
-            sprite.userData.texture = texture;
-            sprite.userData.visible = false;
-            
-            return sprite;
-        }
-
-        function updateReloadMessageSprite(sprite, message, visible) {
-            if (!sprite.userData.ctx) return;
-            
-            const ctx = sprite.userData.ctx;
-            const canvas = sprite.userData.canvas;
-            const texture = sprite.userData.texture;
-            
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            if (visible) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-                ctx.roundRect(10, 10, 492, 108, 20);
-                ctx.fill();
-                
-                ctx.font = 'bold 32px Arial';
-                ctx.fillStyle = '#ff1493';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(message, 256, 64);
-                
-                sprite.material.needsUpdate = true;
-                texture.needsUpdate = true;
-                sprite.visible = true;
-            } else {
-                sprite.visible = false;
-            }
-        }
-
-        // Создаём панель управления и размещаем её в левом верхнем углу сцены
-        const infoPanel = createInfoPanel();
-        infoPanel.position.set(-20, 15, 0);
-        scene.add(infoPanel);
-
-        // Создаём сообщение о перезарядке (центрировано)
-        const reloadMessageSprite = createReloadMessageSprite();
-        reloadMessageSprite.position.set(0, 10, 0);
-        scene.add(reloadMessageSprite);
 
         scene.add(player);
 
@@ -842,7 +778,8 @@
             const distanceToTank = player.position.distanceTo(tankGroup.position);
             const isNearTank = distanceToTank < 5; // Расстояние до резервуара для активации перезарядки
             
-            // Показываем сообщение о перезарядке, если игрок рядом с резервуаром (теперь через 3D спрайт)
+            // Показываем сообщение о перезарядке через HTML элемент
+            const reloadMessageEl = document.getElementById('reload-message');
             let reloadMessageText = '';
             let showReloadMessage = false;
             
@@ -854,7 +791,12 @@
                 showReloadMessage = true;
             }
             
-            updateReloadMessageSprite(reloadMessageSprite, reloadMessageText, showReloadMessage);
+            if (showReloadMessage) {
+                reloadMessageEl.textContent = reloadMessageText;
+                reloadMessageEl.style.display = 'block';
+            } else {
+                reloadMessageEl.style.display = 'none';
+            }
             
             // Перезарядка краски у резервуара
             if (isReloading && isNearTank && currentPaint < maxPaint) {
