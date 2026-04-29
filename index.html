@@ -421,13 +421,47 @@
             for (let i = 0; i < tanks.length; i++) {
                 const tank = tanks[i];
                 const tankGroup = tank.group;
+                const tankType = i;
+                
+                // Получаем позицию и размеры резервуара
+                const tankX = tankGroup.position.x;
+                const tankZ = tankGroup.position.z;
+                let tankHeight, tankRadius;
+                
+                if (tankType === 0) {
+                    // Цилиндрический
+                    tankHeight = 3;
+                    tankRadius = 1.5;
+                } else if (tankType === 1) {
+                    // Кубический
+                    tankHeight = 3.5;
+                    tankRadius = 1.8; // диагональ половины куба
+                } else {
+                    // Конусообразный
+                    tankHeight = 4;
+                    tankRadius = 2; // максимальный радиус у основания
+                }
                 
                 // Проверяем пересечение с резервуаром
                 const intersects = raycaster.intersectObjects(tankGroup.children, true);
                 
                 if (intersects.length > 0 && intersects[0].distance < 30) {
-                    // Попали в резервуар!
-                    return { hit: true, tankIndex: i, point: intersects[0].point };
+                    const hitPoint = intersects[0].point;
+                    
+                    // Проверяем, что попали именно в ёмкость (не слишком высоко и в пределах радиуса)
+                    const dx = hitPoint.x - tankX;
+                    const dz = hitPoint.z - tankZ;
+                    const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+                    const hitHeight = hitPoint.y;
+                    
+                    // Попадание считается valid если:
+                    // 1. Горизонтальное расстояние до центра меньше радиуса резервуара
+                    // 2. Высота попадания в пределах резервуара (от 0.2 до tankHeight - 0.2)
+                    if (horizontalDistance < tankRadius * 0.9 && 
+                        hitHeight > 0.2 && hitHeight < tankHeight - 0.1) {
+                        // Попали в резервуар!
+                        return { hit: true, tankIndex: i, point: hitPoint };
+                    }
                 }
             }
             
