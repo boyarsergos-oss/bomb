@@ -370,7 +370,8 @@
                 fillLevel: 0, // 0 to 1
                 isFilling: false,
                 fillStartTime: 0,
-                fillDuration: 5000, // 5 секунд = 100% заполнения (1 сек = 20%)
+                fillDuration: 5000,
+                baseFillLevel: 0, // 5 секунд = 100% заполнения (1 сек = 20%)
                 liquidMesh: null, // Меш для жидкости внутри резервуара
                 lastShotTime: 0 // Время последнего попадания
             });
@@ -493,6 +494,7 @@
                 fillData.isFilling = true;
                 fillData.fillStartTime = Date.now();
                 
+                fillData.baseFillLevel = fillData.fillLevel; // Сохраняем текущий уровень как базовый
                 console.log(`Tank ${tankIndex} started filling at ${fillData.fillStartTime}`);
                 
                 // Показываем жидкость
@@ -503,7 +505,8 @@
             } else if (fillData.isFilling) {
                 // Если уже заполняется, корректируем время старта для продолжения анимации
                 // С учётом того что 1 секунда = 20% заполнения
-                fillData.fillStartTime = Date.now() - (fillData.fillLevel * fillData.fillDuration);
+                fillData.baseFillLevel = fillData.fillLevel;
+                fillData.fillStartTime = Date.now();
                 console.log(`Tank ${tankIndex} continues filling, adjusted startTime to ${fillData.fillStartTime}`);
             }
         }
@@ -520,7 +523,7 @@
                     console.log(`Tank ${index}: elapsed=${elapsed}ms, progress=${progress.toFixed(3)}, fillLevel=${fillData.fillLevel.toFixed(3)}`);
                     
                     // Плавное заполнение с линейной прогрессией (1 секунда = 20% заполнения)
-                    fillData.fillLevel = progress;
+                    fillData.fillLevel = fillData.baseFillLevel + (progress * (1 - fillData.baseFillLevel));
 
                     
                     // Обновляем позицию и масштаб жидкости
