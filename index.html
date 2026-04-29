@@ -16,29 +16,51 @@
         }
         #paint-indicator {
             position: absolute;
-            top: 2vh;
-            left: 2vw;
+            top: 1vh;
+            left: 1vw;
             color: white;
             background: rgba(0, 0, 0, 0.7);
-            padding: 3vh 3vw;
-            border-radius: 1.5vh;
+            padding: 4vh 4vw;
+            border-radius: 2vh;
             z-index: 100;
             transform-origin: top left;
             transition: transform 0.1s;
-            font-size: 1.5em;
+            font-size: 2em;
         }
         #paint-bar-container {
-            width: 40vw;
-            height: 4vh;
-            border-radius: 2vh;
+            width: 50vw;
+            height: 5vh;
+            border-radius: 2.5vh;
             overflow: hidden;
-            margin-top: 1vh;
+            margin-top: 1.5vh;
         }
         #paint-bar {
             width: 100%;
             height: 100%;
             background: linear-gradient(90deg, #ff1493, #ff69b4);
             transition: width 0.1s;
+        }
+        #arrow-indicator {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            font-size: 80px;
+            color: #ff0000;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            z-index: 99;
+            display: none;
+            pointer-events: none;
+        }
+        #tank-interaction {
+            position: absolute;
+            font-size: 48px;
+            color: #ffffff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            z-index: 99;
+            display: none;
+            pointer-events: none;
+            font-weight: bold;
         }
         canvas {
             display: block;
@@ -52,6 +74,8 @@
             <div id="paint-bar"></div>
         </div>
     </div>
+    <div id="arrow-indicator">↑</div>
+    <div id="tank-interaction">E</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -313,6 +337,10 @@
         const reloadSpeed = 1.5; // Скорость перезарядки у резервуара
         let isReloading = false;
         let canShoot = true;
+        
+        // Элементы UI для индикации
+        const arrowIndicator = document.getElementById('arrow-indicator');
+        const tankInteraction = document.getElementById('tank-interaction');
 
 
         // Обработка движения мыши для определения направления стрельбы
@@ -742,6 +770,38 @@
             const distanceToTank = player.position.distanceTo(tankGroup.position);
             const isNearTank = distanceToTank < 5; // Расстояние до резервуара для активации перезарядки
             
+            // Показываем подсказку "E" над резервуаром, когда игрок рядом
+            if (isNearTank && currentPaint < maxPaint) {
+                tankInteraction.style.display = 'block';
+                // Проецируем позицию резервуара на экран
+                const tankScreenPos = tankGroup.position.clone();
+                tankScreenPos.y += 5; // Поднимаем надпись над резервуаром
+                tankScreenPos.project(camera);
+                
+                const x = (tankScreenPos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-tankScreenPos.y * 0.5 + 0.5) * window.innerHeight;
+                
+                tankInteraction.style.left = x + 'px';
+                tankInteraction.style.top = y + 'px';
+            } else {
+                tankInteraction.style.display = 'none';
+            }
+            
+            // Показываем стрелку, когда краска закончилась и игрок не у резервуара
+            if (currentPaint <= 0 && !isNearTank) {
+                arrowIndicator.style.display = 'block';
+                // Вычисляем направление к резервуару
+                const directionToTank = new THREE.Vector3()
+                    .subVectors(tankGroup.position, player.position)
+                    .normalize();
+                
+                // Вычисляем угол поворота стрелки
+                const angle = Math.atan2(directionToTank.x, directionToTank.z);
+                arrowIndicator.style.transform = `translate(-50%, 50%) rotate(${angle}rad)`;
+            } else {
+                arrowIndicator.style.display = 'none';
+            }
+            
             // Перезарядка краски у резервуара
             if (isReloading && isNearTank && currentPaint < maxPaint) {
                 currentPaint = Math.min(maxPaint, currentPaint + reloadSpeed);
@@ -794,6 +854,21 @@
                 paintBar.style.background = 'linear-gradient(90deg, #ffa500, #ffd700)';
             } else {
                 paintBar.style.background = 'linear-gradient(90deg, #ff0000, #ff6347)';
+            }
+            
+            // Обновляем видимость стрелки при изменении уровня краски
+            const distanceToTank = player.position.distanceTo(tankGroup.position);
+            const isNearTank = distanceToTank < 5;
+            
+            if (currentPaint <= 0 && !isNearTank) {
+                arrowIndicator.style.display = 'block';
+                const directionToTank = new THREE.Vector3()
+                    .subVectors(tankGroup.position, player.position)
+                    .normalize();
+                const angle = Math.atan2(directionToTank.x, directionToTank.z);
+                arrowIndicator.style.transform = `translate(-50%, 50%) rotate(${angle}rad)`;
+            } else {
+                arrowIndicator.style.display = 'none';
             }
         }
         

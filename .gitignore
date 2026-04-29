@@ -9,6 +9,9 @@ __pycache__/
 *.so
 *.a
 *.out
+dist/
+build/
+target/
 
 # Dependencies
 node_modules/
@@ -17,6 +20,11 @@ venv/
 .env
 .env.local
 .env.*
+.julia/
+zig*/
+.mypy_cache/
+.pytest_cache/
+.gradle/
 
 # Logs and temp files
 *.log
@@ -31,8 +39,6 @@ venv/
 # System files
 .DS_Store
 Thumbs.db
-
-# Coverage
 coverage/
 htmlcov/
 .coverage
