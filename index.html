@@ -202,11 +202,11 @@
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
 
-        // Обработка движения мыши для определения направления стрельбы
-        document.addEventListener('mousemove', (event) => {
+        // Функция обновления позиции курсора мыши на земле
+        function updateMousePosition(clientX, clientY) {
             // Нормализованные координаты мыши (-1 до +1)
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
             
             // Создаем луч из камеры через позицию мыши
             const raycaster = new THREE.Raycaster();
@@ -218,7 +218,20 @@
             if (intersects.length > 0) {
                 targetPoint.copy(intersects[0].point);
             }
+        }
+
+        // Обработка движения мыши для определения направления стрельбы
+        document.addEventListener('mousemove', (event) => {
+            lastMouseX = event.clientX;
+            lastMouseY = event.clientY;
+            updateMousePosition(lastMouseX, lastMouseY);
         });
+        
+        // Инициализируем позицию мыши при загрузке (чтобы работало даже без движения мыши)
+        // Устанавливаем начальную позицию мыши в центр экрана
+        let lastMouseX = window.innerWidth / 2;
+        let lastMouseY = window.innerHeight / 2;
+        updateMousePosition(lastMouseX, lastMouseY);
 
         // Функция рисования краски на земле
         function paintOnGround(position, radius = 0.5) {
@@ -506,6 +519,9 @@
 
             let isMoving = false;
             const moveSpeed = 0.15;
+            
+            // Обновляем позицию курсора мыши каждый кадр (чтобы направление работало даже без движения мыши)
+            updateMousePosition(lastMouseX, lastMouseY);
 
             // Движение персонажа в изометрической проекции
             // В изометрии: 
