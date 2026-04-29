@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Изометрическая Сцена</title>
+    <title>Brawl Stars Style Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,45 +13,100 @@
         }
         body {
             overflow: hidden;
-            font-family: Arial, sans-serif;
+            font-family: 'Lilita One', cursive, Arial, sans-serif;
         }
         #info {
             position: absolute;
             top: 20px;
             left: 20px;
             color: white;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 15px;
             z-index: 100;
+            border: 4px solid #fff;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         }
         #info h3 {
             margin-bottom: 10px;
+            font-size: 24px;
+            text-shadow: 3px 3px 0 #000;
+            color: #ffd700;
         }
         #info p {
-            margin: 5px 0;
-            font-size: 14px;
+            margin: 8px 0;
+            font-size: 16px;
+            text-shadow: 2px 2px 0 #000;
         }
         canvas {
             display: block;
+        }
+        #shoot-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            border: 5px solid white;
+            border-radius: 50%;
+            color: white;
+            font-family: 'Lilita One', cursive;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+        }
+        #shoot-btn:active {
+            transform: scale(0.9);
+        }
+        #joystick-area {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border: 4px solid white;
+            z-index: 100;
+        }
+        #joystick {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            border-radius: 50%;
+            border: 3px solid white;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
     </style>
 </head>
 <body>
     <div id="info">
-        <h3>Управление</h3>
-        <p>W / Стрелка вверх - Вперёд</p>
-        <p>S / Стрелка вниз - Назад</p>
-        <p>A / Стрелка влево - Влево</p>
-        <p>D / Стрелка вправо - Вправо</p>
-        <p>ЛКМ / Пробел - Стрелять краской</p>
+        <h3>⚔️ УПРАВЛЕНИЕ ⚔️</h3>
+        <p>🕹️ WASD / Стрелки - Движение</p>
+        <p>💥 ЛКМ / Пробел - АТАКА!</p>
     </div>
+    
+    <div id="joystick-area">
+        <div id="joystick"></div>
+    </div>
+    
+    <button id="shoot-btn">💥</button>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // Инициализация сцены
+        // Инициализация сцены - Brawl Stars стиль!
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87ceeb);
+        // Яркое небо в стиле Brawl Stars
+        scene.background = new THREE.Color(0x5dade2);
+        // Добавим немного тумана для глубины
+        scene.fog = new THREE.Fog(0x5dade2, 50, 150);
 
         // Камера с изометрической проекцией (ортографическая)
         const aspect = window.innerWidth / window.innerHeight;
@@ -67,18 +123,30 @@
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // Освещение
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // Освещение - яркое и сочное как в Brawl Stars
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 20, 10);
+        const directionalLight = new THREE.DirectionalLight(0xffeb3b, 0.9);
+        directionalLight.position.set(15, 25, 10);
         directionalLight.castShadow = true;
         directionalLight.shadow.mapSize.width = 2048;
         directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 100;
+        directionalLight.shadow.camera.left = -30;
+        directionalLight.shadow.camera.right = 30;
+        directionalLight.shadow.camera.top = 30;
+        directionalLight.shadow.camera.bottom = -30;
         scene.add(directionalLight);
+        
+        // Дополнительный свет для контраста
+        const fillLight = new THREE.DirectionalLight(0xffa500, 0.3);
+        fillLight.position.set(-10, 10, -10);
+        scene.add(fillLight);
 
         // Земля (плоскость) с динамической текстурой для краски
         const groundSize = 250;
@@ -88,9 +156,20 @@
         groundCanvas.height = groundResolution;
         const groundCtx = groundCanvas.getContext('2d');
         
-        // Заполняем начальным цветом (зелёный - трава)
-        groundCtx.fillStyle = '#3a7d3a';
+        // Заполняем начальным цветом (ярко-зелёный - трава в стиле Brawl Stars)
+        groundCtx.fillStyle = '#4ade80';
         groundCtx.fillRect(0, 0, groundResolution, groundResolution);
+        
+        // Добавим узор травы
+        for (let i = 0; i < 200; i++) {
+            const x = Math.random() * groundResolution;
+            const y = Math.random() * groundResolution;
+            const size = 2 + Math.random() * 4;
+            groundCtx.fillStyle = Math.random() > 0.5 ? '#22c55e' : '#16a34a';
+            groundCtx.beginPath();
+            groundCtx.arc(x, y, size, 0, Math.PI * 2);
+            groundCtx.fill();
+        }
         
         const groundTexture = new THREE.CanvasTexture(groundCanvas);
         groundTexture.needsUpdate = true;
@@ -105,66 +184,102 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Сетка на земле
-        const gridHelper = new THREE.GridHelper(250, 10, 0x000000, 0x000000);
-        gridHelper.material.opacity = 0.2;
-        gridHelper.material.transparent = true;
-        scene.add(gridHelper);
+        // Убираем сетку - в Brawl Stars её нет
+        // const gridHelper = new THREE.GridHelper(250, 10, 0x000000, 0x000000);
+        // gridHelper.material.opacity = 0.2;
+        // gridHelper.material.transparent = true;
+        // scene.add(gridHelper);
 
-        // Создаём персонажа (группа объектов)
+        // Создаём персонажа в стиле Brawl Stars (более мультяшный)
         const player = new THREE.Group();
 
-        // Тело
-        const bodyGeometry = new THREE.BoxGeometry(1, 1.5, 0.6);
-        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xff6b6b });
+        // Тело - более округлое и яркое
+        const bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 1.2, 16);
+        const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xff4757 });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = 0.75;
+        body.position.y = 0.6;
         body.castShadow = true;
         player.add(body);
 
-        // Голова
-        const headGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
-        const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffccaa });
+        // Голова - круглая как в Brawl Stars
+        const headGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+        const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffeaa7 });
         const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.y = 1.85;
+        head.position.y = 1.5;
         head.castShadow = true;
         player.add(head);
 
-        // Ноги
-        const legGeometry = new THREE.BoxGeometry(0.3, 0.7, 0.3);
-        const legMaterial = new THREE.MeshLambertMaterial({ color: 0x4a4a4a });
+        // Глаза
+        const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+        const eyeMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+        
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.15, 1.55, 0.4);
+        player.add(leftEye);
+        
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(0.15, 1.55, 0.4);
+        player.add(rightEye);
+
+        // Ноги - короткие и толстые
+        const legGeometry = new THREE.CylinderGeometry(0.15, 0.2, 0.6, 8);
+        const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2d3436 });
         
         const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-        leftLeg.position.set(-0.25, 0.35, 0);
+        leftLeg.position.set(-0.2, 0.3, 0);
         leftLeg.castShadow = true;
         player.add(leftLeg);
 
         const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-        rightLeg.position.set(0.25, 0.35, 0);
+        rightLeg.position.set(0.2, 0.3, 0);
         rightLeg.castShadow = true;
         player.add(rightLeg);
 
+        // Руки
+        const armGeometry = new THREE.CylinderGeometry(0.1, 0.15, 0.8, 8);
+        const armMaterial = new THREE.MeshLambertMaterial({ color: 0xff4757 });
+        
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-0.6, 1.0, 0);
+        leftArm.rotation.z = 0.3;
+        leftArm.castShadow = true;
+        player.add(leftArm);
+        
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(0.6, 1.0, 0);
+        rightArm.rotation.z = -0.3;
+        rightArm.castShadow = true;
+        player.add(rightArm);
+
         scene.add(player);
 
-        // Добавим несколько декоративных объектов
+        // Добавим декоративные объекты в стиле Brawl Stars
         function createTree(x, z) {
             const treeGroup = new THREE.Group();
             
-            // Ствол
-            const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8);
-            const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+            // Ствол - более мультяшный
+            const trunkGeometry = new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8);
+            const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
             const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-            trunk.position.y = 0.75;
+            trunk.position.y = 0.6;
             trunk.castShadow = true;
             treeGroup.add(trunk);
 
-            // Крона
-            const leavesGeometry = new THREE.ConeGeometry(1, 2, 8);
-            const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x228b22 });
+            // Крона - пышная и круглая
+            const leavesGeometry = new THREE.SphereGeometry(1.2, 16, 16);
+            const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x2ecc71 });
             const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
-            leaves.position.y = 2.5;
+            leaves.position.y = 1.8;
             leaves.castShadow = true;
             treeGroup.add(leaves);
+            
+            // Добавим ещё один слой листвы
+            const leaves2Geometry = new THREE.SphereGeometry(0.9, 16, 16);
+            const leaves2Material = new THREE.MeshLambertMaterial({ color: 0x27ae60 });
+            const leaves2 = new THREE.Mesh(leaves2Geometry, leaves2Material);
+            leaves2.position.y = 2.4;
+            leaves2.castShadow = true;
+            treeGroup.add(leaves2);
 
             treeGroup.position.set(x, 0, z);
             scene.add(treeGroup);
@@ -177,14 +292,17 @@
         createTree(7, 7);
         createTree(-10, 5);
         createTree(10, -10);
+        createTree(-12, -5);
+        createTree(12, 8);
 
-        // Добавим камни
+        // Добавим камни в стиле Brawl Stars
         function createRock(x, z) {
-            const rockGeometry = new THREE.DodecahedronGeometry(0.5, 0);
-            const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
+            const rockGeometry = new THREE.DodecahedronGeometry(0.6, 0);
+            const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x95a5a6 });
             const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-            rock.position.set(x, 0.3, z);
-            rock.scale.set(1 + Math.random() * 0.5, 0.8 + Math.random() * 0.4, 1 + Math.random() * 0.5);
+            rock.position.set(x, 0.35, z);
+            rock.scale.set(1 + Math.random() * 0.3, 0.7 + Math.random() * 0.3, 1 + Math.random() * 0.3);
+            rock.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
             rock.castShadow = true;
             scene.add(rock);
         }
@@ -193,14 +311,132 @@
         createRock(6, 4);
         createRock(-3, 6);
         createRock(4, -8);
+        createRock(-8, 0);
+        createRock(9, -3);
+
+        // Добавим кусты
+        function createBush(x, z) {
+            const bushGroup = new THREE.Group();
+            
+            const bushGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+            const bushMaterial = new THREE.MeshLambertMaterial({ color: 0x22c55e });
+            
+            for (let i = 0; i < 3; i++) {
+                const bush = new THREE.Mesh(bushGeometry, bushMaterial);
+                bush.position.set(
+                    (Math.random() - 0.5) * 0.6,
+                    0.3 + Math.random() * 0.2,
+                    (Math.random() - 0.5) * 0.6
+                );
+                bush.scale.set(1, 0.7, 1);
+                bush.castShadow = true;
+                bushGroup.add(bush);
+            }
+            
+            bushGroup.position.set(x, 0, z);
+            scene.add(bushGroup);
+        }
+
+        createBush(-4, 2);
+        createBush(3, -5);
+        createBush(-7, -7);
+        createBush(5, 9);
 
         // Переменные для мыши
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
-        const paintColor = 0xb22222; // Тёмно-красный цвет краски (кирпичный)
+        const paintColor = 0x00d2ff; // Ярко-голубой цвет краски в стиле Brawl Stars
         
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
+
+        // Джойстик управление
+        const joystickArea = document.getElementById('joystick-area');
+        const joystick = document.getElementById('joystick');
+        let joystickActive = false;
+        let joystickCenter = { x: 0, y: 0 };
+        let joystickPosition = { x: 0, y: 0 };
+        const maxJoystickDistance = 35;
+
+        joystickArea.addEventListener('touchstart', handleJoystickStart, { passive: false });
+        joystickArea.addEventListener('touchmove', handleJoystickMove, { passive: false });
+        joystickArea.addEventListener('touchend', handleJoystickEnd, { passive: false });
+        joystickArea.addEventListener('mousedown', handleJoystickStart);
+        document.addEventListener('mousemove', handleJoystickMove);
+        document.addEventListener('mouseup', handleJoystickEnd);
+
+        function handleJoystickStart(e) {
+            if (e.type === 'touchstart') {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const rect = joystickArea.getBoundingClientRect();
+                joystickCenter = {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+                updateJoystick(touch.clientX, touch.clientY);
+                joystickActive = true;
+            } else if (e.target === joystick || e.target === joystickArea) {
+                const rect = joystickArea.getBoundingClientRect();
+                joystickCenter = {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+                updateJoystick(e.clientX, e.clientY);
+                joystickActive = true;
+            }
+        }
+
+        function handleJoystickMove(e) {
+            if (!joystickActive) return;
+            if (e.type === 'touchmove') e.preventDefault();
+            
+            const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+            updateJoystick(clientX, clientY);
+        }
+
+        function handleJoystickEnd() {
+            joystickActive = false;
+            joystickPosition = { x: 0, y: 0 };
+            joystick.style.transform = `translate(-50%, -50%)`;
+        }
+
+        function updateJoystick(clientX, clientY) {
+            let dx = clientX - joystickCenter.x;
+            let dy = clientY - joystickCenter.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > maxJoystickDistance) {
+                const ratio = maxJoystickDistance / distance;
+                dx *= ratio;
+                dy *= ratio;
+            }
+            
+            joystickPosition = { x: dx, y: dy };
+            joystick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            
+            // Преобразуем позицию джойстика в движение
+            keys.w = dy < -10;
+            keys.s = dy > 10;
+            keys.a = dx < -10;
+            keys.d = dx > 10;
+        }
+
+        // Кнопка стрельбы
+        const shootBtn = document.getElementById('shoot-btn');
+        shootBtn.addEventListener('click', () => {
+            isShooting = true;
+            setTimeout(() => { isShooting = false; }, 100);
+        });
+        shootBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isShooting = true;
+        });
+        shootBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            isShooting = false;
+        });
 
         // Функция обновления позиции курсора мыши на земле
         function updateMousePosition(clientX, clientY) {
@@ -257,10 +493,16 @@
             const u = (position.x + groundSize / 2) / groundSize * groundResolution;
             const v = (position.z + groundSize / 2) / groundSize * groundResolution;
             
-            // Рисуем круг на canvas
+            // Рисуем круг на canvas - ярко-голубой цвет как в Brawl Stars
             groundCtx.beginPath();
             groundCtx.arc(u, v, radius / groundSize * groundResolution, 0, Math.PI * 2);
-            groundCtx.fillStyle = '#b22222'; // Тёмно-красный цвет краски (кирпичный)
+            groundCtx.fillStyle = '#00d2ff';
+            groundCtx.fill();
+            
+            // Добавим свечение
+            groundCtx.beginPath();
+            groundCtx.arc(u, v, radius / groundSize * groundResolution * 1.5, 0, Math.PI * 2);
+            groundCtx.fillStyle = 'rgba(0, 210, 255, 0.3)';
             groundCtx.fill();
             
             // Обновляем текстуру
@@ -608,14 +850,20 @@
                 rightLeg.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
                 
                 // Небольшое покачивание тела
-                body.position.y = 0.75 + Math.sin(walkCycle * 2) * 0.05;
-                head.position.y = 1.85 + Math.sin(walkCycle * 2) * 0.05;
+                body.position.y = 0.6 + Math.sin(walkCycle * 2) * 0.03;
+                head.position.y = 1.5 + Math.sin(walkCycle * 2) * 0.03;
+                
+                // Покачивание рук при ходьбе
+                leftArm.rotation.x = Math.sin(walkCycle) * 0.3;
+                rightArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.3;
             } else {
                 // Возврат ног в исходное положение
                 leftLeg.rotation.x = THREE.MathUtils.lerp(leftLeg.rotation.x, 0, 0.1);
                 rightLeg.rotation.x = THREE.MathUtils.lerp(rightLeg.rotation.x, 0, 0.1);
-                body.position.y = THREE.MathUtils.lerp(body.position.y, 0.75, 0.1);
-                head.position.y = THREE.MathUtils.lerp(head.position.y, 1.85, 0.1);
+                body.position.y = THREE.MathUtils.lerp(body.position.y, 0.6, 0.1);
+                head.position.y = THREE.MathUtils.lerp(head.position.y, 1.5, 0.1);
+                leftArm.rotation.x = THREE.MathUtils.lerp(leftArm.rotation.x, 0, 0.1);
+                rightArm.rotation.x = THREE.MathUtils.lerp(rightArm.rotation.x, 0, 0.1);
             }
 
             // Камера следует за игроком
