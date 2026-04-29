@@ -80,6 +80,9 @@
         directionalLight.shadow.mapSize.height = 2048;
         scene.add(directionalLight);
 
+        // Создаём canvas для текстуры земли
+        const groundCanvas = document.createElement('canvas');
+        
         // Земля (плоскость) с динамической текстурой для краски
         const groundSize = 250;
         const groundResolution = 512; // Разрешение текстуры для рисования
