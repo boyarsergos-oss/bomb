@@ -514,15 +514,6 @@
             
             tankFillData.forEach((fillData, index) => {
                 if (fillData.isFilling && fillData.fillLevel < 1) {
-                    // Проверяем, не перестал ли игрок стрелять (прошло больше 200мс с последнего попадания)
-                    const timeSinceLastShot = currentTime - fillData.lastShotTime;
-                    if (timeSinceLastShot > 200) {
-                        // Игрок перестал стрелять в этот резервуар - останавливаем заполнение
-                        fillData.isFilling = false;
-                        console.log(`Tank ${index}: Stopped filling - player stopped shooting (${timeSinceLastShot}ms since last shot)`);
-                        return;
-                    }
-                    
                     const elapsed = currentTime - fillData.fillStartTime;
                     const progress = Math.min(elapsed / fillData.fillDuration, 1);
                     
