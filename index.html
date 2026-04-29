@@ -192,6 +192,23 @@
         rightLeg.castShadow = true;
         player.add(rightLeg);
 
+        // Индикатор краски над игроком (полоска)
+        const paintIndicatorWidth = 1.2;
+        const paintIndicatorHeight = 0.15;
+        const paintIndicatorBgGeometry = new THREE.BoxGeometry(paintIndicatorWidth, paintIndicatorHeight, 0.1);
+        const paintIndicatorBgMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
+        const paintIndicatorBg = new THREE.Mesh(paintIndicatorBgGeometry, paintIndicatorBgMaterial);
+        paintIndicatorBg.position.set(0, 2.8, 0);
+        paintIndicatorBg.renderOrder = 1;
+        player.add(paintIndicatorBg);
+
+        const paintIndicatorFillGeometry = new THREE.BoxGeometry(paintIndicatorWidth - 0.1, paintIndicatorHeight - 0.05, 0.12);
+        const paintIndicatorFillMaterial = new THREE.MeshBasicMaterial({ color: 0xff1493 });
+        const paintIndicatorFill = new THREE.Mesh(paintIndicatorFillGeometry, paintIndicatorFillMaterial);
+        paintIndicatorFill.position.set(0, 2.8, 0.01);
+        paintIndicatorFill.renderOrder = 2;
+        player.add(paintIndicatorFill);
+
         scene.add(player);
 
         // Создаём резервуар для перезарядки краски с коллизиями
@@ -837,12 +854,19 @@
             paintBar.style.width = percent + '%';
             paintPercent.textContent = Math.round(percent);
             
-            // Изменяем цвет полоски в зависимости от уровня краски
+            // Обновляем 3D индикатор над игроком
+            const paintScale = Math.max(0, percent / 100);
+            paintIndicatorFill.scale.x = paintScale;
+            
+            // Меняем цвет в зависимости от уровня краски
             if (percent > 60) {
+                paintIndicatorFill.material.color.setHex(0xff1493);
                 paintBar.style.background = 'linear-gradient(90deg, #ff1493, #ff69b4)';
             } else if (percent > 30) {
+                paintIndicatorFill.material.color.setHex(0xffa500);
                 paintBar.style.background = 'linear-gradient(90deg, #ffa500, #ffd700)';
             } else {
+                paintIndicatorFill.material.color.setHex(0xff0000);
                 paintBar.style.background = 'linear-gradient(90deg, #ff0000, #ff6347)';
             }
         }
