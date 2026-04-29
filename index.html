@@ -197,7 +197,7 @@
         // Переменные для мыши
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
-        const paintColor = 0xff1493; // Ярко-розовый цвет краски
+        const paintColor = 0xb22222; // Тёмно-красный цвет краски (кирпичный)
         
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
@@ -229,7 +229,7 @@
             // Рисуем круг на canvas
             groundCtx.beginPath();
             groundCtx.arc(u, v, radius / groundSize * groundResolution, 0, Math.PI * 2);
-            groundCtx.fillStyle = '#ff1493'; // Ярко-розовый цвет краски
+            groundCtx.fillStyle = '#b22222'; // Тёмно-красный цвет краски (кирпичный)
             groundCtx.fill();
             
             // Обновляем текстуру
