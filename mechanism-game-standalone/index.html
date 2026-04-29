@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Mechanism Builder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #16213e;
+        }
+        
+        #ui {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, transparent, rgba(0,0,0,0.8));
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .btn {
+            background: linear-gradient(145deg, #4a90d9, #357abd);
+            border: 2px solid #5aa3e8;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            min-width: 50px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .btn.selected {
+            background: linear-gradient(145deg, #f39c12, #e67e22);
+            border-color: #f1c40f;
+        }
+        
+        .btn-tool {
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            border-color: #a569bd;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            border-color: #ec7063;
+        }
+        
+        .btn-success {
+            background: linear-gradient(145deg, #27ae60, #229954);
+            border-color: #2ecc71;
+        }
+        
+        #info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        
+        #blockPalette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            z-index: 200;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        #blockPalette.active {
+            display: flex;
+        }
+        
+        .palette-btn {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            border: 2px solid #5dade2;
+            border-radius: 8px;
+            padding: 15px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            min-width: 70px;
+        }
+        
+        .palette-btn span {
+            font-size: 28px;
+        }
+        
+        #closePalette {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 201;
+            background: #e74c3c;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="info">
+        <div>🔧 Mechanism Builder</div>
+        <div id="blockCount">Блоков: 1</div>
+    </div>
+    
+    <div id="blockPalette">
+        <button id="closePalette" onclick="togglePalette()">✕</button>
+    </div>
+    
+    <div id="ui">
+        <button class="btn btn-tool" onclick="togglePalette()">➕</button>
+        <button class="btn btn-tool" onclick="startConnect()">🔗</button>
+        <button class="btn btn-success" onclick="rotateBlock()">🔄</button>
+        <button class="btn btn-danger" onclick="deleteBlock()">🗑️</button>
+        <button class="btn btn-tool" onclick="clearAll()">🗑️ Все</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Настройка размера канваса
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - document.getElementById('ui').offsetHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Типы блоков
+        const BLOCK_TYPES = {
+            SOURCE: { name: 'Источник', icon: '⚡', color: '#f39c12', logic: 'source' },
+            WIRE: { name: 'Провод', icon: '─', color: '#95a5a6', logic: 'wire' },
+            SWITCH: { name: 'Переключатель', icon: '🔘', color: '#3498db', logic: 'switch' },
+            AND: { name: 'AND', icon: '∧', color: '#9b59b6', logic: 'and' },
+            OR: { name: 'OR', icon: '∨', color: '#e67e22', logic: 'or' },
+            NOT: { name: 'NOT', icon: '¬', color: '#1abc9c', logic: 'not' },
+            MOTOR: { name: 'Мотор', icon: '⚙️', color: '#34495e', logic: 'output' },
+            LAMP: { name: 'Лампа', icon: '💡', color: '#f1c40f', logic: 'output' },
+            PISTON: { name: 'Поршень', icon: '🔩', color: '#7f8c8d', logic: 'output' },
+            DELAY: { name: 'Задержка', icon: '⏱️', color: '#e74c3c', logic: 'delay' }
+        };
+        
+        // Состояние игры
+        let blocks = [];
+        let connections = [];
+        let selectedBlock = null;
+        let connectingFrom = null;
+        let dragStart = null;
+        let camera = { x: 0, y: 0 };
+        let isPanning = false;
+        let lastPanPos = { x: 0, y: 0 };
+        
+        // Инициализация с одним блоком
+        function init() {
+            blocks = [{
+                id: Date.now(),
+                type: 'SOURCE',
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                rotation: 0,
+                state: true,
+                output: true
+            }];
+            updateLogic();
+        }
+        
+        // Отрисовка
+        function draw() {
+            ctx.fillStyle = '#16213e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Сетка
+            ctx.strokeStyle = '#1f3a5f';
+            ctx.lineWidth = 1;
+            const gridSize = 50;
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Соединения
+            connections.forEach(conn => {
+                const b1 = blocks.find(b => b.id === conn.from);
+                const b2 = blocks.find(b => b.id === conn.to);
+                if (b1 && b2) {
+                    const active = b1.output || b2.output;
+                    ctx.strokeStyle = active ? '#2ecc71' : '#555';
+                    ctx.lineWidth = active ? 4 : 2;
+                    ctx.beginPath();
+                    ctx.moveTo(b1.x, b1.y);
+                    ctx.lineTo(b2.x, b2.y);
+                    ctx.stroke();
+                }
+            });
+            
+            // Блоки
+            blocks.forEach(block => {
+                const type = BLOCK_TYPES[block.type];
+                const size = 50;
+                const isActive = block.output;
+                
+                // Фон блока
+                ctx.fillStyle = isActive ? lightenColor(type.color, 30) : type.color;
+                ctx.strokeStyle = block === selectedBlock ? '#fff' : '#000';
+                ctx.lineWidth = block === selectedBlock ? 3 : 2;
+                
+                ctx.beginPath();
+                ctx.roundRect(block.x - size/2, block.y - size/2, size, size, 8);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Иконка
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(type.icon, block.x, block.y);
+                
+                // Индикатор состояния для переключателя
+                if (block.type === 'SWITCH') {
+                    ctx.fillStyle = block.state ? '#2ecc71' : '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(block.x + 15, block.y - 15, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            
+            requestAnimationFrame(draw);
+        }
+        
+        function lightenColor(color, percent) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = Math.min(255, (num >> 16) + amt);
+            const G = Math.min(255, ((num >> 8) & 0x00FF) + amt);
+            const B = Math.min(255, (num & 0x0000FF) + amt);
+            return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+        }
+        
+        // Логика механизмов
+        function updateLogic() {
+            // Сброс выходов
+            blocks.forEach(b => b.output = false);
+            
+            // Источники всегда активны
+            blocks.filter(b => b.type === 'SOURCE').forEach(b => {
+                b.output = b.state;
+            });
+            
+            // Переключатели
+            blocks.filter(b => b.type === 'SWITCH').forEach(b => {
+                b.output = b.state;
+            });
+            
+            // Распространение сигнала через провода
+            let changed = true;
+            let iterations = 0;
+            while (changed && iterations < 100) {
+                changed = false;
+                iterations++;
+                
+                connections.forEach(conn => {
+                    const b1 = blocks.find(b => b.id === conn.from);
+                    const b2 = blocks.find(b => b.id === conn.to);
+                    if (b1 && b2) {
+                        if (b1.output && !b2.output) {
+                            b2.output = true;
+                            changed = true;
+                        }
+                        if (b2.output && !b1.output) {
+                            b1.output = true;
+                            changed = true;
+                        }
+                    }
+                });
+            }
+            
+            // Логические элементы
+            blocks.filter(b => ['AND', 'OR', 'NOT'].includes(b.type)).forEach(block => {
+                const inputs = connections
+                    .filter(c => c.to === block.id)
+                    .map(c => blocks.find(b => b.id === c.from))
+                    .filter(b => b);
+                
+                const inputStates = inputs.map(b => b.output);
+                
+                if (block.type === 'AND') {
+                    block.output = inputStates.length > 0 && inputStates.every(s => s);
+                } else if (block.type === 'OR') {
+                    block.output = inputStates.some(s => s);
+                } else if (block.type === 'NOT') {
+                    block.output = inputStates.length > 0 && !inputStates[0];
+                }
+            });
+            
+            document.getElementById('blockCount').textContent = `Блоков: ${blocks.length}`;
+        }
+        
+        // Создание палитры блоков
+        function createPalette() {
+            const palette = document.getElementById('blockPalette');
+            Object.entries(BLOCK_TYPES).forEach(([key, type]) => {
+                const btn = document.createElement('button');
+                btn.className = 'palette-btn';
+                btn.innerHTML = `<span>${type.icon}</span>${type.name}`;
+                btn.onclick = () => addBlock(key);
+                palette.appendChild(btn);
+            });
+        }
+        
+        function togglePalette() {
+            document.getElementById('blockPalette').classList.toggle('active');
+        }
+        
+        function addBlock(type) {
+            const rect = canvas.getBoundingClientRect();
+            blocks.push({
+                id: Date.now(),
+                type: type,
+                x: canvas.width / 2 - camera.x,
+                y: canvas.height / 2 - camera.y,
+                rotation: 0,
+                state: type === 'SOURCE' || type === 'SWITCH',
+                output: type === 'SOURCE'
+            });
+            togglePalette();
+            updateLogic();
+        }
+        
+        function startConnect() {
+            if (selectedBlock) {
+                connectingFrom = selectedBlock.id;
+            } else {
+                alert('Сначала выберите блок!');
+            }
+        }
+        
+        function rotateBlock() {
+            if (selectedBlock) {
+                selectedBlock.rotation = (selectedBlock.rotation + 90) % 360;
+            }
+        }
+        
+        function deleteBlock() {
+            if (selectedBlock) {
+                blocks = blocks.filter(b => b.id !== selectedBlock.id);
+                connections = connections.filter(c => c.from !== selectedBlock.id && c.to !== selectedBlock.id);
+                selectedBlock = null;
+                updateLogic();
+            }
+        }
+        
+        function clearAll() {
+            if (confirm('Удалить все блоки?')) {
+                init();
+                selectedBlock = null;
+            }
+        }
+        
+        // Обработка касаний
+        canvas.addEventListener('touchstart', handleTouch);
+        canvas.addEventListener('touchmove', handleTouch);
+        canvas.addEventListener('touchend', handleTouch);
+        
+        let touchStartTime = 0;
+        let touchStartPos = { x: 0, y: 0 };
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const x = touch.clientX;
+            const y = touch.clientY;
+            
+            if (e.type === 'touchstart') {
+                touchStartTime = Date.now();
+                touchStartPos = { x, y };
+                
+                // Проверка панорамирования (касание вне блоков)
+                const clickedBlock = blocks.find(b => 
+                    Math.abs(b.x - x) < 30 && Math.abs(b.y - y) < 30
+                );
+                
+                if (!clickedBlock) {
+                    isPanning = true;
+                    lastPanPos = { x, y };
+                }
+            } else if (e.type === 'touchmove') {
+                if (isPanning) {
+                    camera.x += x - lastPanPos.x;
+                    camera.y += y - lastPanPos.y;
+                    lastPanPos = { x, y };
+                } else if (dragStart && selectedBlock) {
+                    selectedBlock.x += x - dragStart.x;
+                    selectedBlock.y += y - dragStart.y;
+                    dragStart = { x, y };
+                }
+            } else if (e.type === 'touchend') {
+                const duration = Date.now() - touchStartTime;
+                const dx = x - touchStartPos.x;
+                const dy = y - touchStartPos.y;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                if (duration < 300 && distance < 10) {
+                    // Тап
+                    const clickedBlock = blocks.find(b => 
+                        Math.abs(b.x - touchStartPos.x) < 30 && Math.abs(b.y - touchStartPos.y) < 30
+                    );
+                    
+                    if (connectingFrom) {
+                        if (clickedBlock && clickedBlock.id !== connectingFrom) {
+                            // Проверка на существующее соединение
+                            const exists = connections.some(c => 
+                                (c.from === connectingFrom && c.to === clickedBlock.id) ||
+                                (c.from === clickedBlock.id && c.to === connectingFrom)
+                            );
+                            if (!exists) {
+                                connections.push({ from: connectingFrom, to: clickedBlock.id });
+                                updateLogic();
+                            }
+                        }
+                        connectingFrom = null;
+                    } else if (clickedBlock) {
+                        if (selectedBlock === clickedBlock && duration < 150) {
+                            // Двойной тап - переключение
+                            if (clickedBlock.type === 'SWITCH' || clickedBlock.type === 'SOURCE') {
+                                clickedBlock.state = !clickedBlock.state;
+                                updateLogic();
+                            }
+                        } else {
+                            selectedBlock = clickedBlock;
+                            dragStart = { x: touchStartPos.x, y: touchStartPos.y };
+                        }
+                    } else {
+                        selectedBlock = null;
+                    }
+                }
+                
+                isPanning = false;
+                dragStart = null;
+            }
+        }
+        
+        // Запуск
+        createPalette();
+        init();
+        draw();
+    </script>
+</body>
+</html>
