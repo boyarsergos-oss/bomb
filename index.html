@@ -407,7 +407,7 @@
             // Позиционируем так, чтобы при scale.y = 0 жидкость была на дне
             liquidMesh.position.y = 0.05; // Начинаем с самого дна
             liquidMesh.scale.y = 0; // Начинаем с нуля
-            liquidMesh.visible = true;
+            liquidMesh.visible = false; // Скрыта пока не начнётся заполнение
             
             tankGroup.add(liquidMesh);
             tankFillData[index].liquidMesh = liquidMesh;
@@ -538,9 +538,6 @@
             
             // Обновляем масштаб по Y для изменения высоты заполнения
             liquidMesh.scale.y = Math.max(0.01, fillData.fillLevel);
-            
-            // Обновляем материал для корректного отображения
-            liquidMesh.material.needsUpdate = true;
         }
 
         // Обработка движения мыши для определения направления стрельбы
