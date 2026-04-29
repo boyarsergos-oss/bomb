@@ -81,7 +81,7 @@
         scene.add(directionalLight);
 
         // Земля (плоскость) с динамической текстурой для краски
-        const groundSize = 50;
+        const groundSize = 250;
         const groundResolution = 512; // Разрешение текстуры для рисования
         const groundCanvas = document.createElement('canvas');
         groundCanvas.width = groundResolution;
@@ -106,7 +106,7 @@
         scene.add(ground);
 
         // Сетка на земле
-        const gridHelper = new THREE.GridHelper(50, 10, 0x000000, 0x000000);
+        const gridHelper = new THREE.GridHelper(250, 10, 0x000000, 0x000000);
         gridHelper.material.opacity = 0.2;
         gridHelper.material.transparent = true;
         scene.add(gridHelper);
