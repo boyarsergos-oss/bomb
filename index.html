@@ -311,6 +311,41 @@
             }
         }
 
+        // Функция проверки коллизии игрока с резервуарами
+        function checkTankCollision(newX, newZ) {
+            for (const tank of tanks) {
+                const tankX = tank.group.position.x;
+                const tankZ = tank.group.position.z;
+                
+                if (tank.group.children[0].geometry.type === 'BoxGeometry') {
+                    // Кубический резервуар - проверка как прямоугольник
+                    const halfSize = 1.25; // половина от 2.5
+                    const playerRadius = 0.5;
+                    
+                    // Находим ближайшую точку на прямоугольнике к игроку
+                    const closestX = Math.max(tankX - halfSize, Math.min(newX, tankX + halfSize));
+                    const closestZ = Math.max(tankZ - halfSize, Math.min(newZ, tankZ + halfSize));
+                    
+                    const dx = newX - closestX;
+                    const dz = newZ - closestZ;
+                    const distance = Math.sqrt(dx * dx + dz * dz);
+                    
+                    if (distance < playerRadius) {
+                        return true; // Столкновение
+                    }
+                } else {
+                    // Цилиндрический или конусообразный резервуар - проверка как круг
+                    const distance = getDistance(newX, newZ, tankX, tankZ);
+                    const collisionRadius = tank.radius - 0.5; // радиус резервуара минус радиус игрока
+                    
+                    if (distance < collisionRadius) {
+                        return true; // Столкновение
+                    }
+                }
+            }
+            return false;
+        }
+
         // Переменные для мыши
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
@@ -631,37 +666,46 @@
             // - Влево по экрану = комбинация -X и +Z
             // - Вправо по экрану = комбинация +X и -Z
             
+            let newX = player.position.x;
+            let newZ = player.position.z;
+            
             if (keys.w || keys.ArrowUp) {
                 // Визуально вверх по экрану
-                player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
-                player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
+                newX -= moveSpeed * Math.cos(Math.PI / 4);
+                newZ -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
                 // Обновляем направление персонажа
                 playerDirection.set(-1, 0, -1).normalize();
             }
             if (keys.s || keys.ArrowDown) {
                 // Визуально вниз по экрану
-                player.position.x += moveSpeed * Math.cos(Math.PI / 4);
-                player.position.z += moveSpeed * Math.sin(Math.PI / 4);
+                newX += moveSpeed * Math.cos(Math.PI / 4);
+                newZ += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
                 // Обновляем направление персонажа
                 playerDirection.set(1, 0, 1).normalize();
             }
             if (keys.a || keys.ArrowLeft) {
                 // Визуально влево по экрану
-                player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
-                player.position.z += moveSpeed * Math.sin(Math.PI / 4);
+                newX -= moveSpeed * Math.cos(Math.PI / 4);
+                newZ += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
                 // Обновляем направление персонажа
                 playerDirection.set(-1, 0, 1).normalize();
             }
             if (keys.d || keys.ArrowRight) {
                 // Визуально вправо по экрану
-                player.position.x += moveSpeed * Math.cos(Math.PI / 4);
-                player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
+                newX += moveSpeed * Math.cos(Math.PI / 4);
+                newZ -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
                 // Обновляем направление персонажа
                 playerDirection.set(1, 0, -1).normalize();
+            }
+            
+            // Проверка коллизии с резервуарами перед применением движения
+            if (!checkTankCollision(newX, newZ)) {
+                player.position.x = newX;
+                player.position.z = newZ;
             }
 
             // Ограничение движения границами земли
