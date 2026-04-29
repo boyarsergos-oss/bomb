@@ -529,57 +529,43 @@
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(-1, 0, -1).normalize();
             }
             if (keys.s || keys.ArrowDown) {
                 // Визуально вниз по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(1, 0, 1).normalize();
             }
             if (keys.a || keys.ArrowLeft) {
                 // Визуально влево по экрану
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(-1, 0, 1).normalize();
             }
             if (keys.d || keys.ArrowRight) {
                 // Визуально вправо по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(1, 0, -1).normalize();
             }
 
-            // Ограничение движения границами земли
-            player.position.x = Math.max(-24, Math.min(24, player.position.x));
-            player.position.z = Math.max(-24, Math.min(24, player.position.z));
+            // Ограничение движения границами земли (карта 250 единиц, оставляем небольшой отступ)
+            const boundary = 120;
+            player.position.x = Math.max(-boundary, Math.min(boundary, player.position.x));
+            player.position.z = Math.max(-boundary, Math.min(boundary, player.position.z));
 
-            // Поворот персонажа: если движемся с клавиатуры - по направлению движения, иначе - за мышкой
-            if (isMoving) {
-                // Поворачиваем персонажа по направлению движения
-                const targetRotation = Math.atan2(playerDirection.x, playerDirection.z);
+            // Поворот персонажа всегда за мышкой (направление стрельбы определяется только курсором)
+            const directionToMouse = new THREE.Vector3()
+                .subVectors(targetPoint, player.position)
+                .normalize();
+            
+            // Обновляем направление персонажа (только по горизонтали) - СТРЕЛЬБА ТОЛЬКО ПО КУРСОРУ
+            playerDirection.set(directionToMouse.x, 0, directionToMouse.z).normalize();
+            
+            // Поворачиваем персонажа в направлении мыши
+            if (directionToMouse.length() > 0.01) {
+                const targetRotation = Math.atan2(directionToMouse.x, directionToMouse.z);
                 player.rotation.y = targetRotation;
-            } else {
-                // Если не движемся, поворачиваем за мышкой
-                const directionToMouse = new THREE.Vector3()
-                    .subVectors(targetPoint, player.position)
-                    .normalize();
-                
-                // Обновляем направление персонажа (только по горизонтали)
-                playerDirection.set(directionToMouse.x, 0, directionToMouse.z).normalize();
-                
-                // Поворачиваем персонажа в направлении мыши
-                if (directionToMouse.length() > 0.01) {
-                    const targetRotation = Math.atan2(directionToMouse.x, directionToMouse.z);
-                    player.rotation.y = targetRotation;
-                }
             }
 
             // Анимация ходьбы
