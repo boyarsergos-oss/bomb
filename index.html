@@ -490,25 +490,26 @@
             // Обновляем время последнего выстрела в этот резервуар
             fillData.lastShotTime = Date.now();
             
-            if (!fillData.isFilling && fillData.fillLevel < 1) {
+            if (fillData.fillLevel >= 1) {
+                // Резервуар уже полон
+                return;
+            }
+            
+            if (!fillData.isFilling) {
+                // Первый выстрел по резервуару - начинаем заполнение
                 fillData.isFilling = true;
                 fillData.fillStartTime = Date.now();
-                
-                fillData.baseFillLevel = fillData.fillLevel; // Сохраняем текущий уровень как базовый
-                console.log(`Tank ${tankIndex} started filling at ${fillData.fillStartTime}`);
+                fillData.baseFillLevel = fillData.fillLevel; // Сохраняем текущий уровень как базовый (обычно 0)
+                console.log(`Tank ${tankIndex} started filling at ${fillData.fillStartTime}, baseFillLevel=${fillData.baseFillLevel}`);
                 
                 // Показываем жидкость
                 if (fillData.liquidMesh) {
                     fillData.liquidMesh.visible = true;
                     console.log(`Liquid mesh made visible for tank ${tankIndex}`);
                 }
-            } else if (fillData.isFilling) {
-                // Если уже заполняется, корректируем время старта для продолжения анимации
-                // С учётом того что 1 секунда = 20% заполнения
-                fillData.baseFillLevel = fillData.fillLevel;
-                fillData.fillStartTime = Date.now();
-                console.log(`Tank ${tankIndex} continues filling, adjusted startTime to ${fillData.fillStartTime}`);
             }
+            // Если уже заполняется (fillData.isFilling === true), ничего не делаем
+            // Анимация продолжится в updateTankFilling с учётом накопленного fillLevel
         }
         
         // Функция обновления заполнения резервуаров
@@ -517,19 +518,21 @@
             
             tankFillData.forEach((fillData, index) => {
                 if (fillData.isFilling && fillData.fillLevel < 1) {
+                    // Рассчитываем, сколько времени прошло с начала заполнения
                     const elapsed = currentTime - fillData.fillStartTime;
-                    const progress = Math.min(elapsed / fillData.fillDuration, 1);
                     
-                    console.log(`Tank ${index}: elapsed=${elapsed}ms, progress=${progress.toFixed(3)}, fillLevel=${fillData.fillLevel.toFixed(3)}`);
+                    // Сколько должно было заполниться за это время (20% в секунду = 100% за 5 секунд)
+                    const targetFillLevel = Math.min(elapsed / fillData.fillDuration, 1);
                     
-                    // Плавное заполнение с линейной прогрессией (1 секунда = 20% заполнения)
-                    fillData.fillLevel = fillData.baseFillLevel + (progress * (1 - fillData.baseFillLevel));
-
+                    console.log(`Tank ${index}: elapsed=${elapsed}ms, targetFillLevel=${targetFillLevel.toFixed(3)}, current fillLevel=${fillData.fillLevel.toFixed(3)}`);
+                    
+                    // Устанавливаем уровень заполнения равным целевому значению
+                    fillData.fillLevel = targetFillLevel;
                     
                     // Обновляем позицию и масштаб жидкости
                     updateLiquidMesh(fillData, index);
                     
-                    if (progress >= 1) {
+                    if (fillData.fillLevel >= 1) {
                         fillData.isFilling = false;
                         fillData.fillLevel = 1;
                         console.log(`Tank ${index} is now full!`);
