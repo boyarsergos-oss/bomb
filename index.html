@@ -53,10 +53,10 @@
         scene.background = new THREE.Color(0x87ceeb);
 
         // Камера с изометрической проекцией (ортографическая)
-        const aspect = window.innerWidth / window.innerHeight;
+        const initialAspect = window.innerWidth / window.innerHeight;
         const d = 20;
         const camera = new THREE.OrthographicCamera(
-            -d * aspect, d * aspect, d, -d, 1, 1000
+            -d * initialAspect, d * initialAspect, d, -d, 1, 1000
         );
         
         // Изометрический угол
@@ -67,6 +67,7 @@
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         document.body.appendChild(renderer.domElement);
 
         // Освещение
@@ -522,13 +523,14 @@
 
         // Обработка изменения размера окна
         window.addEventListener('resize', () => {
-            const aspect = window.innerWidth / window.innerHeight;
-            camera.left = -d * aspect;
-            camera.right = d * aspect;
+            const newAspect = window.innerWidth / window.innerHeight;
+            camera.left = -d * newAspect;
+            camera.right = d * newAspect;
             camera.top = d;
             camera.bottom = -d;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         });
 
         // Анимация
