@@ -804,10 +804,20 @@
             camera.position.y = 20;
             camera.lookAt(player.position);
 
-            // UI панели следуют за камерой и всегда повёрнуты к ней
-            uiGroup.position.copy(camera.position);
+            // UI панели всегда видны игроку - размещаем перед камерой со смещением
+            const uiOffset = new THREE.Vector3(0, 0, -15);
+            uiOffset.applyQuaternion(camera.quaternion);
+            
+            // Информация - верхний левый угол
+            infoPanel.panel.position.copy(camera.position).add(uiOffset).add(new THREE.Vector3(-8, 4, 0));
             infoPanel.panel.lookAt(camera.position);
+            
+            // Индикатор краски - нижний левый угол
+            paintIndicatorPanel.panel.position.copy(camera.position).add(uiOffset).add(new THREE.Vector3(-8, -6, 0));
             paintIndicatorPanel.panel.lookAt(camera.position);
+            
+            // Сообщение о перезарядке - центр экрана
+            reloadMessagePanel.panel.position.copy(camera.position).add(uiOffset);
             reloadMessagePanel.panel.lookAt(camera.position);
 
             // Обновление частиц шланга
