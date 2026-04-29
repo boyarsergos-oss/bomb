@@ -65,20 +65,8 @@
     </style>
 </head>
 <body>
-    <!-- UI контейнер -->
-    <div id="ui-container">
-        <div id="info-panel">
-            <h2>Управление</h2>
-            <p>W / ↑ - Вперёд</p>
-            <p>S / ↓ - Назад</p>
-            <p>A / ← - Влево</p>
-            <p>D / → - Вправо</p>
-            <p>ЛКМ / Пробел - Стрелять</p>
-        </div>
-        <div id="reload-message">Краска закончилась! Подойдите к резервуару и зажмите E</div>
-    </div>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/CSS2DRenderer.js"></script>
     <script>
         // Инициализация сцены
         const scene = new THREE.Scene();
@@ -100,6 +88,16 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
+
+        // CSS2D рендерер для UI элементов
+        const labelRenderer = new THREE.CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'fixed';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        labelRenderer.domElement.style.zIndex = '100';
+        document.body.appendChild(labelRenderer.domElement);
 
         // Освещение
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -176,24 +174,46 @@
         rightLeg.castShadow = true;
         player.add(rightLeg);
 
-        // Индикатор краски над игроком (полоска) - остаётся в 3D сцене
-        const paintIndicatorWidth = 1.2;
-        const paintIndicatorHeight = 0.15;
-        const paintIndicatorBgGeometry = new THREE.BoxGeometry(paintIndicatorWidth, paintIndicatorHeight, 0.1);
-        const paintIndicatorBgMaterial = new THREE.MeshBasicMaterial({ color: 0x333333 });
-        const paintIndicatorBg = new THREE.Mesh(paintIndicatorBgGeometry, paintIndicatorBgMaterial);
-        paintIndicatorBg.position.set(0, 2.8, 0);
-        paintIndicatorBg.renderOrder = 1;
-        player.add(paintIndicatorBg);
-
-        const paintIndicatorFillGeometry = new THREE.BoxGeometry(paintIndicatorWidth - 0.1, paintIndicatorHeight - 0.05, 0.12);
-        const paintIndicatorFillMaterial = new THREE.MeshBasicMaterial({ color: 0xff1493 });
-        const paintIndicatorFill = new THREE.Mesh(paintIndicatorFillGeometry, paintIndicatorFillMaterial);
-        paintIndicatorFill.position.set(0, 2.8, 0.01);
-        paintIndicatorFill.renderOrder = 2;
-        player.add(paintIndicatorFill);
-
         scene.add(player);
+
+        // Создаём UI элементы как 3D объекты с CSS2DLabel
+        
+        // Панель управления в левом верхнем углу - следует за камерой
+        const infoPanelDiv = document.createElement('div');
+        infoPanelDiv.style.cssText = `
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            padding: 20px 30px;
+            color: white;
+            font-family: Arial, sans-serif;
+        `;
+        infoPanelDiv.innerHTML = `
+            <h2 style="margin: 0 0 15px 0; font-size: 24px;">Управление</h2>
+            <p style="margin: 8px 0; font-size: 16px;">W / ↑ - Вперёд</p>
+            <p style="margin: 8px 0; font-size: 16px;">S / ↓ - Назад</p>
+            <p style="margin: 8px 0; font-size: 16px;">A / ← - Влево</p>
+            <p style="margin: 8px 0; font-size: 16px;">D / → - Вправо</p>
+            <p style="margin: 8px 0; font-size: 16px;">ЛКМ / Пробел - Стрелять</p>
+        `;
+        const infoPanelLabel = new THREE.CSS2DObject(infoPanelDiv);
+        scene.add(infoPanelLabel);
+
+        // Сообщение о перезарядке по центру - следует за камерой
+        const reloadMessageDiv = document.createElement('div');
+        reloadMessageDiv.id = 'reload-message-3d';
+        reloadMessageDiv.style.cssText = `
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 20px;
+            padding: 20px 40px;
+            color: #ff1493;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+        `;
+        reloadMessageDiv.textContent = 'Краска закончилась! Подойдите к резервуару и зажмите E';
+        const reloadMessageLabel = new THREE.CSS2DObject(reloadMessageDiv);
+        scene.add(reloadMessageLabel);
 
         // Создаём резервуар для перезарядки краски с коллизиями
         const tankGroup = new THREE.Group();
@@ -675,6 +695,10 @@
             camera.bottom = -d;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Обновляем позицию информационной панели при изменении размера окна
+            infoPanelLabel.position.set(-d * aspect + 20, d - 20, 0);
         });
 
         // Анимация
@@ -767,6 +791,18 @@
             camera.position.y = 20;
             camera.lookAt(player.position);
 
+            // UI элементы следуют за камерой (фиксированное положение на экране)
+            const cameraOffset = new THREE.Vector3();
+            camera.getWorldDirection(cameraOffset);
+            
+            // Панель управления - левый верхний угол
+            infoPanelLabel.position.copy(camera.position)
+                .add(new THREE.Vector3(-d * aspect + 5, d - 3, 0));
+            
+            // Сообщение о перезарядке - центр экрана
+            reloadMessageLabel.position.copy(camera.position)
+                .add(new THREE.Vector3(0, 0, -10));
+
             // Обновление частиц шланга
             updateHoseParticles();
             
@@ -778,8 +814,7 @@
             const distanceToTank = player.position.distanceTo(tankGroup.position);
             const isNearTank = distanceToTank < 5; // Расстояние до резервуара для активации перезарядки
             
-            // Показываем сообщение о перезарядке через HTML элемент
-            const reloadMessageEl = document.getElementById('reload-message');
+            // Показываем сообщение о перезарядке через CSS2D элемент
             let reloadMessageText = '';
             let showReloadMessage = false;
             
@@ -792,10 +827,10 @@
             }
             
             if (showReloadMessage) {
-                reloadMessageEl.textContent = reloadMessageText;
-                reloadMessageEl.style.display = 'block';
+                reloadMessageDiv.textContent = reloadMessageText;
+                reloadMessageDiv.style.display = 'block';
             } else {
-                reloadMessageEl.style.display = 'none';
+                reloadMessageDiv.style.display = 'none';
             }
             
             // Перезарядка краски у резервуара
@@ -832,25 +867,53 @@
             }
 
             renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
         }
         
         // Функция обновления индикатора краски
         function updatePaintIndicator() {
             const percent = (currentPaint / maxPaint) * 100;
             
-            // Обновляем 3D индикатор над игроком
+            // Обновляем CSS2D индикатор над игроком
             const paintScale = Math.max(0, percent / 100);
-            paintIndicatorFill.scale.x = paintScale;
+            paintFillDiv.style.width = `${paintScale * 100}%`;
             
             // Меняем цвет в зависимости от уровня краски
             if (percent > 60) {
-                paintIndicatorFill.material.color.setHex(0xff1493);
+                paintFillDiv.style.backgroundColor = '#ff1493';
             } else if (percent > 30) {
-                paintIndicatorFill.material.color.setHex(0xffa500);
+                paintFillDiv.style.backgroundColor = '#ffa500';
             } else {
-                paintIndicatorFill.material.color.setHex(0xff0000);
+                paintFillDiv.style.backgroundColor = '#ff0000';
             }
         }
+
+        // Добавляем индикатор краски над игроком как CSS2D объект
+        const paintIndicatorDiv = document.createElement('div');
+        paintIndicatorDiv.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 120px;
+            height: 15px;
+            background: rgba(51, 51, 51, 0.9);
+            border-radius: 8px;
+            border: 2px solid #000;
+            overflow: hidden;
+        `;
+        
+        const paintFillDiv = document.createElement('div');
+        paintFillDiv.style.cssText = `
+            width: 100%;
+            height: 100%;
+            background: #ff1493;
+            transition: width 0.1s, background-color 0.3s;
+        `;
+        paintIndicatorDiv.appendChild(paintFillDiv);
+        
+        const paintIndicatorLabel = new THREE.CSS2DObject(paintIndicatorDiv);
+        paintIndicatorLabel.position.set(0, 3, 0);
+        player.add(paintIndicatorLabel);
 
         animate();
     </script>
