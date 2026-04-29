@@ -14,85 +14,13 @@
             overflow: hidden;
             font-family: Arial, sans-serif;
         }
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 100;
-        }
-        #info h3 {
-            margin-bottom: 10px;
-        }
-        #info p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        #paint-indicator {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            color: white;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 100;
-        }
-        #paint-bar-container {
-            width: 200px;
-            height: 20px;
-            background: #333;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 5px;
-        }
-        #paint-bar {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, #ff1493, #ff69b4);
-            transition: width 0.1s;
-        }
-        #reload-message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ff1493;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px 30px;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            display: none;
-            z-index: 100;
-        }
         canvas {
             display: block;
         }
     </style>
 </head>
 <body>
-    <div id="info">
-        <h3>Управление</h3>
-        <p>W / Стрелка вверх - Вперёд</p>
-        <p>S / Стрелка вниз - Назад</p>
-        <p>A / Стрелка влево - Влево</p>
-        <p>D / Стрелка вправо - Вправо</p>
-        <p>ЛКМ / Пробел - Стрелять краской</p>
-    </div>
-    
-    <div id="paint-indicator">
-        <h3>Краска: <span id="paint-percent">100</span>%</h3>
-        <div id="paint-bar-container">
-            <div id="paint-bar"></div>
-        </div>
-        <p style="margin-top: 10px; font-size: 12px;">Подойдите к резервуару для перезарядки</p>
-    </div>
-    
-    <div id="reload-message">Зажмите E для перезарядки</div>
+    <div id="reload-message" style="display: none;"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -127,6 +55,116 @@
         directionalLight.shadow.mapSize.width = 2048;
         directionalLight.shadow.mapSize.height = 2048;
         scene.add(directionalLight);
+
+        // Группа для UI панелей (будут следовать за камерой)
+        const uiGroup = new THREE.Group();
+        scene.add(uiGroup);
+
+        // Функция создания текстуры из текста
+        function createTextTexture(htmlContent, width, height) {
+            const canvas = document.createElement('canvas');
+            canvas.width = width * 2; // Увеличиваем для лучшего качества
+            canvas.height = height * 2;
+            const ctx = canvas.getContext('2d');
+            
+            // Создаём временный div для рендеринга HTML
+            const div = document.createElement('div');
+            div.style.position = 'absolute';
+            div.style.width = width + 'px';
+            div.style.height = height + 'px';
+            div.innerHTML = htmlContent;
+            div.style.color = 'white';
+            div.style.background = 'rgba(0, 0, 0, 0.7)';
+            div.style.padding = '15px';
+            div.style.borderRadius = '8px';
+            div.style.fontFamily = 'Arial, sans-serif';
+            div.style.boxSizing = 'border-box';
+            document.body.appendChild(div);
+            
+            // Рисуем на canvas
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.scale(2, 2);
+            
+            // Парсим и рендерим контент
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlContent, 'text/html');
+            
+            let y = 30;
+            const processNode = (node, indent = 0) => {
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '14px Arial';
+                    ctx.fillText(node.textContent.trim(), indent, y);
+                    y += 20;
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (node.tagName === 'H3') {
+                        ctx.fillStyle = 'white';
+                        ctx.font = 'bold 16px Arial';
+                        ctx.fillText(node.textContent, indent, y);
+                        y += 25;
+                    } else if (node.tagName === 'P') {
+                        ctx.fillStyle = 'white';
+                        ctx.font = '14px Arial';
+                        ctx.fillText(node.textContent, indent, y);
+                        y += 20;
+                    }
+                    for (let child of node.childNodes) {
+                        processNode(child, indent);
+                    }
+                }
+            };
+            
+            for (let child of doc.body.childNodes) {
+                processNode(child, 15);
+            }
+            
+            document.body.removeChild(div);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            return { texture, canvas, ctx, width: canvas.width, height: canvas.height };
+        }
+
+        // Функция создания 3D UI панели
+        function createUIPanel(htmlContent, positionX, positionY, scale = 1) {
+            const textData = createTextTexture(htmlContent, 300, 150);
+            const geometry = new THREE.PlaneGeometry(textData.width / 100 * scale, textData.height / 100 * scale);
+            const material = new THREE.MeshBasicMaterial({ 
+                map: textData.texture,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const panel = new THREE.Mesh(geometry, material);
+            panel.position.set(positionX, positionY, 0);
+            return { panel, texture: textData.texture, canvas: textData.canvas, ctx: textData.ctx };
+        }
+
+        // Создаём UI панели
+        const infoPanel = createUIPanel(`
+            <h3>Управление</h3>
+            <p>W / Стрелка вверх - Вперёд</p>
+            <p>S / Стрелка вниз - Назад</p>
+            <p>A / Стрелка влево - Влево</p>
+            <p>D / Стрелка вправо - Вправо</p>
+            <p>ЛКМ / Пробел - Стрелять краской</p>
+        `, -15, 12, 0.8);
+        uiGroup.add(infoPanel.panel);
+
+        const paintIndicatorPanel = createUIPanel(`
+            <h3>Краска: <span id="paint-percent">100</span>%</h3>
+            <div style="width: 200px; height: 20px; background: #333; border-radius: 10px; margin-top: 5px;">
+                <div id="paint-bar" style="width: 100%; height: 100%; background: linear-gradient(90deg, #ff1493, #ff69b4); border-radius: 10px;"></div>
+            </div>
+            <p style="margin-top: 10px; font-size: 12px;">Подойдите к резервуару для перезарядки</p>
+        `, -15, -12, 0.8);
+        uiGroup.add(paintIndicatorPanel.panel);
+
+        const reloadMessagePanel = createUIPanel(`
+            <h3 style="color: #ff1493; font-size: 18px;">Зажмите E для перезарядки</h3>
+        `, 0, 0, 1.2);
+        reloadMessagePanel.panel.visible = false;
+        uiGroup.add(reloadMessagePanel.panel);
 
         // Земля (плоскость) с динамической текстурой для краски
         const groundSize = 50;
@@ -766,6 +804,12 @@
             camera.position.y = 20;
             camera.lookAt(player.position);
 
+            // UI панели следуют за камерой и всегда повёрнуты к ней
+            uiGroup.position.copy(camera.position);
+            infoPanel.panel.lookAt(camera.position);
+            paintIndicatorPanel.panel.lookAt(camera.position);
+            reloadMessagePanel.panel.lookAt(camera.position);
+
             // Обновление частиц шланга
             updateHoseParticles();
             
@@ -778,11 +822,10 @@
             const isNearTank = distanceToTank < 5; // Расстояние до резервуара для активации перезарядки
             
             // Показываем сообщение о перезарядке, если игрок рядом с резервуаром
-            const reloadMessage = document.getElementById('reload-message');
             if (isNearTank && currentPaint < maxPaint) {
-                reloadMessage.style.display = 'block';
+                reloadMessagePanel.panel.visible = true;
             } else {
-                reloadMessage.style.display = 'none';
+                reloadMessagePanel.panel.visible = false;
             }
             
             // Перезарядка краски у резервуара
@@ -820,9 +863,9 @@
             
             // Обновляем текст сообщения в зависимости от состояния
             if (!canShoot && currentPaint <= 0) {
-                reloadMessage.textContent = 'Краска закончилась! Подойдите к резервуару и зажмите E';
+                reloadMessagePanel.panel.visible = true;
             } else if (isNearTank && currentPaint < maxPaint) {
-                reloadMessage.textContent = 'Зажмите E для перезарядки';
+                reloadMessagePanel.panel.visible = true;
             }
 
             renderer.render(scene, camera);
@@ -830,21 +873,52 @@
         
         // Функция обновления индикатора краски
         function updatePaintIndicator() {
-            const paintBar = document.getElementById('paint-bar');
-            const paintPercent = document.getElementById('paint-percent');
             const percent = (currentPaint / maxPaint) * 100;
             
-            paintBar.style.width = percent + '%';
-            paintPercent.textContent = Math.round(percent);
+            // Обновляем текстуру paint bar
+            const ctx = paintIndicatorPanel.ctx;
+            const canvas = paintIndicatorPanel.canvas;
             
-            // Изменяем цвет полоски в зависимости от уровня краски
+            // Сбрасываем трансформацию и перерисовываем весь UI
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.scale(2, 2);
+            
+            // Заголовок
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('Краска: ' + Math.round(percent) + '%', 15, 30);
+            
+            // Фон бара
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.roundRect(15, 40, 200, 20, 10);
+            ctx.fill();
+            
+            // Заполнение бара
+            const gradient = ctx.createLinearGradient(15, 40, 15 + percent * 2, 40);
             if (percent > 60) {
-                paintBar.style.background = 'linear-gradient(90deg, #ff1493, #ff69b4)';
+                gradient.addColorStop(0, '#ff1493');
+                gradient.addColorStop(1, '#ff69b4');
             } else if (percent > 30) {
-                paintBar.style.background = 'linear-gradient(90deg, #ffa500, #ffd700)';
+                gradient.addColorStop(0, '#ffa500');
+                gradient.addColorStop(1, '#ffd700');
             } else {
-                paintBar.style.background = 'linear-gradient(90deg, #ff0000, #ff6347)';
+                gradient.addColorStop(0, '#ff0000');
+                gradient.addColorStop(1, '#ff6347');
             }
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(15, 40, percent * 2, 20, 10);
+            ctx.fill();
+            
+            // Текст подсказки
+            ctx.fillStyle = 'white';
+            ctx.font = '12px Arial';
+            ctx.fillText('Подойдите к резервуару для перезарядки', 15, 80);
+            
+            paintIndicatorPanel.texture.needsUpdate = true;
         }
 
         animate();
