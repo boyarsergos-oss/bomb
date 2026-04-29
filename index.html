@@ -13,6 +13,11 @@
         body {
             overflow: hidden;
             font-family: Arial, sans-serif;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
         #info {
             position: absolute;
@@ -33,6 +38,7 @@
         }
         canvas {
             display: block;
+            image-rendering: pixelated; /* Для чёткости пикселей при масштабировании */
         }
     </style>
 </head>
@@ -48,12 +54,16 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
+        // FIXED RESOLUTION SETTINGS - НАСТРОЙКИ ФИКСИРОВАННОГО РАЗРЕШЕНИЯ
+        const FIXED_WIDTH = 1280;   // Фиксированная ширина рендеринга
+        const FIXED_HEIGHT = 720;   // Фиксированная высота рендеринга (можно изменить на 960 для 4:3)
+        
         // Инициализация сцены
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
 
         // Камера с изометрической проекцией (ортографическая)
-        const aspect = window.innerWidth / window.innerHeight;
+        const aspect = FIXED_WIDTH / FIXED_HEIGHT;
         const d = 20;
         const camera = new THREE.OrthographicCamera(
             -d * aspect, d * aspect, d, -d, 1, 1000
@@ -63,10 +73,19 @@
         camera.position.set(20, 20, 20);
         camera.lookAt(scene.position);
 
-        // Рендерер
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        // Рендерер с фиксированным разрешением
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: false, // Отключаем сглаживание для ретро-стиля
+            pixelRatio: 1     // Фиксируем pixel ratio
+        });
+        renderer.setSize(FIXED_WIDTH, FIXED_HEIGHT);
         renderer.shadowMap.enabled = true;
+        
+        // Центрирование канваса и масштабирование через CSS
+        renderer.domElement.style.width = '100%';
+        renderer.domElement.style.height = '100%';
+        renderer.domElement.style.objectFit = 'contain';
+        
         document.body.appendChild(renderer.domElement);
 
         // Освещение
@@ -204,9 +223,17 @@
 
         // Функция обновления позиции курсора мыши на земле
         function updateMousePosition(clientX, clientY) {
-            // Нормализованные координаты мыши (-1 до +1)
-            mouse.x = (clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            // Получаем размеры канваса (отображаемые размеры)
+            const canvasRect = renderer.domElement.getBoundingClientRect();
+            
+            // Нормализованные координаты мыши относительно канваса (-1 до +1)
+            // Учитываем фактическое положение канваса на экране
+            mouse.x = ((clientX - canvasRect.left) / canvasRect.width) * 2 - 1;
+            mouse.y = -((clientY - canvasRect.top) / canvasRect.height) * 2 + 1;
+            
+            // Ограничиваем координаты диапазоном [-1, 1]
+            mouse.x = Math.max(-1, Math.min(1, mouse.x));
+            mouse.y = Math.max(-1, Math.min(1, mouse.y));
             
             // Создаем луч из камеры через позицию мыши
             const raycaster = new THREE.Raycaster();
@@ -246,10 +273,14 @@
         });
         
         // Инициализируем позицию мыши при загрузке (чтобы работало даже без движения мыши)
-        // Устанавливаем начальную позицию мыши в центр экрана
-        let lastMouseX = window.innerWidth / 2;
-        let lastMouseY = window.innerHeight / 2;
-        updateMousePosition(lastMouseX, lastMouseY);
+        // Устанавливаем начальную позицию мыши в центр канваса
+        function initMousePosition() {
+            const canvasRect = renderer.domElement.getBoundingClientRect();
+            lastMouseX = canvasRect.left + canvasRect.width / 2;
+            lastMouseY = canvasRect.top + canvasRect.height / 2;
+            updateMousePosition(lastMouseX, lastMouseY);
+        }
+        initMousePosition();
 
         // Функция рисования краски на земле
         function paintOnGround(position, radius = 0.5) {
@@ -520,15 +551,13 @@
         // Переменные для движения
         let walkCycle = 0;
 
-        // Обработка изменения размера окна
+        // Обработка изменения размера окна - теперь не меняет разрешение рендеринга
+        // Канвас масштабируется через CSS, сохраняя фиксированное разрешение
         window.addEventListener('resize', () => {
-            const aspect = window.innerWidth / window.innerHeight;
-            camera.left = -d * aspect;
-            camera.right = d * aspect;
-            camera.top = d;
-            camera.bottom = -d;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            // При фиксированном разрешении нам не нужно менять камеру или размер рендерера
+            // Canvas автоматически масштабируется через CSS object-fit: contain
+            console.log('Window resized to:', window.innerWidth, 'x', window.innerHeight);
+            console.log('Fixed render resolution:', FIXED_WIDTH, 'x', FIXED_HEIGHT);
         });
 
         // Анимация
