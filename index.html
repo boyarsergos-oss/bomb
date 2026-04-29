@@ -54,13 +54,13 @@
 
         // Камера с изометрической проекцией (ортографическая)
         const aspect = window.innerWidth / window.innerHeight;
-        const d = 20;
+        const d = 100;
         const camera = new THREE.OrthographicCamera(
             -d * aspect, d * aspect, d, -d, 1, 1000
         );
         
         // Изометрический угол
-        camera.position.set(20, 20, 20);
+        camera.position.set(100, 100, 100);
         camera.lookAt(scene.position);
 
         // Рендерер
@@ -81,7 +81,7 @@
         scene.add(directionalLight);
 
         // Земля (плоскость) с динамической текстурой для краски
-        const groundSize = 50;
+        const groundSize = 250;
         const groundResolution = 512; // Разрешение текстуры для рисования
         const groundCanvas = document.createElement('canvas');
         groundCanvas.width = groundResolution;
@@ -106,7 +106,7 @@
         scene.add(ground);
 
         // Сетка на земле
-        const gridHelper = new THREE.GridHelper(50, 10, 0x000000, 0x000000);
+        const gridHelper = new THREE.GridHelper(250, 10, 0x000000, 0x000000);
         gridHelper.material.opacity = 0.2;
         gridHelper.material.transparent = true;
         scene.add(gridHelper);
@@ -170,15 +170,19 @@
             scene.add(treeGroup);
         }
 
-        // Создаём несколько деревьев
-        createTree(-8, -8);
-        createTree(8, -6);
-        createTree(-6, 8);
-        createTree(7, 7);
-        createTree(-10, 5);
-        createTree(10, -10);
+        // Создаём несколько деревьев (разбросаны по увеличенной карте)
+        createTree(-40, -40);
+        createTree(40, -30);
+        createTree(-30, 40);
+        createTree(35, 35);
+        createTree(-50, 25);
+        createTree(50, -50);
+        createTree(-20, 60);
+        createTree(60, -20);
+        createTree(15, -45);
+        createTree(-45, 15);
 
-        // Добавим камни
+        // Добавим камни (распределены по увеличенной карте)
         function createRock(x, z) {
             const rockGeometry = new THREE.DodecahedronGeometry(0.5, 0);
             const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -189,10 +193,14 @@
             scene.add(rock);
         }
 
-        createRock(-5, -3);
-        createRock(6, 4);
-        createRock(-3, 6);
-        createRock(4, -8);
+        createRock(-25, -15);
+        createRock(30, 20);
+        createRock(-15, 30);
+        createRock(20, -40);
+        createRock(-35, -25);
+        createRock(45, 10);
+        createRock(-10, -50);
+        createRock(55, -35);
 
         // Переменные для мыши
         const mouse = new THREE.Vector2();
@@ -548,8 +556,8 @@
             }
 
             // Ограничение движения границами земли
-            player.position.x = Math.max(-24, Math.min(24, player.position.x));
-            player.position.z = Math.max(-24, Math.min(24, player.position.z));
+            player.position.x = Math.max(-124, Math.min(124, player.position.x));
+            player.position.z = Math.max(-124, Math.min(124, player.position.z));
 
             // Поворот персонажа: если движемся с клавиатуры - по направлению движения, иначе - за мышкой
             if (isMoving) {
@@ -590,9 +598,9 @@
             }
 
             // Камера следует за игроком
-            camera.position.x = player.position.x + 20;
-            camera.position.z = player.position.z + 20;
-            camera.position.y = 20;
+            camera.position.x = player.position.x + 100;
+            camera.position.z = player.position.z + 100;
+            camera.position.y = 100;
             camera.lookAt(player.position);
 
             // Обновление частиц шланга
