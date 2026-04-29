@@ -13,6 +13,11 @@
         body {
             overflow: hidden;
             font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #000;
         }
         #info {
             position: absolute;
@@ -33,6 +38,7 @@
         }
         canvas {
             display: block;
+            margin: auto;
         }
     </style>
 </head>
@@ -519,17 +525,49 @@
 
         // Переменные для движения
         let walkCycle = 0;
+        
+        // Фиксированное соотношение сторон для игры (16:9)
+        const targetAspectRatio = 16 / 9;
 
-        // Обработка изменения размера окна
-        window.addEventListener('resize', () => {
-            const aspect = window.innerWidth / window.innerHeight;
+        // Функция для поддержания соотношения сторон
+        function maintainAspectRatio() {
+            const windowAspect = window.innerWidth / window.innerHeight;
+            let displayWidth, displayHeight, scale;
+            
+            if (windowAspect > targetAspectRatio) {
+                // Окно шире, чем целевое соотношение - добавляем полосы по бокам
+                displayWidth = window.innerHeight * targetAspectRatio;
+                displayHeight = window.innerHeight;
+            } else {
+                // Окно уже, чем целевое соотношение - добавляем полосы сверху/снизу
+                displayWidth = window.innerWidth;
+                displayHeight = window.innerWidth / targetAspectRatio;
+            }
+            
+            // Устанавливаем размер рендерера в соответствии с целевым соотношением
+            renderer.setSize(displayWidth, displayHeight, false);
+            
+            // Масштабируем canvas через CSS для заполнения окна
+            renderer.domElement.style.width = '100%';
+            renderer.domElement.style.height = '100%';
+            renderer.domElement.style.objectFit = 'contain';
+            
+            // Обновляем параметры камеры
+            const aspect = displayWidth / displayHeight;
             camera.left = -d * aspect;
             camera.right = d * aspect;
             camera.top = d;
             camera.bottom = -d;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            maintainAspectRatio();
         });
+        
+        // Вызываем при инициализации
+        maintainAspectRatio();
 
         // Анимация
         function animate() {
