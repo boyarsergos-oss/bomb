@@ -81,9 +81,8 @@
         scene.add(directionalLight);
 
         // Земля (плоскость) с динамической текстурой для краски
-        const groundSize = 50;
+        const groundSize = 250;
         const groundResolution = 512; // Разрешение текстуры для рисования
-        const groundCanvas = document.createElement('canvas');
         groundCanvas.width = groundResolution;
         groundCanvas.height = groundResolution;
         const groundCtx = groundCanvas.getContext('2d');
@@ -106,7 +105,7 @@
         scene.add(ground);
 
         // Сетка на земле
-        const gridHelper = new THREE.GridHelper(50, 10, 0x000000, 0x000000);
+        const gridHelper = new THREE.GridHelper(250, 50, 0x000000, 0x000000);
         gridHelper.material.opacity = 0.2;
         gridHelper.material.transparent = true;
         scene.add(gridHelper);
@@ -170,15 +169,19 @@
             scene.add(treeGroup);
         }
 
-        // Создаём несколько деревьев
-        createTree(-8, -8);
-        createTree(8, -6);
-        createTree(-6, 8);
-        createTree(7, 7);
-        createTree(-10, 5);
-        createTree(10, -10);
+        // Создаём несколько деревьев (расположение увеличено пропорционально карте)
+        createTree(-40, -40);
+        createTree(40, -30);
+        createTree(-30, 40);
+        createTree(35, 35);
+        createTree(-50, 25);
+        createTree(50, -50);
+        createTree(-20, -50);
+        createTree(20, 50);
+        createTree(-45, 10);
+        createTree(45, -15);
 
-        // Добавим камни
+        // Добавим камни (расположение увеличено пропорционально карте)
         function createRock(x, z) {
             const rockGeometry = new THREE.DodecahedronGeometry(0.5, 0);
             const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
@@ -189,10 +192,14 @@
             scene.add(rock);
         }
 
-        createRock(-5, -3);
-        createRock(6, 4);
-        createRock(-3, 6);
-        createRock(4, -8);
+        createRock(-25, -15);
+        createRock(30, 20);
+        createRock(-15, 30);
+        createRock(20, -40);
+        createRock(-35, -25);
+        createRock(35, -35);
+        createRock(-25, 45);
+        createRock(25, 45);
 
         // Переменные для мыши
         const mouse = new THREE.Vector2();
