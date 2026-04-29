@@ -242,8 +242,8 @@
             const rayOrigin = player.position.clone();
             rayOrigin.y = 1.2; // Высота "руки" или оружия
 
-            // Направление выстрела - к точке, куда указывает курсор мыши
-            const shootDirection = targetPoint.clone().sub(rayOrigin).normalize();
+            // Направление выстрела - по направлению взгляда игрока
+            const shootDirection = playerDirection.clone().normalize();
 
             // Добавляем эффект частиц при выстреле (шланг) - теперь создаём поток постоянно
             createHoseStream(rayOrigin, shootDirection);
