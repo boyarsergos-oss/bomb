@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Панель Управления Ракетой</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .monitor-section {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #4a90a4;
+            box-shadow: 0 0 20px rgba(74, 144, 164, 0.3);
+        }
+
+        .monitor-frame {
+            background: #000;
+            border-radius: 10px;
+            padding: 15px;
+            border: 3px solid #333;
+            position: relative;
+        }
+
+        .monitor-screen {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #rocketCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .monitor-label {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #4a90a4;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .control-panel {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #4a90a4;
+            box-shadow: 0 0 20px rgba(74, 144, 164, 0.3);
+        }
+
+        .panel-title {
+            text-align: center;
+            color: #4a90a4;
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            border-bottom: 2px solid #4a90a4;
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(74, 144, 164, 0.1);
+            border-radius: 10px;
+            border-left: 3px solid #4a90a4;
+        }
+
+        .control-label {
+            color: #4a90a4;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .buttons-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4a90a4 0%, #357abd 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 144, 164, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(46, 204, 113, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .slider-container {
+            margin-bottom: 15px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            color: #fff;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4a90a4;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(74, 144, 164, 0.5);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4a90a4;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(74, 144, 164, 0.5);
+        }
+
+        .lights-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .light-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .light {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #333;
+            border: 2px solid #555;
+            transition: all 0.3s ease;
+        }
+
+        .light.active {
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        .light-red { color: #e74c3c; }
+        .light-green { color: #2ecc71; }
+        .light-yellow { color: #f1c40f; }
+        .light-blue { color: #3498db; }
+
+        .light-label {
+            font-size: 10px;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .status-display {
+            background: #000;
+            border: 2px solid #4a90a4;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .status-value {
+            color: #4a90a4;
+            font-weight: bold;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4a90a4, #357abd);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .knob-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .knob {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4a4a4a 0%, #2a2a2a 100%);
+            border: 3px solid #4a90a4;
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .knob::after {
+            content: '';
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 15px;
+            background: #4a90a4;
+            border-radius: 2px;
+        }
+
+        .knob-label {
+            text-align: center;
+            font-size: 10px;
+            color: #aaa;
+            margin-top: 5px;
+            text-transform: uppercase;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .blinking {
+            animation: blink 1s infinite;
+        }
+
+        .launch-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .launch-message {
+            text-align: center;
+            color: #e74c3c;
+            font-size: 48px;
+            text-transform: uppercase;
+            letter-spacing: 10px;
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="monitor-section">
+            <h2 style="text-align: center; color: #4a90a4; margin-bottom: 15px;">МОНИТОР СИСТЕМЫ</h2>
+            <div class="monitor-frame">
+                <div class="monitor-screen">
+                    <canvas id="rocketCanvas"></canvas>
+                    <div class="monitor-label">СИСТЕМА ОТОБРАЖЕНИЯ</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h2 class="panel-title">ПАНЕЛЬ УПРАВЛЕНИЯ</h2>
+
+            <div class="control-group">
+                <div class="control-label">Кнопки управления</div>
+                <div class="buttons-row">
+                    <button class="btn btn-primary" id="initBtn">Инициализация</button>
+                    <button class="btn btn-success" id="launchBtn" disabled>Запуск</button>
+                    <button class="btn btn-danger" id="abortBtn" disabled>Аборт</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">Слайдеры параметров</div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Тяга двигателей</span>
+                        <span id="thrustValue">0%</span>
+                    </div>
+                    <input type="range" min="0" max="100" value="0" class="slider" id="thrustSlider">
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Уровень топлива</span>
+                        <span id="fuelValue">100%</span>
+                    </div>
+                    <input type="range" min="0" max="100" value="100" class="slider" id="fuelSlider">
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Давление в системе</span>
+                        <span id="pressureValue">0 PSI</span>
+                    </div>
+                    <input type="range" min="0" max="100" value="0" class="slider" id="pressureSlider">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">Регуляторы</div>
+                <div class="knob-container">
+                    <div>
+                        <div class="knob" id="knob1"></div>
+                        <div class="knob-label">Температура</div>
+                    </div>
+                    <div>
+                        <div class="knob" id="knob2"></div>
+                        <div class="knob-label">Скорость</div>
+                    </div>
+                    <div>
+                        <div class="knob" id="knob3"></div>
+                        <div class="knob-label">Мощность</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">Индикаторы состояния</div>
+                <div class="lights-row">
+                    <div class="light-container">
+                        <div class="light light-red" id="light1"></div>
+                        <div class="light-label">Ошибка</div>
+                    </div>
+                    <div class="light-container">
+                        <div class="light light-yellow" id="light2"></div>
+                        <div class="light-label">Готовность</div>
+                    </div>
+                    <div class="light-container">
+                        <div class="light light-green" id="light3"></div>
+                        <div class="light-label">Запуск</div>
+                    </div>
+                    <div class="light-container">
+                        <div class="light light-blue" id="light4"></div>
+                        <div class="light-label">Система</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-display">
+                <div class="status-row">
+                    <span>Статус системы:</span>
+                    <span class="status-value" id="systemStatus">ОЖИДАНИЕ</span>
+                </div>
+                <div class="status-row">
+                    <span>Высота:</span>
+                    <span class="status-value" id="altitude">0 м</span>
+                </div>
+                <div class="status-row">
+                    <span>Скорость:</span>
+                    <span class="status-value" id="velocity">0 м/с</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="launchProgress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="launch-overlay" id="launchOverlay">
+        <div class="launch-message">ЗАПУСК!</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Three.js Rocket Scene
+        let scene, camera, renderer, rocket, flame, smokeParticles = [];
+        let isLaunched = false;
+        let launchProgress = 0;
+        let rocketHeight = 0;
+        let rocketVelocity = 0;
+
+        function initRocketScene() {
+            const canvas = document.getElementById('rocketCanvas');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a1a);
+
+            camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            camera.position.z = 5;
+            camera.position.y = 1;
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 5, 5);
+            scene.add(directionalLight);
+
+            const pointLight = new THREE.PointLight(0xff6600, 2, 10);
+            pointLight.position.set(0, -1, 2);
+            scene.add(pointLight);
+
+            // Create rocket
+            createRocket();
+
+            // Create launch pad
+            createLaunchPad();
+
+            // Create stars
+            createStars();
+
+            animate();
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            });
+        }
+
+        function createRocket() {
+            rocket = new THREE.Group();
+
+            // Main body
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 2, 16);
+            const bodyMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xcccccc,
+                shininess: 100,
+                specular: 0x444444
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            rocket.add(body);
+
+            // Nose cone
+            const noseGeometry = new THREE.ConeGeometry(0.3, 0.8, 16);
+            const noseMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff4444,
+                shininess: 100
+            });
+            const nose = new THREE.Mesh(noseGeometry, noseMaterial);
+            nose.position.y = 1.4;
+            rocket.add(nose);
+
+            // Fins
+            const finGeometry = new THREE.BoxGeometry(0.1, 0.6, 0.4);
+            const finMaterial = new THREE.MeshPhongMaterial({ color: 0x4444ff });
+            
+            for (let i = 0; i < 4; i++) {
+                const fin = new THREE.Mesh(finGeometry, finMaterial);
+                fin.position.y = -0.7;
+                fin.position.x = Math.cos(i * Math.PI / 2) * 0.35;
+                fin.position.z = Math.sin(i * Math.PI / 2) * 0.35;
+                fin.rotation.y = -i * Math.PI / 2;
+                rocket.add(fin);
+            }
+
+            // Engine nozzle
+            const nozzleGeometry = new THREE.CylinderGeometry(0.2, 0.3, 0.3, 16);
+            const nozzleMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const nozzle = new THREE.Mesh(nozzleGeometry, nozzleMaterial);
+            nozzle.position.y = -1.15;
+            rocket.add(nozzle);
+
+            // Flame (initially hidden)
+            const flameGeometry = new THREE.ConeGeometry(0.25, 1, 16);
+            const flameMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff6600,
+                transparent: true,
+                opacity: 0
+            });
+            flame = new THREE.Mesh(flameGeometry, flameMaterial);
+            flame.position.y = -1.8;
+            flame.rotation.x = Math.PI;
+            rocket.add(flame);
+
+            scene.add(rocket);
+        }
+
+        function createLaunchPad() {
+            const padGeometry = new THREE.CylinderGeometry(1.5, 1.5, 0.2, 32);
+            const padMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+            const pad = new THREE.Mesh(padGeometry, padMaterial);
+            pad.position.y = -2;
+            scene.add(pad);
+
+            // Support structure
+            const supportGeometry = new THREE.BoxGeometry(0.2, 1, 0.2);
+            const supportMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+            
+            for (let i = 0; i < 4; i++) {
+                const support = new THREE.Mesh(supportGeometry, supportMaterial);
+                support.position.x = Math.cos(i * Math.PI / 2) * 1.2;
+                support.position.z = Math.sin(i * Math.PI / 2) * 1.2;
+                support.position.y = -1.5;
+                scene.add(support);
+            }
+        }
+
+        function createStars() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starVertices = [];
+            
+            for (let i = 0; i < 1000; i++) {
+                const x = (Math.random() - 0.5) * 100;
+                const y = (Math.random() - 0.5) * 100;
+                const z = (Math.random() - 0.5) * 100 - 20;
+                starVertices.push(x, y, z);
+            }
+            
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+
+        function createSmokeParticle() {
+            const geometry = new THREE.SphereGeometry(0.1 + Math.random() * 0.2, 8, 8);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x888888,
+                transparent: true,
+                opacity: 0.6
+            });
+            const particle = new THREE.Mesh(geometry, material);
+            particle.position.copy(rocket.position);
+            particle.position.y -= 1.5;
+            particle.position.x += (Math.random() - 0.5) * 0.5;
+            particle.position.z += (Math.random() - 0.5) * 0.5;
+            particle.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 0.02,
+                -Math.random() * 0.05,
+                (Math.random() - 0.5) * 0.02
+            );
+            scene.add(particle);
+            smokeParticles.push(particle);
+        }
+
+        function updateSmokeParticles() {
+            for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                const particle = smokeParticles[i];
+                particle.position.add(particle.velocity);
+                particle.material.opacity -= 0.01;
+                
+                if (particle.material.opacity <= 0) {
+                    scene.remove(particle);
+                    smokeParticles.splice(i, 1);
+                }
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isLaunched) {
+                // Rocket launch animation
+                rocketVelocity += 0.01;
+                rocketHeight += rocketVelocity;
+                rocket.position.y = rocketHeight - 2;
+                
+                // Show flame
+                flame.material.opacity = 0.8 + Math.random() * 0.2;
+                flame.scale.setScalar(1 + Math.random() * 0.3);
+                
+                // Create smoke
+                if (Math.random() > 0.5) {
+                    createSmokeParticle();
+                }
+                
+                // Update UI
+                launchProgress = Math.min(100, launchProgress + 0.2);
+                document.getElementById('launchProgress').style.width = launchProgress + '%';
+                document.getElementById('altitude').textContent = Math.floor(rocketHeight * 100) + ' м';
+                document.getElementById('velocity').textContent = (rocketVelocity * 100).toFixed(1) + ' м/с';
+                
+                // Camera follow
+                camera.position.y = rocket.position.y + 1;
+            } else {
+                // Idle animation - slight rotation
+                rocket.rotation.y += 0.001;
+            }
+
+            updateSmokeParticles();
+            renderer.render(scene, camera);
+        }
+
+        // Control Panel Logic
+        let systemInitialized = false;
+        let thrustLevel = 0;
+        let fuelLevel = 100;
+        let pressureLevel = 0;
+
+        // Buttons
+        document.getElementById('initBtn').addEventListener('click', () => {
+            if (!systemInitialized) {
+                initializeSystem();
+            }
+        });
+
+        document.getElementById('launchBtn').addEventListener('click', () => {
+            if (systemInitialized && fuelLevel > 0 && thrustLevel > 50) {
+                launchRocket();
+            }
+        });
+
+        document.getElementById('abortBtn').addEventListener('click', () => {
+            abortLaunch();
+        });
+
+        // Sliders
+        document.getElementById('thrustSlider').addEventListener('input', (e) => {
+            thrustLevel = parseInt(e.target.value);
+            document.getElementById('thrustValue').textContent = thrustLevel + '%';
+            checkLaunchReadiness();
+        });
+
+        document.getElementById('fuelSlider').addEventListener('input', (e) => {
+            fuelLevel = parseInt(e.target.value);
+            document.getElementById('fuelValue').textContent = fuelLevel + '%';
+            checkLaunchReadiness();
+        });
+
+        document.getElementById('pressureSlider').addEventListener('input', (e) => {
+            pressureLevel = parseInt(e.target.value);
+            document.getElementById('pressureValue').textContent = pressureLevel + ' PSI';
+        });
+
+        // Knobs (rotation interaction)
+        let knobRotations = [0, 0, 0];
+        document.querySelectorAll('.knob').forEach((knob, index) => {
+            let isDragging = false;
+            let startY;
+            let startRotation;
+
+            knob.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startY = e.clientY;
+                startRotation = knobRotations[index];
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaY = startY - e.clientY;
+                    knobRotations[index] = startRotation + deltaY * 2;
+                    knob.style.transform = `rotate(${knobRotations[index]}deg)`;
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            // Touch support
+            knob.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                startY = e.touches[0].clientY;
+                startRotation = knobRotations[index];
+            });
+
+            document.addEventListener('touchmove', (e) => {
+                if (isDragging) {
+                    const deltaY = startY - e.touches[0].clientY;
+                    knobRotations[index] = startRotation + deltaY * 2;
+                    knob.style.transform = `rotate(${knobRotations[index]}deg)`;
+                }
+            });
+
+            document.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+        });
+
+        function initializeSystem() {
+            systemInitialized = true;
+            document.getElementById('initBtn').disabled = true;
+            document.getElementById('systemStatus').textContent = 'ГОТОВ К ЗАПУСКУ';
+            document.getElementById('systemStatus').style.color = '#2ecc71';
+            
+            // Turn on system light
+            document.getElementById('light4').classList.add('active');
+            document.getElementById('light4').style.backgroundColor = '#3498db';
+            
+            // Enable launch button after delay
+            setTimeout(() => {
+                document.getElementById('launchBtn').disabled = false;
+                document.getElementById('abortBtn').disabled = false;
+                document.getElementById('light2').classList.add('active');
+                document.getElementById('light2').style.backgroundColor = '#f1c40f';
+            }, 1000);
+        }
+
+        function checkLaunchReadiness() {
+            const launchBtn = document.getElementById('launchBtn');
+            if (systemInitialized && fuelLevel > 0 && thrustLevel > 50) {
+                launchBtn.disabled = false;
+            } else {
+                launchBtn.disabled = true;
+            }
+        }
+
+        function launchRocket() {
+            isLaunched = true;
+            document.getElementById('launchBtn').disabled = true;
+            document.getElementById('abortBtn').disabled = true;
+            document.getElementById('systemStatus').textContent = 'ЗАПУСК!';
+            document.getElementById('systemStatus').style.color = '#e74c3c';
+            
+            // Turn on launch light
+            document.getElementById('light3').classList.add('active');
+            document.getElementById('light3').classList.add('blinking');
+            document.getElementById('light3').style.backgroundColor = '#2ecc71';
+            
+            // Show overlay
+            document.getElementById('launchOverlay').style.display = 'flex';
+            
+            // Hide overlay after 2 seconds
+            setTimeout(() => {
+                document.getElementById('launchOverlay').style.display = 'none';
+            }, 2000);
+            
+            // Decrease fuel
+            const fuelInterval = setInterval(() => {
+                fuelLevel = Math.max(0, fuelLevel - 1);
+                document.getElementById('fuelSlider').value = fuelLevel;
+                document.getElementById('fuelValue').textContent = fuelLevel + '%';
+                
+                if (fuelLevel === 0) {
+                    clearInterval(fuelInterval);
+                    endLaunch();
+                }
+            }, 100);
+        }
+
+        function abortLaunch() {
+            isLaunched = false;
+            launchProgress = 0;
+            rocketHeight = 0;
+            rocketVelocity = 0;
+            rocket.position.y = 0;
+            flame.material.opacity = 0;
+            
+            document.getElementById('launchBtn').disabled = true;
+            document.getElementById('abortBtn').disabled = true;
+            document.getElementById('systemStatus').textContent = 'АБОРТ ЗАПУСКА';
+            document.getElementById('systemStatus').style.color = '#e74c3c';
+            document.getElementById('launchProgress').style.width = '0%';
+            document.getElementById('altitude').textContent = '0 м';
+            document.getElementById('velocity').textContent = '0 м/с';
+            
+            // Turn off lights
+            document.getElementById('light3').classList.remove('active', 'blinking');
+            document.getElementById('light3').style.backgroundColor = '#333';
+            
+            // Show error light
+            document.getElementById('light1').classList.add('active');
+            document.getElementById('light1').style.backgroundColor = '#e74c3c';
+        }
+
+        function endLaunch() {
+            isLaunched = false;
+            document.getElementById('systemStatus').textContent = 'ЗАПУСК ЗАВЕРШЕН';
+            document.getElementById('systemStatus').style.color = '#4a90a4';
+            document.getElementById('light3').classList.remove('active', 'blinking');
+            document.getElementById('light3').style.backgroundColor = '#333';
+        }
+
+        // Initialize the scene
+        initRocketScene();
+    </script>
+</body>
+</html>
