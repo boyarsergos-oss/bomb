@@ -14,23 +14,6 @@
             overflow: hidden;
             font-family: Arial, sans-serif;
         }
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 8px;
-            z-index: 100;
-        }
-        #info h3 {
-            margin-bottom: 10px;
-        }
-        #info p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
         #paint-indicator {
             position: absolute;
             bottom: 2vh;
@@ -57,44 +40,18 @@
             background: linear-gradient(90deg, #ff1493, #ff69b4);
             transition: width 0.1s;
         }
-        #reload-message {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ff1493;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px 30px;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            display: none;
-            z-index: 100;
-        }
         canvas {
             display: block;
         }
     </style>
 </head>
 <body>
-    <div id="info">
-        <h3>Управление</h3>
-        <p>W / Стрелка вверх - Вперёд</p>
-        <p>S / Стрелка вниз - Назад</p>
-        <p>A / Стрелка влево - Влево</p>
-        <p>D / Стрелка вправо - Вправо</p>
-        <p>ЛКМ / Пробел - Стрелять краской</p>
-    </div>
-    
     <div id="paint-indicator">
         <h3>Краска: <span id="paint-percent">100</span>%</h3>
         <div id="paint-bar-container">
             <div id="paint-bar"></div>
         </div>
-        <p style="margin-top: 10px; font-size: 12px;">Подойдите к резервуару для перезарядки</p>
     </div>
-    
-    <div id="reload-message">Зажмите E для перезарядки</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -785,14 +742,6 @@
             const distanceToTank = player.position.distanceTo(tankGroup.position);
             const isNearTank = distanceToTank < 5; // Расстояние до резервуара для активации перезарядки
             
-            // Показываем сообщение о перезарядке, если игрок рядом с резервуаром
-            const reloadMessage = document.getElementById('reload-message');
-            if (isNearTank && currentPaint < maxPaint) {
-                reloadMessage.style.display = 'block';
-            } else {
-                reloadMessage.style.display = 'none';
-            }
-            
             // Перезарядка краски у резервуара
             if (isReloading && isNearTank && currentPaint < maxPaint) {
                 currentPaint = Math.min(maxPaint, currentPaint + reloadSpeed);
@@ -824,13 +773,6 @@
             // Разблокируем стрельбу, если есть краска
             if (currentPaint > 0) {
                 canShoot = true;
-            }
-            
-            // Обновляем текст сообщения в зависимости от состояния
-            if (!canShoot && currentPaint <= 0) {
-                reloadMessage.textContent = 'Краска закончилась! Подойдите к резервуару и зажмите E';
-            } else if (isNearTank && currentPaint < maxPaint) {
-                reloadMessage.textContent = 'Зажмите E для перезарядки';
             }
 
             renderer.render(scene, camera);
