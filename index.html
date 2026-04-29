@@ -353,6 +353,162 @@
         
         // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
         let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
+        
+        // Данные для заполнения резервуаров
+        const tankFillData = []; // { tank, fillLevel, isFilling, fillStartTime, fillDuration }
+        
+        // Инициализация данных заполнения для каждого резервуара
+        tanks.forEach((tank, index) => {
+            tankFillData.push({
+                tank: tank,
+                fillLevel: 0, // 0 to 1
+                isFilling: false,
+                fillStartTime: 0,
+                fillDuration: 5000, // 5 секунд в миллисекундах
+                liquidMesh: null // Меш для жидкости внутри резервуара
+            });
+            
+            // Создаём меш жидкости для каждого резервуара
+            createTankLiquid(tank, index);
+        });
+        
+        // Функция создания жидкости внутри резервуара
+        function createTankLiquid(tank, index) {
+            const tankGroup = tank.group;
+            const tankType = index;
+            
+            let liquidGeometry, liquidMaterial;
+            const liquidColor = paintColor;
+            
+            if (tankType === 0) {
+                // Цилиндрический резервуар
+                liquidGeometry = new THREE.CylinderGeometry(1.45, 1.45, 0.1, 16);
+            } else if (tankType === 1) {
+                // Кубический резервуар
+                liquidGeometry = new THREE.BoxGeometry(2.4, 0.1, 2.4);
+            } else {
+                // Конусообразный резервуар
+                liquidGeometry = new THREE.CylinderGeometry(1.9, 0.9, 0.1, 8);
+            }
+            
+            liquidMaterial = new THREE.MeshPhongMaterial({
+                color: liquidColor,
+                transparent: true,
+                opacity: 0.8,
+                emissive: liquidColor,
+                emissiveIntensity: 0.3
+            });
+            
+            const liquidMesh = new THREE.Mesh(liquidGeometry, liquidMaterial);
+            liquidMesh.position.y = 0.05; // Начинаем с дна
+            liquidMesh.visible = false; // Скрыт пока пустой
+            
+            tankGroup.add(liquidMesh);
+            tankFillData[index].liquidMesh = liquidMesh;
+        }
+        
+        // Функция проверки попадания в резервуар
+        function checkTankHit(rayOrigin, shootDirection) {
+            const raycaster = new THREE.Raycaster();
+            raycaster.set(rayOrigin, shootDirection);
+            
+            for (let i = 0; i < tanks.length; i++) {
+                const tank = tanks[i];
+                const tankGroup = tank.group;
+                
+                // Проверяем пересечение с резервуаром
+                const intersects = raycaster.intersectObjects(tankGroup.children, true);
+                
+                if (intersects.length > 0 && intersects[0].distance < 30) {
+                    // Попали в резервуар!
+                    return { hit: true, tankIndex: i, point: intersects[0].point };
+                }
+            }
+            
+            return { hit: false, tankIndex: -1, point: null };
+        }
+        
+        // Функция начала заполнения резервуара
+        function startTankFilling(tankIndex) {
+            const fillData = tankFillData[tankIndex];
+            
+            if (!fillData.isFilling && fillData.fillLevel < 1) {
+                fillData.isFilling = true;
+                fillData.fillStartTime = Date.now();
+                
+                // Показываем жидкость
+                if (fillData.liquidMesh) {
+                    fillData.liquidMesh.visible = true;
+                }
+            }
+        }
+        
+        // Функция обновления заполнения резервуаров
+        function updateTankFilling() {
+            const currentTime = Date.now();
+            
+            tankFillData.forEach((fillData, index) => {
+                if (fillData.isFilling && fillData.fillLevel < 1) {
+                    const elapsed = currentTime - fillData.fillStartTime;
+                    const progress = Math.min(elapsed / fillData.fillDuration, 1);
+                    
+                    // Плавное заполнение с easing
+                    const easedProgress = 1 - Math.pow(1 - progress, 2); // ease-out quadratic
+                    
+                    fillData.fillLevel = easedProgress;
+                    
+                    // Обновляем позицию и масштаб жидкости
+                    updateLiquidMesh(fillData, index);
+                    
+                    if (progress >= 1) {
+                        fillData.isFilling = false;
+                        fillData.fillLevel = 1;
+                    }
+                }
+            });
+        }
+        
+        // Функция обновления меши жидкости
+        function updateLiquidMesh(fillData, tankIndex) {
+            const liquidMesh = fillData.liquidMesh;
+            if (!liquidMesh) return;
+            
+            const tank = tanks[tankIndex];
+            const tankGroup = tank.group;
+            const tankType = tankIndex;
+            
+            let maxHeight;
+            if (tankType === 0) {
+                maxHeight = 2.9; // Чуть меньше высоты цилиндра
+            } else if (tankType === 1) {
+                maxHeight = 3.4; // Чуть меньше высоты куба
+            } else {
+                maxHeight = 3.9; // Чуть меньше высоты конуса
+            }
+            
+            // Вычисляем текущую высоту жидкости
+            const currentHeight = maxHeight * fillData.fillLevel;
+            
+            // Обновляем позицию Y (центр меши должен быть на половине высоты)
+            liquidMesh.position.y = currentHeight / 2 + 0.05;
+            
+            // Обновляем масштаб по Y для изменения высоты
+            if (tankType === 0 || tankType === 2) {
+                // Для цилиндров меняем только высоту
+                liquidMesh.scale.y = Math.max(0.01, fillData.fillLevel);
+            } else {
+                // Для куба меняем высоту
+                liquidMesh.scale.y = Math.max(0.01, fillData.fillLevel);
+            }
+            
+            // Для конуса также меняем радиусы
+            if (tankType === 2) {
+                const bottomRadius = 1.9 * fillData.fillLevel;
+                const topRadius = 0.9 * fillData.fillLevel;
+                // Нужно пересоздать геометрию для конуса с изменяющимися радиусами
+                // Но для простоты оставим масштабирование
+            }
+        }
 
         // Обработка движения мыши для определения направления стрельбы
         document.addEventListener('mousemove', (event) => {
@@ -396,6 +552,14 @@
 
             // Направление выстрела - к точке, куда указывает курсор мыши
             const shootDirection = targetPoint.clone().sub(rayOrigin).normalize();
+
+            // Проверяем попадание в резервуар
+            const hitResult = checkTankHit(rayOrigin, shootDirection);
+            
+            if (hitResult.hit) {
+                // Попали в резервуар - начинаем заполнение
+                startTankFilling(hitResult.tankIndex);
+            }
 
             // Добавляем эффект частиц при выстреле (шланг) - теперь создаём поток постоянно
             createHoseStream(rayOrigin, shootDirection);
@@ -756,6 +920,9 @@
             
             // Обновление частиц разбрызгивания
             updateSplashParticles();
+            
+            // Обновление заполнения резервуаров
+            updateTankFilling();
 
             // Обработка непрерывной стрельбы - струя следует за курсором
             if (isShooting) {
