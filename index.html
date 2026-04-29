@@ -439,10 +439,16 @@
         const shootDelay = 2; // Задержка между выстрелами (чем меньше, тем быстрее)
 
         document.addEventListener('keydown', (event) => {
-            // Обработка движения
-            if (keys.hasOwnProperty(event.key)) {
-                keys[event.key] = true;
-            }
+            // Обработка движения через code (не зависит от раскладки)
+            if (event.code === 'KeyW') keys.w = true;
+            if (event.code === 'KeyA') keys.a = true;
+            if (event.code === 'KeyS') keys.s = true;
+            if (event.code === 'KeyD') keys.d = true;
+            if (event.code === 'ArrowUp') keys.ArrowUp = true;
+            if (event.code === 'ArrowDown') keys.ArrowDown = true;
+            if (event.code === 'ArrowLeft') keys.ArrowLeft = true;
+            if (event.code === 'ArrowRight') keys.ArrowRight = true;
+            
             // Обработка начала стрельбы (Пробел)
             if (event.code === 'Space') {
                 isShooting = true;
@@ -450,10 +456,16 @@
         });
 
         document.addEventListener('keyup', (event) => {
-            // Обработка движения
-            if (keys.hasOwnProperty(event.key)) {
-                keys[event.key] = false;
-            }
+            // Обработка движения через code (не зависит от раскладки)
+            if (event.code === 'KeyW') keys.w = false;
+            if (event.code === 'KeyA') keys.a = false;
+            if (event.code === 'KeyS') keys.s = false;
+            if (event.code === 'KeyD') keys.d = false;
+            if (event.code === 'ArrowUp') keys.ArrowUp = false;
+            if (event.code === 'ArrowDown') keys.ArrowDown = false;
+            if (event.code === 'ArrowLeft') keys.ArrowLeft = false;
+            if (event.code === 'ArrowRight') keys.ArrowRight = false;
+            
             // Остановка стрельбы при отпускании пробела
             if (event.code === 'Space') {
                 isShooting = false;
