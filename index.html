@@ -194,6 +194,123 @@
         createRock(-3, 6);
         createRock(4, -8);
 
+        // Функция для проверки расстояния между двумя точками
+        function getDistance(x1, z1, x2, z2) {
+            const dx = x1 - x2;
+            const dz = z1 - z2;
+            return Math.sqrt(dx * dx + dz * dz);
+        }
+
+        // Функция создания стеклянного резервуара
+        function createGlassTank(x, z, tankType) {
+            const tankGroup = new THREE.Group();
+            
+            // Параметры для разных типов резервуаров
+            let tankGeometry, tankColor, tankHeight;
+            
+            if (tankType === 0) {
+                // Тип 1: Цилиндрический прозрачный резервуар
+                tankGeometry = new THREE.CylinderGeometry(1.5, 1.5, 3, 16, 1, true);
+                tankColor = 0xadd8e6; // Светло-голубой оттенок стекла
+                tankHeight = 3;
+            } else if (tankType === 1) {
+                // Тип 2: Кубический прозрачный резервуар
+                tankGeometry = new THREE.BoxGeometry(2.5, 3.5, 2.5);
+                tankColor = 0xe0ffff; // Светло-бирюзовый оттенок стекла
+                tankHeight = 3.5;
+            } else {
+                // Тип 3: Конусообразный прозрачный резервуар
+                tankGeometry = new THREE.CylinderGeometry(1, 2, 4, 8, 1, true);
+                tankColor = 0xf0ffff; // Очень светлый голубой оттенок стекла
+                tankHeight = 4;
+            }
+            
+            // Создаём стеклянный материал с прозрачностью
+            const glassMaterial = new THREE.MeshPhongMaterial({
+                color: tankColor,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            
+            const tank = new THREE.Mesh(tankGeometry, glassMaterial);
+            tank.position.y = tankHeight / 2;
+            tank.castShadow = true;
+            tankGroup.add(tank);
+            
+            // Добавляем верхнюю и нижнюю крышки для реалистичности
+            const capGeometry = tankType === 0 ? new THREE.CircleGeometry(1.5, 16) :
+                               tankType === 1 ? new THREE.PlaneGeometry(2.5, 2.5) :
+                               new THREE.CircleGeometry(2, 8);
+            const capMaterial = new THREE.MeshPhongMaterial({
+                color: tankColor,
+                transparent: true,
+                opacity: 0.4,
+                side: THREE.DoubleSide
+            });
+            
+            // Нижняя крышка
+            const bottomCap = new THREE.Mesh(capGeometry, capMaterial);
+            bottomCap.rotation.x = -Math.PI / 2;
+            bottomCap.position.y = 0.05;
+            tankGroup.add(bottomCap);
+            
+            // Верхняя крышка (кольцо для открытых резервуаров)
+            const rimGeometry = tankType === 0 ? new THREE.RingGeometry(1.4, 1.5, 16) :
+                                tankType === 1 ? new THREE.RingGeometry(1.2, 1.3, 4) :
+                                new THREE.RingGeometry(1.8, 2, 8);
+            const rimMaterial = new THREE.MeshPhongMaterial({
+                color: 0xcccccc,
+                transparent: true,
+                opacity: 0.6
+            });
+            const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+            rim.rotation.x = -Math.PI / 2;
+            rim.position.y = tankHeight - 0.05;
+            tankGroup.add(rim);
+            
+            tankGroup.position.set(x, 0, z);
+            scene.add(tankGroup);
+            
+            return { group: tankGroup, x: x, z: z, radius: tankType === 1 ? 1.8 : 2 };
+        }
+
+        // Создаём три разных стеклянных резервуара в случайных местах
+        const tanks = [];
+        const minDistance = 25; // Минимальное расстояние между резервуарами
+        const groundHalfSize = groundSize / 2 - 5; // Отступ от краёв карты
+        
+        for (let i = 0; i < 3; i++) {
+            let validPosition = false;
+            let x, z;
+            let attempts = 0;
+            const maxAttempts = 50;
+            
+            // Ищем подходящую позицию, которая не слишком близко к другим резервуарам
+            while (!validPosition && attempts < maxAttempts) {
+                x = (Math.random() - 0.5) * 2 * groundHalfSize;
+                z = (Math.random() - 0.5) * 2 * groundHalfSize;
+                
+                validPosition = true;
+                
+                // Проверяем расстояние до всех уже размещённых резервуаров
+                for (const tank of tanks) {
+                    if (getDistance(x, z, tank.x, tank.z) < minDistance) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+                
+                attempts++;
+            }
+            
+            if (validPosition) {
+                const tank = createGlassTank(x, z, i);
+                tanks.push(tank);
+            }
+        }
+
         // Переменные для мыши
         const mouse = new THREE.Vector2();
         let targetPoint = new THREE.Vector3(0, 0, 0);
