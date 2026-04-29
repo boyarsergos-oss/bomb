@@ -199,8 +199,8 @@
         let targetPoint = new THREE.Vector3(0, 0, 0);
         const paintColor = 0xff1493; // Ярко-розовый цвет краски
         
-        // Текущее направление персонажа (по умолчанию смотрит вниз-вправо по экрану)
-        let playerDirection = new THREE.Vector3(1, 0, -1).normalize();
+        // Инициализируем targetPoint позицией игрока при старте
+        targetPoint.set(player.position.x, 0, player.position.z + 1);
 
         // Обработка движения мыши для определения направления стрельбы
         document.addEventListener('mousemove', (event) => {
@@ -507,32 +507,24 @@
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(-1, 0, -1).normalize();
             }
             if (keys.s || keys.ArrowDown) {
                 // Визуально вниз по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(1, 0, 1).normalize();
             }
             if (keys.a || keys.ArrowLeft) {
                 // Визуально влево по экрану
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(-1, 0, 1).normalize();
             }
             if (keys.d || keys.ArrowRight) {
                 // Визуально вправо по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
                 isMoving = true;
-                // Обновляем направление персонажа
-                playerDirection.set(1, 0, -1).normalize();
             }
 
             // Ограничение движения границами земли
@@ -544,9 +536,6 @@
             const directionToMouse = new THREE.Vector3()
                 .subVectors(targetPoint, player.position)
                 .normalize();
-            
-            // Обновляем направление персонажа (только по горизонтали)
-            playerDirection.set(directionToMouse.x, 0, directionToMouse.z).normalize();
             
             // Поворачиваем персонажа в направлении мыши
             if (directionToMouse.length() > 0.01) {
