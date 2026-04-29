@@ -217,6 +217,24 @@
             
             if (intersects.length > 0) {
                 targetPoint.copy(intersects[0].point);
+            } else {
+                // Если курсор за пределами карты, проецируем луч на плоскость y=0
+                // Получаем направление луча
+                const rayDirection = raycaster.ray.direction.clone();
+                
+                // Если луч направлен вниз (к земле), вычисляем пересечение с плоскостью y=0
+                if (rayDirection.y < 0) {
+                    const rayOrigin = raycaster.ray.origin.clone();
+                    // Вычисляем параметр t для пересечения с плоскостью y=0
+                    // rayOrigin.y + t * rayDirection.y = 0
+                    // t = -rayOrigin.y / rayDirection.y
+                    const t = -rayOrigin.y / rayDirection.y;
+                    
+                    // Вычисляем точку пересечения
+                    targetPoint.copy(rayOrigin).add(rayDirection.multiplyScalar(t));
+                }
+                // Если луч направлен вверх (y > 0), оставляем targetPoint без изменений
+                // или можно установить его в бесконечности в направлении луча
             }
         }
 
