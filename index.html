@@ -31,6 +31,17 @@
             margin: 5px 0;
             font-size: 14px;
         }
+        #minimap {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #fff;
+            border-radius: 8px;
+            z-index: 100;
+        }
         canvas {
             display: block;
         }
@@ -45,6 +56,7 @@
         <p>D / Стрелка вправо - Вправо</p>
         <p>ЛКМ / Пробел - Стрелять краской</p>
     </div>
+    <canvas id="minimap"></canvas>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
@@ -243,24 +255,26 @@
             tankGroup.add(tank);
             
             // Добавляем верхнюю и нижнюю крышки для реалистичности
-            const capGeometry = tankType === 0 ? new THREE.CircleGeometry(1.5, 16) :
-                               tankType === 1 ? new THREE.PlaneGeometry(2.5, 2.5) :
-                               new THREE.CircleGeometry(2, 8);
-            const capMaterial = new THREE.MeshPhongMaterial({
-                color: tankColor,
-                transparent: true,
-                opacity: 0.4,
-                side: THREE.DoubleSide,
-                polygonOffset: true,
-                polygonOffsetFactor: -1,
-                polygonOffsetUnits: -1
-            });
-            
-            // Нижняя крышка
-            const bottomCap = new THREE.Mesh(capGeometry, capMaterial);
-            bottomCap.rotation.x = -Math.PI / 2;
-            bottomCap.position.y = 0.05;
-            tankGroup.add(bottomCap);
+            // Для кубического резервуара (tankType === 1) не добавляем прозрачный прямоугольник снизу
+            if (tankType !== 1) {
+                const capGeometry = tankType === 0 ? new THREE.CircleGeometry(1.5, 16) :
+                                   new THREE.CircleGeometry(2, 8);
+                const capMaterial = new THREE.MeshPhongMaterial({
+                    color: tankColor,
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.DoubleSide,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -1,
+                    polygonOffsetUnits: -1
+                });
+                
+                // Нижняя крышка
+                const bottomCap = new THREE.Mesh(capGeometry, capMaterial);
+                bottomCap.rotation.x = -Math.PI / 2;
+                bottomCap.position.y = 0.05;
+                tankGroup.add(bottomCap);
+            }
             
             // Верхняя крышка (кольцо для открытых резервуаров)
             const rimGeometry = tankType === 0 ? new THREE.RingGeometry(1.4, 1.5, 16) :
@@ -315,6 +329,68 @@
                 const tank = createGlassTank(x, z, i);
                 tanks.push(tank);
             }
+        }
+
+        // Инициализация миникарты
+        const minimapCanvas = document.getElementById('minimap');
+        const minimapCtx = minimapCanvas.getContext('2d');
+        minimapCanvas.width = 200;
+        minimapCanvas.height = 200;
+        const minimapScale = minimapCanvas.width / groundSize;
+
+        // Функция отрисовки миникарты
+        function drawMinimap() {
+            // Очистка миникарты
+            minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+            
+            // Фон миникарты (зелёный - трава)
+            minimapCtx.fillStyle = '#3a7d3a';
+            minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+            
+            // Центр карты
+            const centerX = minimapCanvas.width / 2;
+            const centerY = minimapCanvas.height / 2;
+            
+            // Отрисовка резервуаров на миникарте
+            for (let i = 0; i < tanks.length; i++) {
+                const tank = tanks[i];
+                const tankX = centerX + tank.x * minimapScale;
+                const tankZ = centerY + tank.z * minimapScale;
+                
+                // Определяем тип резервуара по индексу (0: цилиндр, 1: куб, 2: конус)
+                if (i === 1) {
+                    // Кубический резервуар - квадрат
+                    minimapCtx.fillStyle = 'rgba(224, 255, 255, 0.8)';
+                    const size = 2.5 * minimapScale * 8;
+                    minimapCtx.fillRect(tankX - size/2, tankZ - size/2, size, size);
+                } else {
+                    // Цилиндрический или конусообразный - круг
+                    minimapCtx.fillStyle = i === 0 ? 'rgba(173, 216, 230, 0.8)' : 'rgba(240, 255, 255, 0.8)';
+                    minimapCtx.beginPath();
+                    minimapCtx.arc(tankX, tankZ, 12, 0, Math.PI * 2);
+                    minimapCtx.fill();
+                }
+            }
+            
+            // Отрисовка игрока на миникарте
+            const playerX = centerX + player.position.x * minimapScale;
+            const playerZ = centerY + player.position.z * minimapScale;
+            
+            minimapCtx.fillStyle = '#ff6b6b';
+            minimapCtx.beginPath();
+            minimapCtx.arc(playerX, playerZ, 4, 0, Math.PI * 2);
+            minimapCtx.fill();
+            
+            // Направление игрока
+            minimapCtx.strokeStyle = '#fff';
+            minimapCtx.lineWidth = 2;
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(playerX, playerZ);
+            minimapCtx.lineTo(
+                playerX + playerDirection.x * 10,
+                playerZ + playerDirection.z * 10
+            );
+            minimapCtx.stroke();
         }
 
         // Функция проверки коллизии игрока с резервуарами
@@ -994,6 +1070,9 @@
             
             // Обновление заполнения резервуаров
             updateTankFilling();
+            
+            // Отрисовка миникарты
+            drawMinimap();
 
             // Обработка непрерывной стрельбы - струя следует за курсором
             if (isShooting) {
