@@ -46,7 +46,7 @@
         <p>ЛКМ / Пробел - Стрелять краской</p>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js"></script>
     <script>
         // Инициализация сцены
         const scene = new THREE.Scene();
@@ -55,9 +55,10 @@
         // Камера с изометрической проекцией (ортографическая)
         // Фиксированный масштаб сцены - не зависит от разрешения экрана
         const orthoSize = 20; // Размер видимой области в мировых единицах (по вертикали)
-        let aspect = window.innerWidth / window.innerHeight;
+        const targetAspect = 16 / 9; // Фиксированное соотношение сторон для предотвращения искажений
+        let aspect = targetAspect;
         const camera = new THREE.OrthographicCamera(
-            -orthoSize * aspect, orthoSize * aspect, orthoSize, -orthoSize, 1, 1000
+            -orthoSize * targetAspect, orthoSize * targetAspect, orthoSize, -orthoSize, 1, 1000
         );
         
         // Изометрический угол
@@ -67,8 +68,29 @@
         // Рендерер
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
+        
+        // Инициализация viewport для фиксированного соотношения сторон
+        const windowAspect = window.innerWidth / window.innerHeight;
+        let vx, vy, vw, vh;
+        
+        if (windowAspect > targetAspect) {
+            vw = window.innerHeight * targetAspect;
+            vh = window.innerHeight;
+            vx = (window.innerWidth - vw) / 2;
+            vy = 0;
+        } else {
+            vh = window.innerWidth / targetAspect;
+            vw = window.innerWidth;
+            vx = 0;
+            vy = (window.innerHeight - vh) / 2;
+        }
+        
+        renderer.setViewport(vx, vy, vw, vh);
+        renderer.setScissor(vx, vy, vw, vh);
+        renderer.setScissorTest(true);
 
         // Освещение
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -205,9 +227,12 @@
 
         // Функция обновления позиции курсора мыши на земле
         function updateMousePosition(clientX, clientY) {
-            // Нормализованные координаты мыши (-1 до +1)
-            mouse.x = (clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            // Учитываем viewport при вычислении координат мыши
+            const rect = renderer.domElement.getBoundingClientRect();
+            
+            // Нормализованные координаты мыши (-1 до +1) с учетом viewport
+            mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
             
             // Создаем луч из камеры через позицию мыши
             const raycaster = new THREE.Raycaster();
@@ -523,13 +548,35 @@
 
         // Обработка изменения размера окна
         window.addEventListener('resize', () => {
-            aspect = window.innerWidth / window.innerHeight;
-            camera.left = -orthoSize * aspect;
-            camera.right = orthoSize * aspect;
-            camera.top = orthoSize;
-            camera.bottom = -orthoSize;
-            camera.updateProjectionMatrix();
+            // Обновляем размер рендерера на весь экран
             renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Вычисляем текущее соотношение сторон окна
+            const windowAspect = window.innerWidth / window.innerHeight;
+            
+            // Определяем viewport для сохранения фиксированного соотношения сторон (letterboxing)
+            let vx, vy, vw, vh;
+            
+            if (windowAspect > targetAspect) {
+                // Окно шире, чем targetAspect - черные полосы по бокам
+                vw = window.innerHeight * targetAspect;
+                vh = window.innerHeight;
+                vx = (window.innerWidth - vw) / 2;
+                vy = 0;
+            } else {
+                // Окно уже, чем targetAspect - черные полосы сверху и снизу
+                vh = window.innerWidth / targetAspect;
+                vw = window.innerWidth;
+                vx = 0;
+                vy = (window.innerHeight - vh) / 2;
+            }
+            
+            // Устанавливаем viewport для letterboxing
+            renderer.setViewport(vx, vy, vw, vh);
+            renderer.setScissor(vx, vy, vw, vh);
+            renderer.setScissorTest(true);
+            
+            // Параметры камеры НЕ меняются - масштаб остается фиксированным
         });
 
         // Анимация
