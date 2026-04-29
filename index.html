@@ -594,10 +594,10 @@
 
         // Управление
         const keys = {
-            w: false,
-            a: false,
-            s: false,
-            d: false,
+            KeyW: false,
+            KeyA: false,
+            KeyS: false,
+            KeyD: false,
             ArrowUp: false,
             ArrowDown: false,
             ArrowLeft: false,
@@ -610,8 +610,8 @@
 
         document.addEventListener('keydown', (event) => {
             // Обработка движения
-            if (keys.hasOwnProperty(event.key)) {
-                keys[event.key] = true;
+            if (keys.hasOwnProperty(event.code)) {
+                keys[event.code] = true;
             }
             // Обработка начала стрельбы (Пробел)
             if (event.code === 'Space') {
@@ -621,8 +621,8 @@
 
         document.addEventListener('keyup', (event) => {
             // Обработка движения
-            if (keys.hasOwnProperty(event.key)) {
-                keys[event.key] = false;
+            if (keys.hasOwnProperty(event.code)) {
+                keys[event.code] = false;
             }
             // Остановка стрельбы при отпускании пробела
             if (event.code === 'Space') {
@@ -691,7 +691,7 @@
             // - Влево по экрану = комбинация -X и +Z
             // - Вправо по экрану = комбинация +X и -Z
             
-            if (keys.w || keys.ArrowUp) {
+            if (keys.KeyW || keys.ArrowUp) {
                 // Визуально вверх по экрану
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
@@ -699,7 +699,7 @@
                 // Обновляем направление персонажа
                 playerDirection.set(-1, 0, -1).normalize();
             }
-            if (keys.s || keys.ArrowDown) {
+            if (keys.KeyS || keys.ArrowDown) {
                 // Визуально вниз по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
@@ -707,7 +707,7 @@
                 // Обновляем направление персонажа
                 playerDirection.set(1, 0, 1).normalize();
             }
-            if (keys.a || keys.ArrowLeft) {
+            if (keys.KeyA || keys.ArrowLeft) {
                 // Визуально влево по экрану
                 player.position.x -= moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z += moveSpeed * Math.sin(Math.PI / 4);
@@ -715,7 +715,7 @@
                 // Обновляем направление персонажа
                 playerDirection.set(-1, 0, 1).normalize();
             }
-            if (keys.d || keys.ArrowRight) {
+            if (keys.KeyD || keys.ArrowRight) {
                 // Визуально вправо по экрану
                 player.position.x += moveSpeed * Math.cos(Math.PI / 4);
                 player.position.z -= moveSpeed * Math.sin(Math.PI / 4);
