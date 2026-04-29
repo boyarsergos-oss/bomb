@@ -391,8 +391,8 @@
                 // Цилиндрический резервуар - жидкость цилиндр чуть меньше резервуара
                 liquidGeometry = new THREE.CylinderGeometry(1.45, 1.45, 2.9, 16);
             } else if (tankType === 1) {
-                // Кубический резервуар - жидкость полный куб
-                liquidGeometry = new THREE.BoxGeometry(2.4, 3.4, 2.4);
+                // Кубический резервуар - жидкость плоский слой на дне
+                liquidGeometry = new THREE.BoxGeometry(2.4, 0.1, 2.4);
             } else {
                 // Конусообразный резервуар - жидкость конус
                 liquidGeometry = new THREE.CylinderGeometry(1.9, 0.9, 3.9, 8);
