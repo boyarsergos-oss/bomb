@@ -137,10 +137,10 @@
     const obstacleDepth = 2.0; // Глубина трубы
     
     // Диапазон высот для центра прохода (от пола до потолка)
-    // Пол на y = -4.0, потолок камеры ~12.0, птичка радиусом 0.9
+    // Пол на y = -4.0, потолок камеры ~20.0, птичка радиусом 0.9
     // Центр прохода должен быть в диапазоне, чтобы проход был доступен
     const gapCenterMinY = groundLevel + obstacleGapHeight / 2 + 0.5; // Минимальная позиция центра прохода
-    const gapCenterMaxY = 12.0 - obstacleGapHeight / 2 - 0.5; // Максимальная позиция центра прохода
+    const gapCenterMaxY = 20.0 - obstacleGapHeight / 2 - 0.5; // Максимальная позиция центра прохода
     
     for (let i = 0; i < 60; i++) {
       const blade = new THREE.Mesh(
@@ -458,8 +458,8 @@
         birdGroup.position.y = minY;
         birdVelocityY = 0;
       }
-      if (birdGroup.position.y > 12.0) {
-        birdGroup.position.y = 12.0;
+      if (birdGroup.position.y > 20.0) {
+        birdGroup.position.y = 20.0;
         birdVelocityY = 0;
       }
       
