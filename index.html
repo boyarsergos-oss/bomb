@@ -437,6 +437,10 @@
                 lastPipeTime = currentTime;
             }
             
+            // Clear debug boxes from previous frame
+            debugBoxes.forEach(box => scene.remove(box));
+            debugBoxes = [];
+            
             // Move and check pipes
             for (let i = pipes.length - 1; i >= 0; i--) {
                 const pipe = pipes[i];
@@ -454,18 +458,53 @@
                     document.getElementById('score').textContent = score;
                 }
                 
-                // Collision detection - птичка умирает только от взаимодействия с трубой
-                const birdBox = new THREE.Box3().setFromObject(bird);
-                const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
-                const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
+                // Collision detection - only check pipes that are close to the bird
+                const pipeX = pipe.top.position.x;
+                const birdX = bird.position.x;
+                const birdY = bird.position.y;
+                const birdZ = bird.position.z;
+                const birdRadius = 1.0; // Radius of the bird sphere
                 
-                // Visualize collision boxes (debug)
-                visualizeCollisionBox(birdBox, 0xff0000); // Red for bird
-                visualizeCollisionBox(topPipeBox, 0x00ff00); // Green for top pipe
-                visualizeCollisionBox(bottomPipeBox, 0x0000ff); // Blue for bottom pipe
+                // Pipe dimensions
+                const pipeWidth = 3;
+                const pipeDepth = 3;
+                const halfPipeWidth = pipeWidth / 2;
+                const halfPipeDepth = pipeDepth / 2;
                 
-                if (birdBox.intersectsBox(topPipeBox) || birdBox.intersectsBox(bottomPipeBox)) {
-                    endGame();
+                // Only check collision if pipe is near the bird on X axis
+                if (Math.abs(pipeX - birdX) < (halfPipeDepth + birdRadius)) {
+                    // Get top pipe bounds
+                    const topPipeBottom = pipe.top.position.y - pipe.top.geometry.parameters.height / 2;
+                    
+                    // Get bottom pipe bounds  
+                    const bottomPipeTop = pipe.bottom.position.y + pipe.bottom.geometry.parameters.height / 2;
+                    
+                    // Check Z-axis overlap (bird is at z=0, pipes are centered at z=0)
+                    const zOverlap = Math.abs(birdZ) < (halfPipeWidth + birdRadius * 0.5);
+                    
+                    // Visualize collision boxes (debug)
+                    const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
+                    const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
+                    visualizeCollisionBox(topPipeBox, 0x00ff00); // Green for top pipe
+                    visualizeCollisionBox(bottomPipeBox, 0x0000ff); // Blue for bottom pipe
+                    
+                    // Check collision with top pipe
+                    if (zOverlap && birdY + birdRadius > topPipeBottom && birdX < pipeX + halfPipeDepth && birdX > pipeX - halfPipeDepth) {
+                        endGame();
+                        return;
+                    }
+                    
+                    // Check collision with bottom pipe
+                    if (zOverlap && birdY - birdRadius < bottomPipeTop && birdX < pipeX + halfPipeDepth && birdX > pipeX - halfPipeDepth) {
+                        endGame();
+                        return;
+                    }
+                } else {
+                    // Just visualize, no collision check needed for far pipes
+                    const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
+                    const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
+                    visualizeCollisionBox(topPipeBox, 0x00ff00);
+                    visualizeCollisionBox(bottomPipeBox, 0x0000ff);
                 }
                 
                 // Check ground collision - only stop the bird, don't end game
