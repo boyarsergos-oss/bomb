@@ -342,8 +342,8 @@
     
     // Функция добавления случайного повреждения (синяк/ссадина/вмятина)
     function addInjury() {
-      const injuryTypes = ['bruise', 'scratch', 'contusion', 'dent'];
-      const type = injuryTypes[Math.floor(Math.random() * injuryTypes.length)];
+      // 75% вероятность вмятины, 25% на остальные типы
+      const type = Math.random() < 0.75 ? 'dent' : ['bruise', 'scratch', 'contusion'][Math.floor(Math.random() * 3)];
       
       // Случайная позиция на сфере (в UV координатах)
       const u = Math.random();
