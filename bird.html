@@ -259,6 +259,19 @@
       
       obstacleGroup.add(upperCap);
       
+      // Визуализация безопасной зоны (проёма между трубами) - голубая прозрачная коробка
+      const safeZoneHeight = obstacleGapHeight;
+      const safeZoneGeometry = new THREE.BoxGeometry(obstacleWidth, safeZoneHeight, obstacleDepth);
+      const safeZoneMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ffff, 
+        transparent: true, 
+        opacity: 0.15,
+        wireframe: true
+      });
+      const safeZone = new THREE.Mesh(safeZoneGeometry, safeZoneMaterial);
+      safeZone.position.y = gapCenterY;
+      obstacleGroup.add(safeZone);
+      
       obstacleGroup.position.z = zPosition;
       return obstacleGroup;
     }
