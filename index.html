@@ -294,40 +294,36 @@
                 shininess: 50
             });
             
-            // Верхняя труба (свисает сверху) - ЦИЛИНДРИЧЕСКАЯ
+            // Верхняя труба (свисает сверху) - ЦИЛИНДРИЧЕСКАЯ ВЕРТИКАЛЬНО
             const topPipeHeight = ceilingLevel - (gapY + pipeGap / 2);
             const topPipeGeometry = new THREE.CylinderGeometry(pipeWidth/2, pipeWidth/2, topPipeHeight, 16);
             const topPipe = new THREE.Mesh(topPipeGeometry, pipeMaterial);
             topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, 0);
-            topPipe.rotation.z = Math.PI / 2; // Поворот чтобы цилиндр лежал горизонтально
             topPipe.castShadow = true;
             topPipe.receiveShadow = true;
             scene.add(topPipe);
             
-            // Нижняя труба (растет снизу) - ЦИЛИНДРИЧЕСКАЯ
+            // Нижняя труба (растет снизу) - ЦИЛИНДРИЧЕСКАЯ ВЕРТИКАЛЬНО
             const bottomPipeHeight = gapY - groundLevel;
             const bottomPipeGeometry = new THREE.CylinderGeometry(pipeWidth/2, pipeWidth/2, bottomPipeHeight, 16);
             const bottomPipe = new THREE.Mesh(bottomPipeGeometry, pipeMaterial);
             bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, 0);
-            bottomPipe.rotation.z = Math.PI / 2; // Поворот чтобы цилиндр лежал горизонтально
             bottomPipe.castShadow = true;
             bottomPipe.receiveShadow = true;
             scene.add(bottomPipe);
             
-            // Pipe cap (decorative ring) для верхней трубы - уже цилиндр, но теперь вертикальный
+            // Pipe cap (decorative ring) для верхней трубы - вертикальный цилиндр
             const topCapGeometry = new THREE.CylinderGeometry(pipeWidth/2 + 0.3, pipeWidth/2 + 0.3, 0.5, 16);
             const capMaterial = new THREE.MeshPhongMaterial({ color: 0x3CB371 });
             
             const topCap = new THREE.Mesh(topCapGeometry, capMaterial);
             topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, 0);
-            topCap.rotation.z = Math.PI / 2;
             topCap.castShadow = true;
             scene.add(topCap);
             
-            // Pipe cap для нижней трубы
+            // Pipe cap для нижней трубы - вертикальный цилиндр
             const bottomCap = new THREE.Mesh(topCapGeometry, capMaterial);
             bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, 0);
-            bottomCap.rotation.z = Math.PI / 2;
             bottomCap.castShadow = true;
             scene.add(bottomCap);
             
@@ -418,32 +414,32 @@
                 const radius = geometry.parameters.radiusTop;
                 const height = geometry.parameters.height;
                 
-                // For horizontal cylinders (rotated around Z)
+                // For vertical cylinders (no rotation)
                 const worldMatrix = cylinderMesh.matrixWorld;
                 const scale = new THREE.Vector3();
                 worldMatrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
-                const effectiveRadius = radius * Math.max(scale.x, scale.y);
+                const effectiveRadius = radius * Math.max(scale.x, scale.z);
                 
                 // Find closest point on cylinder axis to bird
-                // Cylinder is along X axis after rotation
-                const halfHeight = (height / 2) * Math.abs(scale.x);
-                const dx = Math.abs(birdPos.x - cylCenter.x);
-                const dy = birdPos.y - cylCenter.y;
+                // Cylinder is along Y axis (vertical)
+                const halfHeight = (height / 2) * Math.abs(scale.y);
+                const dx = birdPos.x - cylCenter.x;
+                const dy = Math.abs(birdPos.y - cylCenter.y);
                 const dz = birdPos.z - cylCenter.z;
                 
-                // Check if within cylinder length
-                if (dx > halfHeight + birdCollisionRadius) return false;
+                // Check if within cylinder height
+                if (dy > halfHeight + birdCollisionRadius) return false;
                 
-                // Check radial distance
-                const radialDist = Math.sqrt(dy * dy + dz * dz);
+                // Check radial distance in XZ plane
+                const radialDist = Math.sqrt(dx * dx + dz * dz);
                 const minRadialDist = effectiveRadius + birdCollisionRadius;
                 
                 if (radialDist < minRadialDist) {
                     collisionDetected = true;
                     
-                    // Calculate push direction (normal)
+                    // Calculate push direction (normal) - horizontal push away from cylinder
                     if (radialDist > 0.001) {
-                        const pushDir = new THREE.Vector3(0, dy / radialDist, dz / radialDist);
+                        const pushDir = new THREE.Vector3(dx / radialDist, 0, dz / radialDist);
                         const currentPush = pushDistance;
                         const newPush = minRadialDist - radialDist;
                         
@@ -454,7 +450,7 @@
                     } else {
                         // Bird center is on cylinder axis
                         pushDistance = Math.max(pushDistance, effectiveRadius + birdCollisionRadius);
-                        collisionNormal.set(0, 1, 0);
+                        collisionNormal.set(1, 0, 0);
                     }
                     return true;
                 }
