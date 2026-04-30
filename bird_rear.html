@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Bird - Rear View</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB); // Sky blue
+    scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
+
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    
+    // Bird Group
+    const birdGroup = new THREE.Group();
+    scene.add(birdGroup);
+
+    // 1. Body (Round Yellow Sphere)
+    const bodyGeometry = new THREE.SphereGeometry(1, 32, 32);
+    const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0xFFD700, shininess: 100 }); // Gold/Yellow
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    birdGroup.add(body);
+
+    // 2. Eyes (White spheres with black pupils) - Placed on the FRONT (positive Z)
+    const eyeGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+    const pupilGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+    const pupilMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+    function createEye(x, y, z) {
+        const eyeGroup = new THREE.Group();
+        const white = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        const pupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+        pupil.position.z = 0.2; // Pupil sticks out slightly
+        eyeGroup.add(white);
+        eyeGroup.add(pupil);
+        eyeGroup.position.set(x, y, z);
+        return eyeGroup;
+    }
+
+    // Eyes are at the front (z = 0.8)
+    const leftEye = createEye(-0.4, 0.2, 0.8);
+    const rightEye = createEye(0.4, 0.2, 0.8);
+    birdGroup.add(leftEye);
+    birdGroup.add(rightEye);
+
+    // 3. Beak (Orange Cone) - Placed on the FRONT
+    const beakGeometry = new THREE.ConeGeometry(0.2, 0.6, 32);
+    const beakMaterial = new THREE.MeshPhongMaterial({ color: 0xFFA500 }); // Orange
+    const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+    beak.rotation.x = Math.PI / 2; // Point forward
+    beak.position.set(0, 0, 1.1); // Front of the head
+    birdGroup.add(beak);
+
+    // 4. Wings (Flattened spheres/ellipsoids)
+    const wingGeometry = new THREE.SphereGeometry(0.9, 32, 32);
+    const wingMaterial = new THREE.MeshPhongMaterial({ color: 0xDAA520 }); // Darker yellow/gold
+    const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+    const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+
+    // Scale them to look like wings
+    leftWing.scale.set(1, 0.4, 0.6);
+    rightWing.scale.set(1, 0.4, 0.6);
+
+    // Position them on the sides
+    leftWing.position.set(-1.1, 0, 0);
+    rightWing.position.set(1.1, 0, 0);
+
+    // Create pivots for flapping
+    const leftWingPivot = new THREE.Group();
+    const rightWingPivot = new THREE.Group();
+    
+    leftWingPivot.add(leftWing);
+    rightWingPivot.add(rightWing);
+
+    // Adjust wing position relative to pivot so they flap from the shoulder
+    leftWing.position.set(0.4, 0, 0); 
+    rightWing.position.set(-0.4, 0, 0);
+
+    leftWingPivot.position.set(-0.7, 0.2, 0);
+    rightWingPivot.position.set(0.7, 0.2, 0);
+
+    birdGroup.add(leftWingPivot);
+    birdGroup.add(rightWingPivot);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 20, 10);
+    scene.add(dirLight);
+
+    // Ground (Green plane far below)
+    const groundGeometry = new THREE.PlaneGeometry(200, 200);
+    const groundMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22, side: THREE.DoubleSide });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -10;
+    scene.add(ground);
+
+    // Animation Loop
+    let time = 0;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        time += 0.1;
+
+        // Flap wings
+        leftWingPivot.rotation.z = Math.sin(time) * 0.8;
+        rightWingPivot.rotation.z = -Math.sin(time) * 0.8;
+
+        // Slight bobbing motion
+        birdGroup.position.y = Math.sin(time * 0.5) * 0.2;
+
+        // CAMERA LOGIC: Strictly behind and above
+        // Bird is at (0,0,0). Camera needs to be at negative Z (behind) and positive Y (above).
+        camera.position.set(0, 2.5, 6); 
+        camera.lookAt(0, 0, -5); // Look slightly ahead of the bird into the distance
+
+        renderer.render(scene, camera);
+    }
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+</script>
+</body>
+</html>
