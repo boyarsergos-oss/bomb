@@ -124,6 +124,15 @@
     // Массивы для объектов мира, чтобы двигать их
     const grassBlades = [];
     const clouds = [];
+    const obstacles = []; // Массив препятствий (труб)
+    
+    // Параметры для спавна препятствий
+    const obstacleSpawnInterval = 25; // Расстояние между препятствиями
+    const obstacleGapHeight = 3.5; // Высота проёма между трубами
+    const obstacleMinHeight = 1.5; // Минимальная высота нижней трубы
+    const obstacleMaxHeight = 5.0; // Максимальная высота нижней трубы
+    const obstacleWidth = 2.5; // Ширина трубы
+    const obstacleDepth = 2.0; // Глубина трубы
     
     for (let i = 0; i < 60; i++) {
       const blade = new THREE.Mesh(
@@ -138,6 +147,62 @@
       grassBlades.push(blade);
       scene.add(blade);
     }
+
+    // Функция создания пары труб (препятствия)
+    function createObstacle(zPosition) {
+      const obstacleGroup = new THREE.Group();
+      
+      // Случайная высота нижней трубы
+      const lowerPipeHeight = obstacleMinHeight + Math.random() * (obstacleMaxHeight - obstacleMinHeight);
+      const upperPipeY = lowerPipeHeight + obstacleGapHeight;
+      
+      const pipeMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x2e7d32, 
+        roughness: 0.5,
+        metalness: 0.2
+      });
+      
+      // Нижняя труба
+      const lowerPipeGeometry = new THREE.BoxGeometry(obstacleWidth, lowerPipeHeight, obstacleDepth);
+      const lowerPipe = new THREE.Mesh(lowerPipeGeometry, pipeMaterial);
+      lowerPipe.position.y = lowerPipeHeight / 2 - 2.8; // От земли вверх
+      lowerPipe.castShadow = true;
+      lowerPipe.receiveShadow = true;
+      obstacleGroup.add(lowerPipe);
+      
+      // Верхняя труба
+      const upperPipeHeight = 10; // Достаточно высокая верхняя труба
+      const upperPipeGeometry = new THREE.BoxGeometry(obstacleWidth, upperPipeHeight, obstacleDepth);
+      const upperPipe = new THREE.Mesh(upperPipeGeometry, pipeMaterial);
+      upperPipe.position.y = upperPipeY + upperPipeHeight / 2 - 2.8;
+      upperPipe.castShadow = true;
+      upperPipe.receiveShadow = true;
+      obstacleGroup.add(upperPipe);
+      
+      // Крышка на нижней трубе
+      const lowerCapGeometry = new THREE.BoxGeometry(obstacleWidth + 0.3, 0.3, obstacleDepth + 0.3);
+      const lowerCap = new THREE.Mesh(lowerCapGeometry, pipeMaterial);
+      lowerCap.position.y = lowerPipeHeight - 2.8 + 0.15;
+      lowerCap.castShadow = true;
+      lowerCap.receiveShadow = true;
+      obstacleGroup.add(lowerCap);
+      
+      // Крышка на верхней трубе
+      const upperCapGeometry = new THREE.BoxGeometry(obstacleWidth + 0.3, 0.3, obstacleDepth + 0.3);
+      const upperCap = new THREE.Mesh(upperCapGeometry, pipeMaterial);
+      upperCap.position.y = upperPipeY - 0.15 - 2.8;
+      upperCap.castShadow = true;
+      upperCap.receiveShadow = true;
+      obstacleGroup.add(upperCap);
+      
+      obstacleGroup.position.z = zPosition;
+      return obstacleGroup;
+    }
+    
+    // Создаём первое препятствие
+    const firstObstacle = createObstacle(obstacleSpawnInterval);
+    obstacles.push(firstObstacle);
+    scene.add(firstObstacle);
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
     const birdGroup = new THREE.Group();
@@ -439,6 +504,24 @@
           blade.position.z += cycleDistance;
         }
       });
+      
+      // Спавн новых препятствий и перемещение старых
+      // Если птичка приблизилась к последнему препятствию, создаём новое
+      const lastObstacle = obstacles[obstacles.length - 1];
+      if (lastObstacle && birdZ > lastObstacle.position.z - obstacleSpawnInterval) {
+        const newObstacleZ = lastObstacle.position.z + obstacleSpawnInterval;
+        const newObstacle = createObstacle(newObstacleZ);
+        obstacles.push(newObstacle);
+        scene.add(newObstacle);
+      }
+      
+      // Удаляем препятствия, которые остались далеко позади
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        if (obstacles[i].position.z < birdZ - 30) {
+          scene.remove(obstacles[i]);
+          obstacles.splice(i, 1);
+        }
+      }
       
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
