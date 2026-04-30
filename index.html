@@ -151,6 +151,9 @@
         const pipeSpawnInterval = 1500;
         let lastPipeTime = 0;
         
+        // Debug collision visualization
+        let debugBoxes = [];
+        
         // Initialize the game
         function init() {
             // Create scene
@@ -461,6 +464,11 @@
                 const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
                 const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
                 
+                // Visualize collision boxes (debug)
+                visualizeCollisionBox(birdBox, 0xff0000); // Red for bird
+                visualizeCollisionBox(topPipeBox, 0x00ff00); // Green for top pipe
+                visualizeCollisionBox(bottomPipeBox, 0x0000ff); // Blue for bottom pipe
+                
                 if (birdBox.intersectsBox(topPipeBox) || birdBox.intersectsBox(bottomPipeBox)) {
                     endGame();
                 }
@@ -509,6 +517,10 @@
             });
             pipes = [];
             
+            // Clear debug boxes
+            debugBoxes.forEach(box => scene.remove(box));
+            debugBoxes = [];
+            
             lastPipeTime = Date.now();
         }
         
@@ -517,6 +529,34 @@
             gameOver = true;
             document.getElementById('finalScore').textContent = 'Score: ' + score;
             document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        // Function to visualize collision boxes
+        function visualizeCollisionBox(box, color) {
+            // Create edges geometry for the box
+            const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(
+                box.max.x - box.min.x,
+                box.max.y - box.min.y,
+                box.max.z - box.min.z
+            ));
+            const lineMaterial = new THREE.LineBasicMaterial({ color: color, linewidth: 2 });
+            const lineSegments = new THREE.LineSegments(edges, lineMaterial);
+            
+            // Position the wireframe box at the center of the bounding box
+            lineSegments.position.set(
+                (box.min.x + box.max.x) / 2,
+                (box.min.y + box.max.y) / 2,
+                (box.min.z + box.max.z) / 2
+            );
+            
+            scene.add(lineSegments);
+            debugBoxes.push(lineSegments);
+            
+            // Limit the number of debug boxes to prevent memory issues
+            if (debugBoxes.length > 100) {
+                const oldBox = debugBoxes.shift();
+                scene.remove(oldBox);
+            }
         }
         
         function restartGame() {
