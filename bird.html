@@ -539,8 +539,133 @@
     let deathCount = 0; // Количество смертей для накопления повреждений
     
     // Массивы для хранения элементов повреждений
-    const bodyInjuries = [];
-    const wingDamageParts = [];
+    let bodyInjuries = [];
+    let wingDamageParts = [];
+    
+    // Загрузка сохранённых повреждений из localStorage
+    function loadDamage() {
+      const savedData = localStorage.getItem('birdDamage');
+      if (savedData) {
+        try {
+          const data = JSON.parse(savedData);
+          deathCount = data.deathCount || 0;
+          
+          // Восстанавливаем повреждения тела
+          if (data.bodyInjuries) {
+            const bodyMesh = window.bodyMesh;
+            if (bodyMesh) {
+              data.bodyInjuries.forEach(injury => {
+                let mesh;
+                if (injury.type === 'bruise') {
+                  const bruiseGeometry = new THREE.CircleGeometry(injury.size, 16);
+                  const bruiseMaterial = new THREE.MeshBasicMaterial({ 
+                    color: new THREE.Color(injury.color),
+                    transparent: true,
+                    opacity: injury.opacity,
+                    depthWrite: false,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -1
+                  });
+                  mesh = new THREE.Mesh(bruiseGeometry, bruiseMaterial);
+                } else if (injury.type === 'scrape') {
+                  const scrapeGeometry = new THREE.PlaneGeometry(injury.length, 0.04);
+                  const scrapeMaterial = new THREE.MeshBasicMaterial({ 
+                    color: injury.color,
+                    transparent: true,
+                    opacity: injury.opacity,
+                    side: THREE.DoubleSide,
+                    depthWrite: false,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -1
+                  });
+                  mesh = new THREE.Mesh(scrapeGeometry, scrapeMaterial);
+                }
+                
+                if (mesh) {
+                  mesh.position.set(injury.x, injury.y, injury.z);
+                  mesh.rotation.set(injury.rx, injury.ry, injury.rz);
+                  bodyMesh.add(mesh);
+                  bodyInjuries.push(mesh);
+                }
+              });
+            }
+          }
+          
+          // Восстанавливаем повреждения крыльев
+          if (data.wingDamageParts) {
+            data.wingDamageParts.forEach(damage => {
+              const wing = damage.side === 'left' ? window.leftWingMesh : window.rightWingMesh;
+              if (wing) {
+                // Скрываем оригинальное перо
+                if (damage.featherIndex !== null && wing.children[damage.featherIndex]) {
+                  wing.children[damage.featherIndex].visible = false;
+                }
+                
+                // Создаём обломок
+                const brokenPieceGeometry = new THREE.CylinderGeometry(0.08, 0.05, 0.25, 8);
+                const brokenPieceMaterial = new THREE.MeshStandardMaterial({ 
+                  color: 0xff6600,
+                  roughness: 0.6,
+                  emissive: 0x331100
+                });
+                const brokenPiece = new THREE.Mesh(brokenPieceGeometry, brokenPieceMaterial);
+                brokenPiece.position.set(damage.x, damage.y, damage.z);
+                brokenPiece.rotation.set(damage.rx, damage.ry, damage.rz);
+                brokenPiece.castShadow = true;
+                wing.add(brokenPiece);
+                wingDamageParts.push({ piece: brokenPiece, wing: wing });
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Ошибка загрузки повреждений:', e);
+        }
+      }
+    }
+    
+    // Сохранение повреждений в localStorage
+    function saveDamage() {
+      const data = {
+        deathCount: deathCount,
+        bodyInjuries: bodyInjuries.map(injury => {
+          const isBruise = injury.geometry.type === 'CircleGeometry';
+          return {
+            type: isBruise ? 'bruise' : 'scrape',
+            x: injury.position.x,
+            y: injury.position.y,
+            z: injury.position.z,
+            rx: injury.rotation.x,
+            ry: injury.rotation.y,
+            rz: injury.rotation.z,
+            size: isBruise ? injury.geometry.parameters.radius : undefined,
+            length: isBruise ? undefined : injury.geometry.parameters.width,
+            color: isBruise ? injury.material.color.getHex() : injury.material.color.getHex(),
+            opacity: injury.material.opacity
+          };
+        }),
+        wingDamageParts: wingDamageParts.map(damage => {
+          const wing = damage.wing;
+          let featherIndex = null;
+          for (let i = 0; i < wing.children.length; i++) {
+            if (!wing.children[i].visible && wing.children[i].geometry.type === 'SphereGeometry') {
+              featherIndex = i;
+              break;
+            }
+          }
+          return {
+            side: wing === window.leftWingMesh ? 'left' : 'right',
+            featherIndex: featherIndex,
+            x: damage.piece.position.x,
+            y: damage.piece.position.y,
+            z: damage.piece.position.z,
+            rx: damage.piece.rotation.x,
+            ry: damage.piece.rotation.y,
+            rz: damage.piece.rotation.z
+          };
+        })
+      };
+      localStorage.setItem('birdDamage', JSON.stringify(data));
+    }
     
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
@@ -676,8 +801,12 @@
         controls.enabled = false;
       }
       
-      // Добавляем повреждения при каждом рестарте
+      // Сохраняем повреждения перед добавлением нового
+      saveDamage();
+      // Добавляем повреждение при каждом рестарте
       addInjury();
+      // Сохраняем обновлённые повреждения
+      saveDamage();
     }
 
     // ==================== АНИМАЦИЯ ====================
@@ -711,6 +840,7 @@
           if (!isGameOver) {
             isGameOver = true;
             addInjury();
+            saveDamage();
             // Включаем контролы камеры
             if (!controls) {
               controls = new OrbitControls(camera, renderer.domElement);
@@ -761,6 +891,7 @@
                 isGameOver = true;
                 // Добавляем повреждение при столкновении
                 addInjury();
+                saveDamage();
                 // Включаем контролы камеры для осмотра места смерти
                 if (!controls) {
                   controls = new OrbitControls(camera, renderer.domElement);
@@ -930,6 +1061,9 @@
     });
 
     animate();
+
+    // Загружаем сохранённые повреждения при старте
+    loadDamage();
 
     console.log('🐣 Птичка готова! Хвост сделан веером.');
   </script>
