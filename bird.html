@@ -180,6 +180,19 @@
       lowerPipe.position.y = groundLevel + lowerPipeHeight / 2;
       lowerPipe.castShadow = true;
       lowerPipe.receiveShadow = true;
+      
+      // Хитбокс нижней трубы (зелёная прозрачная коробка для отладки)
+      const lowerPipeHitboxGeometry = new THREE.BoxGeometry(obstacleWidth, lowerPipeHeight, obstacleDepth);
+      const lowerPipeHitboxMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00, 
+        transparent: true, 
+        opacity: 0.3,
+        wireframe: true
+      });
+      const lowerPipeHitbox = new THREE.Mesh(lowerPipeHitboxGeometry, lowerPipeHitboxMaterial);
+      lowerPipeHitbox.position.copy(lowerPipe.position);
+      obstacleGroup.add(lowerPipeHitbox);
+      
       obstacleGroup.add(lowerPipe);
       
       // Верхняя труба (от верха прохода до "бесконечности" - значительно выше видимой области)
@@ -189,6 +202,19 @@
       upperPipe.position.y = upperPipeBottomY + upperPipeHeight / 2; // Поднимаем центр трубы высоко вверх
       upperPipe.castShadow = true;
       upperPipe.receiveShadow = true;
+      
+      // Хитбокс верхней трубы (зелёная прозрачная коробка для отладки)
+      const upperPipeHitboxGeometry = new THREE.BoxGeometry(obstacleWidth, upperPipeHeight, obstacleDepth);
+      const upperPipeHitboxMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00, 
+        transparent: true, 
+        opacity: 0.3,
+        wireframe: true
+      });
+      const upperPipeHitbox = new THREE.Mesh(upperPipeHitboxGeometry, upperPipeHitboxMaterial);
+      upperPipeHitbox.position.copy(upperPipe.position);
+      obstacleGroup.add(upperPipeHitbox);
+      
       obstacleGroup.add(upperPipe);
       
       // Крышка на нижней трубе
@@ -197,6 +223,19 @@
       lowerCap.position.y = lowerPipeTopY + 0.15;
       lowerCap.castShadow = true;
       lowerCap.receiveShadow = true;
+      
+      // Хитбокс крышки нижней трубы
+      const lowerCapHitboxGeometry = new THREE.BoxGeometry(obstacleWidth + 0.3, 0.3, obstacleDepth + 0.3);
+      const lowerCapHitboxMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00, 
+        transparent: true, 
+        opacity: 0.3,
+        wireframe: true
+      });
+      const lowerCapHitbox = new THREE.Mesh(lowerCapHitboxGeometry, lowerCapHitboxMaterial);
+      lowerCapHitbox.position.copy(lowerCap.position);
+      obstacleGroup.add(lowerCapHitbox);
+      
       obstacleGroup.add(lowerCap);
       
       // Крышка на верхней трубе
@@ -205,6 +244,19 @@
       upperCap.position.y = upperPipeBottomY - 0.15;
       upperCap.castShadow = true;
       upperCap.receiveShadow = true;
+      
+      // Хитбокс крышки верхней трубы
+      const upperCapHitboxGeometry = new THREE.BoxGeometry(obstacleWidth + 0.3, 0.3, obstacleDepth + 0.3);
+      const upperCapHitboxMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00, 
+        transparent: true, 
+        opacity: 0.3,
+        wireframe: true
+      });
+      const upperCapHitbox = new THREE.Mesh(upperCapHitboxGeometry, upperCapHitboxMaterial);
+      upperCapHitbox.position.copy(upperCap.position);
+      obstacleGroup.add(upperCapHitbox);
+      
       obstacleGroup.add(upperCap);
       
       obstacleGroup.position.z = zPosition;
