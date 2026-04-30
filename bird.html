@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Круглая птичка • Flappy стиль</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+    }
+    #info {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      color: white;
+      background: rgba(0,0,0,0.6);
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 14px;
+      letter-spacing: 1px;
+      pointer-events: none;
+      backdrop-filter: blur(5px);
+    }
+    #hint {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body>
+  <div id="info">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
+  <div id="hint">␣ ПРОБЕЛ: рывок вверх (Flappy Bird)</div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+
+    // ==================== НАСТРОЙКИ СЦЕНЫ ====================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xa0d8ef);
+    scene.fog = new THREE.Fog(0xa0d8ef, 15, 60);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 200);
+    camera.position.set(0, 4.3, -6.5);
+    camera.lookAt(0, 1.5, 0);
+
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      powerPreference: "high-performance"
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0px';
+    labelRenderer.domElement.style.left = '0px';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    document.body.appendChild(labelRenderer.domElement);
+
+    // ==================== ОСВЕЩЕНИЕ ====================
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambientLight);
+    
+    const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+    sunLight.position.set(10, 20, 5);
+    sunLight.castShadow = true;
+    sunLight.receiveShadow = true;
+    sunLight.shadow.mapSize.width = 1024;
+    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 80;
+    sunLight.shadow.camera.left = -20;
+    sunLight.shadow.camera.right = 20;
+    sunLight.shadow.camera.top = 20;
+    sunLight.shadow.camera.bottom = -20;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+    
+    const fillLight = new THREE.DirectionalLight(0xccddff, 0.6);
+    fillLight.position.set(-5, 0, -5);
+    scene.add(fillLight);
+
+    // ==================== ЗЕМЛЯ ====================
+    const groundGeometry = new THREE.PlaneGeometry(60, 60);
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x7cb342, roughness: 0.9 });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -2.8;
+    ground.receiveShadow = true;
+    scene.add(ground);
+    
+    for (let i = 0; i < 60; i++) {
+      const blade = new THREE.Mesh(
+        new THREE.ConeGeometry(0.08, 0.3, 4),
+        new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.7 })
+      );
+      blade.position.x = (Math.random() - 0.5) * 25;
+      blade.position.z = (Math.random() - 0.5) * 25;
+      blade.position.y = -2.65;
+      blade.castShadow = true;
+      blade.receiveShadow = true;
+      scene.add(blade);
+    }
+
+    // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
+    const birdGroup = new THREE.Group();
+    birdGroup.position.set(0, 1.5, 0);
+    
+    // Тело
+    const bodyGeometry = new THREE.SphereGeometry(0.9, 32, 32);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xffcc00, 
+      roughness: 0.3,
+      metalness: 0.1,
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    birdGroup.add(body);
+
+    // Глаза
+    function createEye(xOffset, yOffset, zOffset) {
+      const eyeGroup = new THREE.Group();
+      const whitePart = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 16, 16),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+      );
+      whitePart.castShadow = true;
+      whitePart.receiveShadow = true;
+      eyeGroup.add(whitePart);
+      
+      const pupil = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1 })
+      );
+      pupil.position.set(0, 0, 0.18);
+      pupil.castShadow = true;
+      pupil.receiveShadow = true;
+      eyeGroup.add(pupil);
+      
+      const highlight = new THREE.Mesh(
+        new THREE.SphereGeometry(0.05, 4, 4),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1, emissive: new THREE.Color(0xffffff) })
+      );
+      highlight.position.set(0.06, 0.07, 0.2);
+      eyeGroup.add(highlight);
+      
+      eyeGroup.position.set(xOffset, yOffset, zOffset);
+      return eyeGroup;
+    }
+    
+    birdGroup.add(createEye(-0.35, 0.25, 0.75));
+    birdGroup.add(createEye(0.35, 0.25, 0.75));
+
+    // Щёчки
+    function createCheek(xOffset, yOffset, zOffset) {
+      const cheek = new THREE.Mesh(
+        new THREE.SphereGeometry(0.15, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xff9999, roughness: 0.4 })
+      );
+      cheek.position.set(xOffset, yOffset, zOffset);
+      cheek.castShadow = true;
+      cheek.receiveShadow = true;
+      return cheek;
+    }
+    birdGroup.add(createCheek(-0.45, -0.1, 0.8));
+    birdGroup.add(createCheek(0.45, -0.1, 0.8));
+
+    // Клюв
+    const beakGeometry = new THREE.ConeGeometry(0.2, 0.6, 8);
+    const beakMaterial = new THREE.MeshStandardMaterial({ color: 0xff6600, roughness: 0.4 });
+    const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+    beak.position.set(0, 0.0, 1.05);
+    beak.rotation.x = Math.PI / 2;
+    beak.castShadow = true;
+    beak.receiveShadow = true;
+    birdGroup.add(beak);
+    
+    const lowerBeak = new THREE.Mesh(
+      new THREE.ConeGeometry(0.15, 0.35, 6),
+      new THREE.MeshStandardMaterial({ color: 0xff8800, roughness: 0.4 })
+    );
+    lowerBeak.position.set(0, -0.12, 1.0);
+    lowerBeak.rotation.x = Math.PI / 2;
+    lowerBeak.castShadow = true;
+    lowerBeak.receiveShadow = true;
+    birdGroup.add(lowerBeak);
+
+    // --- КРЫЛЬЯ (только одна пара, большие) ---
+    function createWing(side) {
+      const wingGroup = new THREE.Group();
+      const wingMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xffaa00, 
+        roughness: 0.3,
+        metalness: 0.1
+      });
+      
+      // Единственное длинное перо (основное)
+      const primaryFeather = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 8, 8),
+        wingMaterial
+      );
+      primaryFeather.scale.set(1.8, 0.25, 0.5);
+      primaryFeather.position.set(side * 0.5, -0.05, 0.15);
+      primaryFeather.rotation.z = side * 0.15;
+      primaryFeather.castShadow = true;
+      primaryFeather.receiveShadow = true;
+      wingGroup.add(primaryFeather);
+      
+      // Положение всей группы прямо на теле
+      wingGroup.position.set(side * 0.65, 0.3, -0.1);
+      wingGroup.rotation.x = 0.35;
+      wingGroup.rotation.z = side * 0.35;
+      wingGroup.rotation.y = side * 0.25;
+      
+      return wingGroup;
+    }
+    
+    const leftWing = createWing(-1);
+    const rightWing = createWing(1);
+    birdGroup.add(leftWing);
+    birdGroup.add(rightWing);
+
+    // --- ХВОСТ (веер) ---
+    function createTail() {
+      const tailGroup = new THREE.Group();
+      const tailMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xffaa00, 
+        roughness: 0.4 
+      });
+      const darkMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xff8800, 
+        roughness: 0.4 
+      });
+      
+      // Веер из перьев
+      const featherCount = 7;
+      const spreadAngle = Math.PI / 3; // 60 градусов размах
+      
+      for (let i = 0; i < featherCount; i++) {
+        const angle = -spreadAngle / 2 + (i / (featherCount - 1)) * spreadAngle;
+        const isCenter = i === Math.floor(featherCount / 2);
+        const length = isCenter ? 0.5 : 0.35 + Math.random() * 0.1;
+        const width = isCenter ? 0.12 : 0.08 + Math.random() * 0.04;
+        
+        const feather = new THREE.Mesh(
+          new THREE.ConeGeometry(width, length, 6),
+          isCenter ? tailMaterial : darkMaterial
+        );
+        
+        feather.position.set(0, 0, -length / 2);
+        feather.rotation.x = angle;
+        feather.castShadow = true;
+        feather.receiveShadow = true;
+        tailGroup.add(feather);
+      }
+      
+      return tailGroup;
+    }
+    
+    const tailGroup = createTail();
+    tailGroup.position.set(0, -0.15, -0.85);
+    tailGroup.rotation.x = Math.PI;
+    birdGroup.add(tailGroup);
+
+    scene.add(birdGroup);
+
+    // ==================== ОБЛАКА ====================
+    function createCloud(x, y, z) {
+      const cloudGroup = new THREE.Group();
+      const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.85 });
+      const positions = [
+        [0, 0, 0], [0.6, 0.2, 0.1], [-0.5, 0.1, -0.1], [0.3, 0.4, 0.3], [-0.3, -0.2, 0.2], [0.1, -0.3, -0.2]
+      ];
+      positions.forEach(pos => {
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.4 + Math.random()*0.3, 7), whiteMat);
+        sphere.position.set(pos[0], pos[1], pos[2]);
+        cloudGroup.add(sphere);
+      });
+      cloudGroup.position.set(x, y, z);
+      return cloudGroup;
+    }
+    
+    for (let i = 0; i < 30; i++) {
+      const cloud = createCloud(
+        (Math.random() - 0.5) * 45,
+        4 + Math.random() * 8,
+        (Math.random() - 0.5) * 40
+      );
+      scene.add(cloud);
+    }
+
+    // ==================== ФИЗИКА FLAPPY BIRD ====================
+    const gravity = -14.0;
+    const flapVelocity = 6.8;
+    const maxFallSpeed = -9.0;
+    const groundLevel = -2.8;
+    const birdRadius = 0.9;
+    const minY = groundLevel + birdRadius + 0.05;
+    
+    let birdVelocityY = 0.0;
+    
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        birdVelocityY = flapVelocity;
+      }
+    });
+
+    // ==================== АНИМАЦИЯ ====================
+    let wingAngle = 0;
+    const wingFlapSpeed = 10;
+    const clock = new THREE.Clock();
+    
+    const cameraOffsetY = 2.8;
+    const cameraZ = -6.5;
+    const cameraX = 0;
+    const cameraLerpSpeed = 6.0;
+    const rotationLerpSpeed = 8.0;
+
+    function animate() {
+      const delta = Math.min(clock.getDelta(), 0.1);
+      
+      birdVelocityY += gravity * delta;
+      if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
+      
+      birdGroup.position.y += birdVelocityY * delta;
+      
+      if (birdGroup.position.y <= minY) {
+        birdGroup.position.y = minY;
+        birdVelocityY = 0;
+      }
+      if (birdGroup.position.y > 9.5) {
+        birdGroup.position.y = 9.5;
+        birdVelocityY = 0;
+      }
+      
+      // Наклон: взлетает — смотрит вверх (-45°), падает — вниз (+45°)
+      const speedThreshold = 0.5;
+      let targetRotX = 0;
+      if (birdVelocityY > speedThreshold) {
+        targetRotX = THREE.MathUtils.degToRad(-45);
+      } else if (birdVelocityY < -speedThreshold) {
+        targetRotX = THREE.MathUtils.degToRad(45);
+      }
+      birdGroup.rotation.x += (targetRotX - birdGroup.rotation.x) * Math.min(rotationLerpSpeed * delta, 1);
+      
+      // Анимация крыльев (махи большими крыльями)
+      wingAngle += delta * wingFlapSpeed;
+      const flapValue = Math.sin(wingAngle) * 0.9;
+      leftWing.rotation.x = 0.35 + flapValue * 0.7;
+      rightWing.rotation.x = 0.35 + flapValue * 0.7;
+      leftWing.rotation.z = -0.35 + flapValue * 0.1;
+      rightWing.rotation.z = 0.35 - flapValue * 0.1;
+      
+      // Камера
+      const targetCamY = birdGroup.position.y + cameraOffsetY;
+      camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
+      camera.position.x = cameraX;
+      camera.position.z = cameraZ;
+      camera.lookAt(0, birdGroup.position.y + 0.6, 0);
+      
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+      
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    // ==================== РЕСАЙЗ ====================
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    console.log('🐣 Птичка готова! Хвост сделан веером.');
+  </script>
+</body>
+</html>
