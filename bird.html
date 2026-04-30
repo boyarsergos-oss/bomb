@@ -182,11 +182,11 @@
       lowerPipe.receiveShadow = true;
       obstacleGroup.add(lowerPipe);
       
-      // Верхняя труба (от верха прохода до потолка)
-      const upperPipeHeight = 12.0 - upperPipeBottomY; // 12.0 - новый потолок
+      // Верхняя труба (от верха прохода до "бесконечности" - значительно выше видимой области)
+      const upperPipeHeight = 100.0; // Делаем трубу очень высокой для эффекта бесконечности
       const upperPipeGeometry = new THREE.BoxGeometry(obstacleWidth, upperPipeHeight, obstacleDepth);
       const upperPipe = new THREE.Mesh(upperPipeGeometry, pipeMaterial);
-      upperPipe.position.y = upperPipeBottomY + upperPipeHeight / 2;
+      upperPipe.position.y = upperPipeBottomY + upperPipeHeight / 2; // Поднимаем центр трубы высоко вверх
       upperPipe.castShadow = true;
       upperPipe.receiveShadow = true;
       obstacleGroup.add(upperPipe);
