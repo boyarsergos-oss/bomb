@@ -450,37 +450,28 @@
                     document.getElementById('score').textContent = score;
                 }
                 
-                // Collision detection - используем очень маленький хитбокс для птицы
-                const birdSize = 0.25; // Очень маленький хитбокс - только тело птицы
-                const birdMargin = 0.3; // Дополнительный отступ для безопасности
-                const birdBox = new THREE.Box3(
-                    new THREE.Vector3(bird.position.x - birdSize + birdMargin, bird.position.y - birdSize + birdMargin, bird.position.z - birdSize + birdMargin),
-                    new THREE.Vector3(bird.position.x + birdSize - birdMargin, bird.position.y + birdSize - birdMargin, bird.position.z + birdSize - birdMargin)
-                );
+                // Collision detection - проверяем коллизию только когда птичка внутри трубы по X
+                const pipeDepth = 3; // Глубина трубы
+                const birdRadius = 0.5; // Радиус птицы для проверки
                 
-                // Получаем bounding box только для основной части труб (без caps)
-                // Уменьшаем хитбокс труб, исключая переднюю грань
-                const topPipeGeometry = pipe.top.geometry;
-                const bottomPipeGeometry = pipe.bottom.geometry;
+                // Проверяем, находится ли птичка внутри трубы по оси X
+                const dx = Math.abs(bird.position.x - pipe.top.position.x);
+                const isInPipeZone = dx < (pipeDepth / 2 + birdRadius);
                 
-                // Создаём уменьшенные боксы для труб (игнорируем переднюю часть)
-                const pipeDepthReduction = 1.5; // Уменьшаем глубину трубы для коллизии
-                const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
-                const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
-                
-                // Сжимаем боксы труб по оси X спереди
-                topPipeBox.min.x += pipeDepthReduction;
-                bottomPipeBox.min.x += pipeDepthReduction;
-                
-                // Отладка: проверяем дистанцию до трубы
-                const distToPipe = Math.abs(pipe.top.position.x - bird.position.x);
-                
-                if (birdBox.intersectsBox(topPipeBox) || birdBox.intersectsBox(bottomPipeBox)) {
-                    console.log('Collision! Distance to pipe:', distToPipe);
-                    console.log('Bird position:', bird.position);
-                    console.log('Top pipe position:', pipe.top.position);
-                    console.log('Bottom pipe position:', pipe.bottom.position);
-                    endGame();
+                if (isInPipeZone) {
+                    // Теперь проверяем только по Y - попала ли птичка в трубу по высоте
+                    const gapY = (pipe.top.position.y - pipe.bottom.position.y) / 2 + pipe.bottom.position.y;
+                    const gapHeight = 6; // Высота проёма между трубами
+                    
+                    // Если птичка выше верхней границы проёма или ниже нижней - столкновение
+                    if (bird.position.y > gapY + gapHeight/2 - birdRadius || 
+                        bird.position.y < gapY - gapHeight/2 + birdRadius) {
+                        console.log('Collision! Distance to pipe:', dx);
+                        console.log('Bird position:', bird.position);
+                        console.log('Top pipe position:', pipe.top.position);
+                        console.log('Bottom pipe position:', pipe.bottom.position);
+                        endGame();
+                    }
                 }
                 
                 // Remove off-screen pipes (удаляем трубы, которые остались далеко позади птицы)
