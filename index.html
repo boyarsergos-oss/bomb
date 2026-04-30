@@ -477,10 +477,10 @@
         }
         
         function updateCamera() {
-            // Smooth camera follow - behind the bird, looking in flight direction
+            // Smooth camera follow - directly behind the bird
             const targetX = bird.position.x - 15;
             const targetY = bird.position.y + 5;
-            const targetZ = bird.position.z + 20;
+            const targetZ = bird.position.z;
             
             camera.position.x += (targetX - camera.position.x) * 0.1;
             camera.position.y += (targetY - camera.position.y) * 0.1;
