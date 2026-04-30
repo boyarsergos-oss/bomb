@@ -566,19 +566,22 @@
       const injuryType = Math.random();
       
       if (injuryType < 0.5) {
-        // Синяк (тёмное пятно)
-        const bruiseGeometry = new THREE.CircleGeometry(0.08 + Math.random() * 0.1, 8);
+        // Синяк (тёмное пятно) - добавляем как декаль на поверхность
+        const bruiseGeometry = new THREE.CircleGeometry(0.12 + Math.random() * 0.08, 16);
         const bruiseMaterial = new THREE.MeshBasicMaterial({ 
-          color: new THREE.Color().setHSL(0.7, 0.8, 0.2 + Math.random() * 0.15),
+          color: new THREE.Color().setHSL(0.75, 0.9, 0.25 + Math.random() * 0.1),
           transparent: true,
-          opacity: 0.7
+          opacity: 0.85,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -1
         });
         const bruise = new THREE.Mesh(bruiseGeometry, bruiseMaterial);
         
-        // Позиционируем на поверхности сферы
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.random() * Math.PI;
-        const radius = 0.91; // Чуть больше радиуса тела
+        // Позиционируем на поверхности сферы - смещаем вперёд где видно
+        const theta = (Math.random() - 0.5) * Math.PI; // Ограничиваем диапазон
+        const phi = Math.PI / 2 + (Math.random() - 0.5) * 1.0; // Экваториальная зона
+        const radius = 0.92; // Чуть больше радиуса тела
         
         bruise.position.set(
           radius * Math.sin(phi) * Math.cos(theta),
@@ -586,23 +589,29 @@
           radius * Math.cos(phi)
         );
         bruise.lookAt(new THREE.Vector3(0, 0, 0));
+        bruise.rotateX(Math.PI / 2); // Поворачиваем чтобы было видно
         
         bodyMesh.add(bruise);
         bodyInjuries.push(bruise);
       } else if (injuryType < 0.8) {
         // Ссадина (красноватая полоса)
-        const scrapeGeometry = new THREE.PlaneGeometry(0.15 + Math.random() * 0.1, 0.03);
+        const scrapeLength = 0.2 + Math.random() * 0.15;
+        const scrapeGeometry = new THREE.PlaneGeometry(scrapeLength, 0.04);
         const scrapeMaterial = new THREE.MeshBasicMaterial({ 
-          color: 0x8b0000,
+          color: 0x990000,
           transparent: true,
-          opacity: 0.6,
-          side: THREE.DoubleSide
+          opacity: 0.8,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          polygonOffset: true,
+          polygonOffsetFactor: -1
         });
         const scrape = new THREE.Mesh(scrapeGeometry, scrapeMaterial);
         
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.random() * Math.PI;
-        const radius = 0.91;
+        // Позиционируем на передней части тела где видно
+        const theta = (Math.random() - 0.5) * 2.0;
+        const phi = Math.PI / 2 + (Math.random() - 0.5) * 0.8;
+        const radius = 0.92;
         
         scrape.position.set(
           radius * Math.sin(phi) * Math.cos(theta),
@@ -611,6 +620,7 @@
         );
         scrape.lookAt(new THREE.Vector3(0, 0, 0));
         scrape.rotation.z = Math.random() * Math.PI;
+        scrape.rotateX(Math.PI / 2);
         
         bodyMesh.add(scrape);
         bodyInjuries.push(scrape);
@@ -618,28 +628,36 @@
         // Отваливающийся кусок крыла
         const wing = Math.random() < 0.5 ? window.leftWingMesh : window.rightWingMesh;
         if (wing && wing.children.length > 0) {
-          // Удаляем одно перо из крыла
-          const featherIndex = Math.floor(Math.random() * wing.children.length);
-          const feather = wing.children[featherIndex];
+          // Находим первое видимое перо
+          let featherToRemove = null;
+          for (let i = 0; i < wing.children.length; i++) {
+            if (wing.children[i].visible) {
+              featherToRemove = wing.children[i];
+              break;
+            }
+          }
           
-          if (feather) {
-            // Создаём эффект отломленного куска
-            const brokenPieceGeometry = new THREE.SphereGeometry(0.15, 4, 4);
+          if (featherToRemove) {
+            // Создаём эффект отломленного куска - обломок кости
+            const brokenPieceGeometry = new THREE.CylinderGeometry(0.08, 0.05, 0.25, 8);
             const brokenPieceMaterial = new THREE.MeshStandardMaterial({ 
-              color: 0xffaa00,
-              roughness: 0.4
+              color: 0xff6600,
+              roughness: 0.6,
+              emissive: 0x331100
             });
             const brokenPiece = new THREE.Mesh(brokenPieceGeometry, brokenPieceMaterial);
             
-            // Позиция рядом с крылом
-            brokenPiece.position.copy(feather.position);
-            brokenPiece.position.y -= 0.3; // Свисает вниз
+            // Позиция где было перо
+            brokenPiece.position.copy(featherToRemove.position);
+            brokenPiece.position.y -= 0.15; // Свисает вниз
+            brokenPiece.rotation.x = Math.PI / 4;
+            brokenPiece.castShadow = true;
             
             wing.add(brokenPiece);
-            wingDamageParts.push({ piece: brokenPiece, wing: wing, originalFeather: feather });
+            wingDamageParts.push({ piece: brokenPiece, wing: wing, originalFeather: featherToRemove });
             
-            // Скрываем или удаляем оригинальное перо
-            feather.visible = false;
+            // Скрываем оригинальное перо
+            featherToRemove.visible = false;
           }
         }
       }
