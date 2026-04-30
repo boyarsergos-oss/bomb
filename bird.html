@@ -722,6 +722,9 @@
         // Скрываем подсказку когда игра активна
         deathHintEl.style.display = 'none';
         
+        // Очищаем холст перед отрисовкой счёта
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
         // Отображаем счёт
         ctx.fillStyle = 'white';
         ctx.font = 'bold 36px Arial';
