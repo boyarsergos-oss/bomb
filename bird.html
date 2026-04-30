@@ -423,11 +423,29 @@
     let birdVelocityY = 0.0;
     let forwardSpeed = 8.0; // Скорость полёта вперёд
     let distanceTraveled = 0; // Пройденное расстояние
+    let isGameOver = false; // Флаг окончания игры
     
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        birdVelocityY = flapVelocity;
+        if (isGameOver) {
+          // Перезапуск игры
+          isGameOver = false;
+          birdGroup.position.y = 1.5;
+          birdGroup.position.z = 0;
+          distanceTraveled = 0;
+          birdVelocityY = 0;
+          birdGroup.rotation.x = 0;
+          // Удаляем все препятствия
+          obstacles.forEach(obs => scene.remove(obs));
+          obstacles.length = 0;
+          // Создаём первое препятствие
+          const firstObstacle = createObstacle(obstacleSpawnInterval);
+          obstacles.push(firstObstacle);
+          scene.add(firstObstacle);
+        } else {
+          birdVelocityY = flapVelocity;
+        }
       }
     });
 
@@ -445,41 +463,61 @@
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
       
-      // Движение птички вперёд (по положительной оси Z)
-      distanceTraveled += forwardSpeed * delta;
-      birdGroup.position.z = distanceTraveled;
-      
-      birdVelocityY += gravity * delta;
-      if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
-      
-      birdGroup.position.y += birdVelocityY * delta;
-      
-      if (birdGroup.position.y <= minY) {
-        birdGroup.position.y = minY;
-        birdVelocityY = 0;
+      if (!isGameOver) {
+        // Движение птички вперёд (по положительной оси Z)
+        distanceTraveled += forwardSpeed * delta;
+        birdGroup.position.z = distanceTraveled;
+        
+        birdVelocityY += gravity * delta;
+        if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
+        
+        birdGroup.position.y += birdVelocityY * delta;
+        
+        if (birdGroup.position.y <= minY) {
+          birdGroup.position.y = minY;
+          birdVelocityY = 0;
+        }
+        if (birdGroup.position.y > 20.0) {
+          birdGroup.position.y = 20.0;
+          birdVelocityY = 0;
+        }
+        
+        // Проверка столкновений с трубами
+        const birdBox = new THREE.Box3().setFromObject(body);
+        
+        for (const obstacle of obstacles) {
+          // Проверяем только препятствия поблизости
+          if (Math.abs(obstacle.position.z - birdGroup.position.z) > 3) continue;
+          
+          // Получаем все меши препятствия
+          obstacle.children.forEach(child => {
+            if (child.isMesh) {
+              const obstacleBox = new THREE.Box3().setFromObject(child);
+              if (birdBox.intersectsBox(obstacleBox)) {
+                isGameOver = true;
+              }
+            }
+          });
+        }
+        
+        // Наклон: взлетает — смотрит вверх (-45°), падает — вниз (+45°)
+        const speedThreshold = 0.5;
+        let targetRotX = 0;
+        if (birdVelocityY > speedThreshold) {
+          targetRotX = THREE.MathUtils.degToRad(-45);
+        } else if (birdVelocityY < -speedThreshold) {
+          targetRotX = THREE.MathUtils.degToRad(45);
+        }
+        birdGroup.rotation.x += (targetRotX - birdGroup.rotation.x) * Math.min(rotationLerpSpeed * delta, 1);
+        
+        // Анимация крыльев (махи большими крыльями)
+        wingAngle += delta * wingFlapSpeed;
+        const flapValue = Math.sin(wingAngle) * 0.9;
+        leftWing.rotation.x = 0.35 + flapValue * 0.7;
+        rightWing.rotation.x = 0.35 + flapValue * 0.7;
+        leftWing.rotation.z = -0.35 + flapValue * 0.1;
+        rightWing.rotation.z = 0.35 - flapValue * 0.1;
       }
-      if (birdGroup.position.y > 20.0) {
-        birdGroup.position.y = 20.0;
-        birdVelocityY = 0;
-      }
-      
-      // Наклон: взлетает — смотрит вверх (-45°), падает — вниз (+45°)
-      const speedThreshold = 0.5;
-      let targetRotX = 0;
-      if (birdVelocityY > speedThreshold) {
-        targetRotX = THREE.MathUtils.degToRad(-45);
-      } else if (birdVelocityY < -speedThreshold) {
-        targetRotX = THREE.MathUtils.degToRad(45);
-      }
-      birdGroup.rotation.x += (targetRotX - birdGroup.rotation.x) * Math.min(rotationLerpSpeed * delta, 1);
-      
-      // Анимация крыльев (махи большими крыльями)
-      wingAngle += delta * wingFlapSpeed;
-      const flapValue = Math.sin(wingAngle) * 0.9;
-      leftWing.rotation.x = 0.35 + flapValue * 0.7;
-      rightWing.rotation.x = 0.35 + flapValue * 0.7;
-      leftWing.rotation.z = -0.35 + flapValue * 0.1;
-      rightWing.rotation.z = 0.35 - flapValue * 0.1;
       
       // Камера следует за птичкой
       const targetCamY = birdGroup.position.y + cameraOffsetY;
@@ -534,21 +572,49 @@
         }
       }
       
+      // Отображение сообщения о проигрыше
+      if (isGameOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 48px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('ИГРА ОКОНЧЕНА', canvas.width / 2, canvas.height / 2 - 30);
+        
+        ctx.font = '24px Arial';
+        ctx.fillText('Нажмите ПРОБЕЛ для рестарта', canvas.width / 2, canvas.height / 2 + 30);
+      }
+      
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
       
       requestAnimationFrame(animate);
     }
 
-    animate();
-
-    // ==================== РЕСАЙЗ ====================
+    // Создаём canvas для отображения сообщений
+    const canvas = document.createElement('canvas');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '100';
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    
+    // Обновляем размер canvas при ресайзе
     window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
       labelRenderer.setSize(window.innerWidth, window.innerHeight);
     });
+
+    animate();
 
     console.log('🐣 Птичка готова! Хвост сделан веером.');
   </script>
