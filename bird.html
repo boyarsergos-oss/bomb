@@ -122,22 +122,19 @@
     scene.add(fillLight);
 
     // ==================== ЗЕМЛЯ ====================
-    const groundGeometry = new THREE.PlaneGeometry(60, 60);
-    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x7cb342, roughness: 0.9 });
+    // Используем одну большую плоскость для земли, чтобы избежать видимых швов
+    const groundGeometry = new THREE.PlaneGeometry(100, 200);
+    const groundMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x7cb342, 
+      roughness: 0.9,
+      side: THREE.DoubleSide
+    });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -4.0;
-    ground.position.z = 0;
+    ground.position.z = 50; // Центрируем относительно области движения
     ground.receiveShadow = true;
     scene.add(ground);
-    
-    // Вторая плоскость земли для бесшовного цикла
-    const ground2 = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground2.rotation.x = -Math.PI / 2;
-    ground2.position.y = -4.0;
-    ground2.position.z = 60;
-    ground2.receiveShadow = true;
-    scene.add(ground2);
     
     // Массивы для объектов мира, чтобы двигать их
     const grassBlades = [];
