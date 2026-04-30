@@ -47,20 +47,16 @@
       backdrop-filter: blur(4px);
       display: none;
     }
-    #view-selector {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+    .view-selector-content {
       background: rgba(0,0,0,0.85);
       padding: 30px 40px;
       border-radius: 20px;
       text-align: center;
       color: white;
       backdrop-filter: blur(8px);
-      z-index: 100;
+      pointer-events: auto;
     }
-    #view-selector h2 {
+    .view-selector-content h2 {
       margin: 0 0 20px 0;
       font-size: 24px;
       letter-spacing: 1px;
@@ -88,12 +84,6 @@
   </style>
 </head>
 <body>
-  <div id="view-selector">
-    <h2>🎮 Выберите вид камеры</h2>
-    <button class="view-btn" data-view="rear">📷 Вид сзади</button>
-    <button class="view-btn" data-view="side">📷 Вид сбоку</button>
-    <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
-  </div>
   <div id="info" style="display: none;">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
   <div id="hint" style="display: none;">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
@@ -109,7 +99,7 @@
 
   <script type="module">
     import * as THREE from 'three';
-    import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ==================== НАСТРОЙКИ СЦЕНЫ ====================
@@ -150,6 +140,20 @@
     labelRenderer.domElement.style.left = '0px';
     labelRenderer.domElement.style.pointerEvents = 'none';
     document.body.appendChild(labelRenderer.domElement);
+
+    // ==================== МЕНЮ ВЫБОРА КАМЕРЫ (CSS2DObject) ====================
+    const viewSelectorDiv = document.createElement('div');
+    viewSelectorDiv.className = 'view-selector-content';
+    viewSelectorDiv.innerHTML = `
+      <h2>🎮 Выберите вид камеры</h2>
+      <button class="view-btn" data-view="rear">📷 Вид сзади</button>
+      <button class="view-btn" data-view="side">📷 Вид сбоку</button>
+      <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
+    `;
+    
+    const viewSelector = new CSS2DObject(viewSelectorDiv);
+    viewSelector.position.set(0, 1.5, 8); // Размещаем перед камерой на расстоянии 8 единиц
+    scene.add(viewSelector);
 
     // ==================== ОСВЕЩЕНИЕ ====================
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -584,8 +588,7 @@
     let gameStarted = false; // Игра ещё не началась (ждём выбора вида)
     
     // Обработчик выбора вида камеры при старте
-    const viewSelector = document.getElementById('view-selector');
-    const viewButtons = document.querySelectorAll('.view-btn');
+    const viewButtons = viewSelectorDiv.querySelectorAll('.view-btn');
     
     viewButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -614,7 +617,7 @@
         }
         
         // Скрываем селектор и показываем интерфейс игры
-        viewSelector.style.display = 'none';
+        viewSelector.visible = false;
         document.getElementById('info').style.display = 'block';
         document.getElementById('hint').style.display = 'block';
         
@@ -657,6 +660,15 @@
 
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
+      
+      // Обновляем позицию меню выбора камеры, чтобы оно всегда было перед камерой
+      if (!gameStarted) {
+        const menuDistance = 8;
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+        viewSelector.position.copy(camera.position).add(cameraDirection.multiplyScalar(menuDistance));
+        viewSelector.lookAt(camera.position);
+      }
       
       if (gameStarted && !isGameOver) {
         // Движение птички вперёд (по положительной оси Z)
