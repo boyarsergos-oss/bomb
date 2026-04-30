@@ -47,11 +47,55 @@
       backdrop-filter: blur(4px);
       display: none;
     }
+    #view-selector {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.85);
+      padding: 30px 40px;
+      border-radius: 20px;
+      text-align: center;
+      color: white;
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+    #view-selector h2 {
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      letter-spacing: 1px;
+    }
+    .view-btn {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .view-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+    }
+    .view-btn:active {
+      transform: scale(0.98);
+    }
   </style>
 </head>
 <body>
-  <div id="info">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
-  <div id="hint">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
+  <div id="view-selector">
+    <h2>🎮 Выберите вид камеры</h2>
+    <button class="view-btn" data-view="rear">📷 Вид сзади</button>
+    <button class="view-btn" data-view="side">📷 Вид сбоку</button>
+    <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
+  </div>
+  <div id="info" style="display: none;">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
+  <div id="hint" style="display: none;">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
 
   <script type="importmap">
@@ -537,16 +581,56 @@
     let distanceTraveled = 0; // Пройденное расстояние
     let isGameOver = false; // Флаг окончания игры
     let score = 0; // Счёт пролетевших труб
+    let gameStarted = false; // Игра ещё не началась (ждём выбора вида)
+    
+    // Обработчик выбора вида камеры при старте
+    const viewSelector = document.getElementById('view-selector');
+    const viewButtons = document.querySelectorAll('.view-btn');
+    
+    viewButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const selectedView = btn.getAttribute('data-view');
+        currentViewMode = selectedView;
+        
+        // Обновляем текст в info
+        const viewNames = {
+          rear: 'вид сзади',
+          side: 'вид сбоку',
+          firstPerson: 'вид от первого лица'
+        };
+        document.getElementById('info').textContent = '🐥 КРУГЛАЯ ПТИЧКА • ' + viewNames[currentViewMode];
+        
+        // Сразу устанавливаем камеру в правильную позицию для выбранного вида
+        const viewMode = viewModes[currentViewMode];
+        camera.position.set(
+          birdGroup.position.z * 0 + viewMode.offsetX,
+          birdGroup.position.y + viewMode.offsetY,
+          birdGroup.position.z + viewMode.offsetZ
+        );
+        if (currentViewMode === 'firstPerson') {
+          camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.5, birdGroup.position.z + 5);
+        } else {
+          camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z);
+        }
+        
+        // Скрываем селектор и показываем интерфейс игры
+        viewSelector.style.display = 'none';
+        document.getElementById('info').style.display = 'block';
+        document.getElementById('hint').style.display = 'block';
+        
+        gameStarted = true;
+      });
+    });
     
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        if (!isGameOver) {
+        if (gameStarted && !isGameOver) {
           birdVelocityY = flapVelocity;
         }
       }
       // Переключение видов камеры на клавишу V
-      if (e.code === 'KeyV' && !isGameOver) {
+      if (e.code === 'KeyV' && gameStarted && !isGameOver) {
         e.preventDefault();
         const viewKeys = Object.keys(viewModes);
         const currentIndex = viewKeys.indexOf(currentViewMode);
@@ -574,7 +658,7 @@
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
       
-      if (!isGameOver) {
+      if (gameStarted && !isGameOver) {
         // Движение птички вперёд (по положительной оси Z)
         distanceTraveled += forwardSpeed * delta;
         birdGroup.position.z = distanceTraveled;
