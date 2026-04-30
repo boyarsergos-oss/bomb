@@ -155,17 +155,11 @@
       <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
     `;
     
-    // Позиционируем div в центре экрана через CSS
-    viewSelectorDiv.style.position = 'absolute';
-    viewSelectorDiv.style.top = '50%';
-    viewSelectorDiv.style.left = '50%';
-    viewSelectorDiv.style.transform = 'translate(-50%, -50%)';
+    // Не используем CSS-позиционирование - позиция будет задаваться через 3D координаты
     viewSelectorDiv.style.zIndex = '200';
     
     // Создаём CSS2DObject для меню
     const viewSelectorLabel = new THREE.CSS2DObject(viewSelectorDiv);
-    // Позиционируем меню перед камерой в начальной позиции
-    viewSelectorLabel.position.set(0, 1.5, -4);
     scene.add(viewSelectorLabel);
     
     // Включаем pointer events для кнопок меню
@@ -800,13 +794,14 @@
         // controls.update() вызывается ниже после всех проверок
       }
       
-      // Обновляем позицию меню выбора камеры, чтобы оно всегда было перед камерой
+      // Обновляем позицию меню выбора камеры, чтобы оно всегда было перед камерой и в центре экрана
       if (!gameStarted && viewSelectorDiv.style.display !== 'none') {
-        // Меню остаётся на месте в центре экрана (позиция задаётся через CSS)
-        // CSS2DObject автоматически проецирует 3D координаты на экран
-        // Позиционируем меню так, чтобы оно было в центре экрана
-        viewSelectorLabel.position.copy(camera.position);
-        viewSelectorLabel.lookAt(camera.position.clone().add(new THREE.Vector3(0, 0, -1)));
+        // Позиционируем меню на расстоянии 4 единицы перед камерой
+        const menuOffset = new THREE.Vector3(0, 0, -4);
+        menuOffset.applyQuaternion(camera.quaternion);
+        viewSelectorLabel.position.copy(camera.position).add(menuOffset);
+        // Меню всегда смотрит на камеру
+        viewSelectorLabel.lookAt(camera.position);
       }
       
       // Обновляем контролы в конце кадра (для инерции)
