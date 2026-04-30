@@ -429,6 +429,35 @@
             }
         }
         
+        // Bird collision sphere radius (matches the bird body sphere of radius 1)
+        const birdCollisionRadius = 1.0;
+        
+        function checkCollision(pipe) {
+            // Get bird position
+            const birdPos = bird.position;
+            
+            // Check top pipe collision using Box3
+            const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
+            
+            // Check bottom pipe collision using Box3
+            const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
+            
+            // Create a sphere for the bird
+            const birdSphere = new THREE.Sphere(birdPos.clone(), birdCollisionRadius);
+            
+            // Check intersection with top pipe
+            if (topPipeBox.intersectsSphere(birdSphere)) {
+                return true;
+            }
+            
+            // Check intersection with bottom pipe
+            if (bottomPipeBox.intersectsSphere(birdSphere)) {
+                return true;
+            }
+            
+            return false;
+        }
+        
         function updatePipes() {
             const currentTime = Date.now();
             
@@ -456,12 +485,8 @@
                     document.getElementById('score').textContent = score;
                 }
                 
-                // Collision detection
-                const birdBox = new THREE.Box3().setFromObject(bird);
-                const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
-                const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
-                
-                if (birdBox.intersectsBox(topPipeBox) || birdBox.intersectsBox(bottomPipeBox)) {
+                // Collision detection using sphere vs box for accurate geometry-based collision
+                if (checkCollision(pipe)) {
                     endGame();
                 }
                 
