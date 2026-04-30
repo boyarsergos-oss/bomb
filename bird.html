@@ -153,28 +153,60 @@
     labelRenderer.domElement.style.position = 'absolute';
     labelRenderer.domElement.style.top = '0px';
     labelRenderer.domElement.style.left = '0px';
-    labelRenderer.domElement.style.pointerEvents = 'auto'; // Разрешаем события указателя для кнопок
-    labelRenderer.domElement.style.zIndex = '999'; // Убедимся, что рендерер поверх canvas, но под UI
+    labelRenderer.domElement.style.pointerEvents = 'auto';
+    labelRenderer.domElement.style.zIndex = '1';
     document.body.appendChild(labelRenderer.domElement);
 
-    // ==================== МЕНЮ ВЫБОРА КАМЕРЫ ====================
-    // Меню теперь обычный HTML элемент, который масштабируется с окном
-    const viewSelectorDiv = document.getElementById('view-selector-html');
-    viewSelectorDiv.style.display = 'block';
-    viewSelectorDiv.style.position = 'absolute';
-    viewSelectorDiv.style.top = '50%';
-    viewSelectorDiv.style.left = '50%';
-    viewSelectorDiv.style.transform = 'translate(-50%, -50%)';
-    viewSelectorDiv.style.zIndex = '1000';
+    // ==================== МЕНЮ ВЫБОРА КАМЕРЫ (CSS2DObject) ====================
+    // Создаём меню как CSS2DObject, чтобы оно было частью сцены и масштабировалось вместе с ней
+    const viewSelectorDiv = document.createElement('div');
+    viewSelectorDiv.innerHTML = `
+      <h2 style="margin: 0 0 20px 0; font-size: 24px; letter-spacing: 1px; color: white;">🎮 Выберите вид камеры</h2>
+      <button class="view-btn" data-view="rear" style="display: block; width: 100%; margin: 10px 0; padding: 12px 24px; font-size: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">📷 Вид сзади</button>
+      <button class="view-btn" data-view="side" style="display: block; width: 100%; margin: 10px 0; padding: 12px 24px; font-size: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">📷 Вид сбоку</button>
+      <button class="view-btn" data-view="firstPerson" style="display: block; width: 100%; margin: 10px 0; padding: 12px 24px; font-size: 16px; border: none; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;">👁️ Вид от первого лица</button>
+    `;
+    viewSelectorDiv.style.background = 'rgba(0,0,0,0.85)';
+    viewSelectorDiv.style.padding = '30px 40px';
+    viewSelectorDiv.style.borderRadius = '20px';
+    viewSelectorDiv.style.textAlign = 'center';
+    viewSelectorDiv.style.backdropFilter = 'blur(8px)';
+    
+    const viewSelectorObject = new CSS2DObject(viewSelectorDiv);
+    scene.add(viewSelectorObject);
+    
+    // Позиционируем меню перед камерой
+    function updateViewSelectorPosition() {
+      const cameraDirection = new THREE.Vector3();
+      camera.getDirection(cameraDirection);
+      const menuPosition = camera.position.clone().add(cameraDirection.multiplyScalar(5));
+      viewSelectorObject.position.copy(menuPosition);
+      viewSelectorObject.lookAt(camera.position);
+    }
     
     // Обработчики кнопок
     viewSelectorDiv.querySelectorAll('.view-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const view = btn.getAttribute('data-view');
         switchView(view);
-        viewSelectorDiv.style.display = 'none';
+        viewSelectorObject.visible = false;
       });
+      btn.style.pointerEvents = 'auto';
     });
+    
+    // Стили для hover-эффектов
+    const style = document.createElement('style');
+    style.textContent = `
+      .view-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+      }
+      .view-btn:active {
+        transform: scale(0.98);
+      }
+    `;
+    document.head.appendChild(style);
 
     // ==================== ОСВЕЩЕНИЕ ====================
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -891,6 +923,11 @@
       
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
+      
+      // Обновляем позицию меню выбора камеры в каждом кадре
+      if (viewSelectorObject && viewSelectorObject.visible) {
+        updateViewSelectorPosition();
+      }
       
       requestAnimationFrame(animate);
     }
