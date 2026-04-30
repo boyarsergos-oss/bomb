@@ -420,11 +420,18 @@
             if (bottomPipeBox.intersectsSphere(birdSphere)) {
                 collisionDetected = true;
                 // Calculate collision normal - push bird up from bottom pipe
-                const boxCenter = new THREE.Vector3();
-                bottomPipeBox.getCenter(boxCenter);
-                if (birdPos.y < boxCenter.y) {
+                // Bird is hitting the top surface of bottom pipe
+                const closestPoint = bottomPipeBox.clampPoint(birdPos.clone(), new THREE.Vector3());
+                const direction = birdPos.clone().sub(closestPoint).normalize();
+                
+                if (direction.y > 0 || Math.abs(direction.y) < 0.1) {
+                    // Hitting from above - push up
+                    collisionNormal.set(0, 1, 0);
+                    pushDistance = Math.max(pushDistance, bottomPipeBox.max.y - (birdPos.y - birdCollisionRadius));
+                } else {
+                    // Hitting from below - push down
                     collisionNormal.set(0, -1, 0);
-                    pushDistance = (birdPos.y + birdCollisionRadius) - bottomPipeBox.min.y;
+                    pushDistance = Math.max(pushDistance, (birdPos.y + birdCollisionRadius) - bottomPipeBox.min.y);
                 }
             }
             
@@ -443,9 +450,16 @@
             const bottomCapBox = new THREE.Box3().setFromObject(pipe.bottomCap);
             if (bottomCapBox.intersectsSphere(birdSphere)) {
                 collisionDetected = true;
-                const boxCenter = new THREE.Vector3();
-                bottomCapBox.getCenter(boxCenter);
-                if (birdPos.y < boxCenter.y) {
+                // Use closest point method for accurate collision normal
+                const closestPoint = bottomCapBox.clampPoint(birdPos.clone(), new THREE.Vector3());
+                const direction = birdPos.clone().sub(closestPoint).normalize();
+                
+                if (direction.y > 0 || Math.abs(direction.y) < 0.1) {
+                    // Hitting from above - push up
+                    collisionNormal.set(0, 1, 0);
+                    pushDistance = Math.max(pushDistance, bottomCapBox.max.y - (birdPos.y - birdCollisionRadius));
+                } else {
+                    // Hitting from below - push down
                     collisionNormal.set(0, -1, 0);
                     pushDistance = Math.max(pushDistance, (birdPos.y + birdCollisionRadius) - bottomCapBox.min.y);
                 }
