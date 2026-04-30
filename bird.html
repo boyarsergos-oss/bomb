@@ -52,7 +52,7 @@
 <body>
   <div id="info">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
   <div id="hint">␣ ПРОБЕЛ: рывок вверх (Flappy Bird)</div>
-  <div id="death-hint">🖱️ Крути мышкой для осмотра • ПРОБЕЛ: рестарт</div>
+  <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
 
   <script type="importmap">
     {
@@ -524,26 +524,7 @@
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        if (isGameOver) {
-          // Перезапуск игры
-          isGameOver = false;
-          birdGroup.position.y = 1.5;
-          birdGroup.position.z = 0;
-          distanceTraveled = 0;
-          birdVelocityY = 0;
-          birdGroup.rotation.x = 0;
-          // Удаляем все препятствия
-          obstacles.forEach(obs => scene.remove(obs));
-          obstacles.length = 0;
-          // Создаём первое препятствие
-          const firstObstacle = createObstacle(obstacleSpawnInterval);
-          obstacles.push(firstObstacle);
-          scene.add(firstObstacle);
-          // Отключаем контролы камеры
-          if (controls) {
-            controls.enabled = false;
-          }
-        } else {
+        if (!isGameOver) {
           birdVelocityY = flapVelocity;
         }
       }
