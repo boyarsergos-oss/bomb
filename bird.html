@@ -98,6 +98,75 @@
     labelRenderer.domElement.style.pointerEvents = 'none';
     document.body.appendChild(labelRenderer.domElement);
 
+    // ==================== СИСТЕМА ЧАСТИЦ ДЛЯ ДЕФЕКАЦИИ ====================
+    const groundLevel = -4.0;
+    const poopParticles = [];
+    const poopMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x4a3728, 
+      roughness: 0.8,
+      metalness: 0.1
+    });
+    
+    function createPoopParticle(position) {
+      const poopGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+      const poop = new THREE.Mesh(poopGeometry, poopMaterial);
+      poop.position.copy(position);
+      poop.position.y -= 0.3; // Начинаем чуть ниже птички
+      
+      // Начальная скорость
+      poop.userData.velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.5,
+        Math.random() * 0.3,
+        Math.random() * 0.5 + 0.5
+      );
+      poop.userData.rotationSpeed = new THREE.Vector3(
+        Math.random() * 0.1,
+        Math.random() * 0.1,
+        Math.random() * 0.1
+      );
+      poop.userData.onGround = false;
+      poop.castShadow = true;
+      poop.receiveShadow = true;
+      
+      scene.add(poop);
+      poopParticles.push(poop);
+      
+      return poop;
+    }
+    
+    function updatePoopParticles(delta, birdZ) {
+      for (let i = poopParticles.length - 1; i >= 0; i--) {
+        const poop = poopParticles[i];
+        
+        if (!poop.userData.onGround) {
+          // Применяем гравитацию к скорости
+          poop.userData.velocity.y -= 9.8 * delta;
+          
+          // Обновляем позицию
+          poop.position.add(poop.userData.velocity.clone().multiplyScalar(delta));
+          
+          // Вращение
+          poop.rotation.x += poop.userData.rotationSpeed.x;
+          poop.rotation.y += poop.userData.rotationSpeed.y;
+          poop.rotation.z += poop.userData.rotationSpeed.z;
+          
+          // Проверка столкновения с землёй
+          if (poop.position.y <= groundLevel + 0.08) {
+            poop.position.y = groundLevel + 0.08;
+            poop.userData.onGround = true;
+            poop.userData.velocity.set(0, 0, 0);
+          }
+        }
+        
+        // Удаляем частицы, которые ушли слишком далеко назад
+        if (poop.position.z < birdZ - 50) {
+          scene.remove(poop);
+          poop.geometry.dispose();
+          poopParticles.splice(i, 1);
+        }
+      }
+    }
+
     // ==================== ОСВЕЩЕНИЕ ====================
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
@@ -147,10 +216,6 @@
     const grassBlades = [];
     const clouds = [];
     const obstacles = []; // Массив препятствий (труб)
-    
-    // Уровень земли и радиус птички (должны быть объявлены до createObstacle)
-    const groundLevel = -4.0;
-    const birdRadius = 0.9;
     
     // Параметры для спавна препятствий
     const obstacleSpawnInterval = 25; // Расстояние между препятствиями
@@ -305,6 +370,7 @@
     scene.add(firstObstacle);
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
+    const birdRadius = 0.9;
     const birdGroup = new THREE.Group();
     birdGroup.position.set(0, 1.5, 0);
     
@@ -520,7 +586,6 @@
     const gravity = -18.0;
     const flapVelocity = 7.5;
     const maxFallSpeed = -20.0;
-    // groundLevel и birdRadius уже объявлены выше (строки 130-131)
     const minY = groundLevel + birdRadius + 0.05;
     
     let birdVelocityY = 0.0;
@@ -601,6 +666,12 @@
               const collisionRadius = birdRadius;
               if (distanceSq < collisionRadius * collisionRadius) {
                 isGameOver = true;
+                
+                // Создаём анимацию дефекации при столкновении
+                for (let i = 0; i < 8; i++) {
+                  createPoopParticle(birdGroup.position.clone());
+                }
+                
                 // Включаем контролы камеры для осмотра места смерти
                 if (!controls) {
                   controls = new OrbitControls(camera, renderer.domElement);
@@ -660,9 +731,14 @@
         controls.update();
       }
       
+      // Получаем позицию птички для обновления частиц
+      const birdZ = birdGroup.position.z;
+      
+      // Обновляем частицы дефекации
+      updatePoopParticles(delta, birdZ);
+      
       // Циклическое перемещение облаков и травы вслед за птичкой
       const cycleDistance = 80; // Расстояние, через которое объекты повторяются
-      const birdZ = birdGroup.position.z;
       
       // Перемещение сегментов земли (бесконечная земля)
       groundSegments.forEach(segment => {
