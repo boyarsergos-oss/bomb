@@ -108,7 +108,7 @@
     const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x7cb342, roughness: 0.9 });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -2.8;
+    ground.position.y = -4.0;
     ground.position.z = 0;
     ground.receiveShadow = true;
     scene.add(ground);
@@ -116,7 +116,7 @@
     // Вторая плоскость земли для бесшовного цикла
     const ground2 = new THREE.Mesh(groundGeometry, groundMaterial);
     ground2.rotation.x = -Math.PI / 2;
-    ground2.position.y = -2.8;
+    ground2.position.y = -4.0;
     ground2.position.z = 60;
     ground2.receiveShadow = true;
     scene.add(ground2);
@@ -127,20 +127,20 @@
     const obstacles = []; // Массив препятствий (труб)
     
     // Уровень земли и радиус птички (должны быть объявлены до createObstacle)
-    const groundLevel = -2.8;
+    const groundLevel = -4.0;
     const birdRadius = 0.9;
     
     // Параметры для спавна препятствий
     const obstacleSpawnInterval = 25; // Расстояние между препятствиями
-    const obstacleGapHeight = 5.0; // Высота проёма между трубами
+    const obstacleGapHeight = 6.0; // Высота проёма между трубами (увеличено)
     const obstacleWidth = 2.5; // Ширина трубы
     const obstacleDepth = 2.0; // Глубина трубы
     
     // Диапазон высот для центра прохода (от пола до потолка)
-    // Пол на y = -2.8, потолок камеры ~9.5, птичка радиусом 0.9
+    // Пол на y = -4.0, потолок камеры ~12.0, птичка радиусом 0.9
     // Центр прохода должен быть в диапазоне, чтобы проход был доступен
     const gapCenterMinY = groundLevel + obstacleGapHeight / 2 + 0.5; // Минимальная позиция центра прохода
-    const gapCenterMaxY = 9.5 - obstacleGapHeight / 2 - 0.5; // Максимальная позиция центра прохода
+    const gapCenterMaxY = 12.0 - obstacleGapHeight / 2 - 0.5; // Максимальная позиция центра прохода
     
     for (let i = 0; i < 60; i++) {
       const blade = new THREE.Mesh(
@@ -183,7 +183,7 @@
       obstacleGroup.add(lowerPipe);
       
       // Верхняя труба (от верха прохода до потолка)
-      const upperPipeHeight = 9.5 - upperPipeBottomY; // 9.5 - примерный потолок
+      const upperPipeHeight = 12.0 - upperPipeBottomY; // 12.0 - новый потолок
       const upperPipeGeometry = new THREE.BoxGeometry(obstacleWidth, upperPipeHeight, obstacleDepth);
       const upperPipe = new THREE.Mesh(upperPipeGeometry, pipeMaterial);
       upperPipe.position.y = upperPipeBottomY + upperPipeHeight / 2;
@@ -458,8 +458,8 @@
         birdGroup.position.y = minY;
         birdVelocityY = 0;
       }
-      if (birdGroup.position.y > 9.5) {
-        birdGroup.position.y = 9.5;
+      if (birdGroup.position.y > 12.0) {
+        birdGroup.position.y = 12.0;
         birdVelocityY = 0;
       }
       
