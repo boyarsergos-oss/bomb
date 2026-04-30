@@ -420,11 +420,6 @@
             // Rotate bird based on velocity
             bird.rotation.z = Math.min(Math.max(birdVelocity * 2, -0.5), 0.5);
             
-            // Ground collision
-            if (bird.position.y < -9) {
-                endGame();
-            }
-            
             // Ceiling collision
             if (bird.position.y > 25) {
                 bird.position.y = 25;
@@ -459,7 +454,7 @@
                     document.getElementById('score').textContent = score;
                 }
                 
-                // Collision detection
+                // Collision detection - птичка умирает только от взаимодействия с трубой
                 const birdBox = new THREE.Box3().setFromObject(bird);
                 const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
                 const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
@@ -471,6 +466,12 @@
                 
                 if (birdBox.intersectsBox(topPipeBox) || birdBox.intersectsBox(bottomPipeBox)) {
                     endGame();
+                }
+                
+                // Check ground collision - only stop the bird, don't end game
+                if (bird.position.y < -9) {
+                    bird.position.y = -9;
+                    birdVelocity = 0;
                 }
                 
                 // Remove off-screen pipes
