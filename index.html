@@ -163,6 +163,9 @@
             camera.position.set(-15, 5, 20);
             camera.lookAt(0, 0, 0);
             
+            // Начальная позиция для спавна первой трубы (впереди птички)
+            let nextPipeX = 30;
+            
             // Create renderer
             renderer = new THREE.WebGLRenderer({ 
                 canvas: document.getElementById('gameCanvas'),
@@ -439,10 +442,10 @@
         function updatePipes() {
             const currentTime = Date.now();
             
-            // Spawn new pipes - спавним трубу на той же позиции X, где находится птичка
+            // Spawn new pipes - спавним трубу впереди птички на фиксированном расстоянии
             if (currentTime - lastPipeTime > pipeSpawnInterval) {
-                const spawnX = bird.position.x;
-                createPipe(spawnX);
+                createPipe(nextPipeX);
+                nextPipeX += 40; // Следующая труба будет ещё на 40 единиц впереди
                 lastPipeTime = currentTime;
             }
             
@@ -506,6 +509,9 @@
             bird.position.set(0, 0, 0);
             birdVelocity = 0;
             bird.rotation.set(0, 0, 0);
+            
+            // Reset next pipe position
+            nextPipeX = 30;
             
             // Clear existing pipes
             pipes.forEach(pipe => {
