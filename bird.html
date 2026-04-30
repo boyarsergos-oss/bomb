@@ -128,11 +128,15 @@
     
     // Параметры для спавна препятствий
     const obstacleSpawnInterval = 25; // Расстояние между препятствиями
-    const obstacleGapHeight = 5.0; // Высота проёма между трубами (увеличено для более лёгкого прохождения)
-    const obstacleMinHeight = 1.5; // Минимальная высота нижней трубы
-    const obstacleMaxHeight = 5.0; // Максимальная высота нижней трубы
+    const obstacleGapHeight = 5.0; // Высота проёма между трубами
     const obstacleWidth = 2.5; // Ширина трубы
     const obstacleDepth = 2.0; // Глубина трубы
+    
+    // Диапазон высот для центра прохода (от пола до потолка)
+    // Пол на y = -2.8, потолок камеры ~9.5, птичка радиусом 0.9
+    // Центр прохода должен быть в диапазоне, чтобы проход был доступен
+    const gapCenterMinY = -2.8 + obstacleGapHeight / 2 + 0.5; // Минимальная позиция центра прохода
+    const gapCenterMaxY = 9.5 - obstacleGapHeight / 2 - 0.5; // Максимальная позиция центра прохода
     
     for (let i = 0; i < 60; i++) {
       const blade = new THREE.Mesh(
@@ -152,9 +156,12 @@
     function createObstacle(zPosition) {
       const obstacleGroup = new THREE.Group();
       
-      // Случайная высота нижней трубы
-      const lowerPipeHeight = obstacleMinHeight + Math.random() * (obstacleMaxHeight - obstacleMinHeight);
-      const upperPipeY = lowerPipeHeight + obstacleGapHeight;
+      // Случайная позиция центра прохода по вертикали
+      const gapCenterY = gapCenterMinY + Math.random() * (gapCenterMaxY - gapCenterMinY);
+      
+      // Вычисляем позиции верхней и нижней трубы на основе центра прохода
+      const lowerPipeTopY = gapCenterY - obstacleGapHeight / 2;
+      const upperPipeBottomY = gapCenterY + obstacleGapHeight / 2;
       
       const pipeMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x2e7d32, 
@@ -162,19 +169,20 @@
         metalness: 0.2
       });
       
-      // Нижняя труба
+      // Нижняя труба (от земли до низа прохода)
+      const lowerPipeHeight = lowerPipeTopY - groundLevel;
       const lowerPipeGeometry = new THREE.BoxGeometry(obstacleWidth, lowerPipeHeight, obstacleDepth);
       const lowerPipe = new THREE.Mesh(lowerPipeGeometry, pipeMaterial);
-      lowerPipe.position.y = lowerPipeHeight / 2 - 2.8; // От земли вверх
+      lowerPipe.position.y = groundLevel + lowerPipeHeight / 2;
       lowerPipe.castShadow = true;
       lowerPipe.receiveShadow = true;
       obstacleGroup.add(lowerPipe);
       
-      // Верхняя труба
-      const upperPipeHeight = 10; // Достаточно высокая верхняя труба
+      // Верхняя труба (от верха прохода до потолка)
+      const upperPipeHeight = 9.5 - upperPipeBottomY; // 9.5 - примерный потолок
       const upperPipeGeometry = new THREE.BoxGeometry(obstacleWidth, upperPipeHeight, obstacleDepth);
       const upperPipe = new THREE.Mesh(upperPipeGeometry, pipeMaterial);
-      upperPipe.position.y = upperPipeY + upperPipeHeight / 2 - 2.8;
+      upperPipe.position.y = upperPipeBottomY + upperPipeHeight / 2;
       upperPipe.castShadow = true;
       upperPipe.receiveShadow = true;
       obstacleGroup.add(upperPipe);
@@ -182,7 +190,7 @@
       // Крышка на нижней трубе
       const lowerCapGeometry = new THREE.BoxGeometry(obstacleWidth + 0.3, 0.3, obstacleDepth + 0.3);
       const lowerCap = new THREE.Mesh(lowerCapGeometry, pipeMaterial);
-      lowerCap.position.y = lowerPipeHeight - 2.8 + 0.15;
+      lowerCap.position.y = lowerPipeTopY + 0.15;
       lowerCap.castShadow = true;
       lowerCap.receiveShadow = true;
       obstacleGroup.add(lowerCap);
@@ -190,7 +198,7 @@
       // Крышка на верхней трубе
       const upperCapGeometry = new THREE.BoxGeometry(obstacleWidth + 0.3, 0.3, obstacleDepth + 0.3);
       const upperCap = new THREE.Mesh(upperCapGeometry, pipeMaterial);
-      upperCap.position.y = upperPipeY - 0.15 - 2.8;
+      upperCap.position.y = upperPipeBottomY - 0.15;
       upperCap.castShadow = true;
       upperCap.receiveShadow = true;
       obstacleGroup.add(upperCap);
