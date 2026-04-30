@@ -51,7 +51,7 @@
 </head>
 <body>
   <div id="info">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
-  <div id="hint">␣ ПРОБЕЛ: рывок вверх (Flappy Bird)</div>
+  <div id="hint">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
 
   <script type="importmap">
@@ -74,6 +74,15 @@
     scene.fog = new THREE.Fog(0xa0d8ef, 15, 60);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 200);
+    
+    // Настройки видов камеры
+    const viewModes = {
+      rear: { name: 'rear', offsetX: 0, offsetY: 2.8, offsetZ: -6.5 },      // вид сзади (текущий)
+      side: { name: 'side', offsetX: -8, offsetY: 2.8, offsetZ: 0 },         // вид сбоку
+      firstPerson: { name: 'firstPerson', offsetX: 0, offsetY: 0.5, offsetZ: 0.5 } // вид от первого лица
+    };
+    let currentViewMode = 'rear';
+    
     camera.position.set(0, 4.3, -6.5);
     camera.lookAt(0, 1.5, 0);
     
@@ -536,6 +545,22 @@
           birdVelocityY = flapVelocity;
         }
       }
+      // Переключение видов камеры на клавишу V
+      if (e.code === 'KeyV' && !isGameOver) {
+        e.preventDefault();
+        const viewKeys = Object.keys(viewModes);
+        const currentIndex = viewKeys.indexOf(currentViewMode);
+        const nextIndex = (currentIndex + 1) % viewKeys.length;
+        currentViewMode = viewKeys[nextIndex];
+        
+        // Обновляем текст в info
+        const viewNames = {
+          rear: 'вид сзади',
+          side: 'вид сбоку',
+          firstPerson: 'вид от первого лица'
+        };
+        document.getElementById('info').textContent = '🐥 КРУГЛАЯ ПТИЧКА • ' + viewNames[currentViewMode];
+      }
     });
 
     // ==================== АНИМАЦИЯ ====================
@@ -543,9 +568,6 @@
     const wingFlapSpeed = 18; // Увеличено с 10 до 18 для более быстрого махания
     const clock = new THREE.Clock();
     
-    const cameraOffsetY = 2.8;
-    const cameraZ = -6.5;
-    const cameraX = 0;
     const cameraLerpSpeed = 6.0;
     const rotationLerpSpeed = 8.0;
 
@@ -643,12 +665,21 @@
       
       // Камера следует за птичкой (только если контролы не активны)
       if (!controls || !controls.enabled) {
-        const targetCamY = birdGroup.position.y + cameraOffsetY;
-        const targetCamZ = birdGroup.position.z + cameraZ;
+        const viewMode = viewModes[currentViewMode];
+        const targetCamX = birdGroup.position.z * 0 + viewMode.offsetX; // cameraX всегда относительно Z=0 для rear/side, для firstPerson тоже
+        const targetCamY = birdGroup.position.y + viewMode.offsetY;
+        const targetCamZ = birdGroup.position.z + viewMode.offsetZ;
+        
+        camera.position.x += (targetCamX - camera.position.x) * Math.min(cameraLerpSpeed * delta, 1);
         camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
         camera.position.z += (targetCamZ - camera.position.z) * Math.min(cameraLerpSpeed * delta, 1);
-        camera.position.x = cameraX;
-        camera.lookAt(0, birdGroup.position.y + 0.6, birdGroup.position.z);
+        
+        // Для вида от первого лица смотрим чуть впереди птички, для остальных видов - на птичку
+        if (currentViewMode === 'firstPerson') {
+          camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.5, birdGroup.position.z + 5);
+        } else {
+          camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z);
+        }
       } else if (controls && controls.enabled) {
         // Если контролы активны, просто обновляем их target и сами контролы
         controls.target.copy(birdGroup.position);
