@@ -439,15 +439,9 @@
                 lastPipeTime = currentTime;
             }
             
-            // Move and check pipes
+            // Check pipes (трубы стоят на месте, не двигаем их)
             for (let i = pipes.length - 1; i >= 0; i--) {
                 const pipe = pipes[i];
-                
-                // Move pipes along X axis (вместе с птичкой по оси X)
-                pipe.top.position.x -= pipeSpeed;
-                pipe.bottom.position.x -= pipeSpeed;
-                pipe.topCap.position.x -= pipeSpeed;
-                pipe.bottomCap.position.x -= pipeSpeed;
                 
                 // Check if bird passed the pipe
                 if (!pipe.passed && pipe.top.position.x < bird.position.x) {
@@ -465,7 +459,7 @@
                     endGame();
                 }
                 
-                // Remove off-screen pipes
+                // Remove off-screen pipes (удаляем трубы, которые остались далеко позади птицы)
                 if (pipe.top.position.x < bird.position.x - 30) {
                     scene.remove(pipe.top);
                     scene.remove(pipe.bottom);
