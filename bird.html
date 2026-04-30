@@ -256,34 +256,42 @@
         roughness: 0.4 
       });
       
-      // Веер из перьев
+      // Веер из 7 перьев
       const featherCount = 7;
-      const spreadAngle = Math.PI / 3; // 60 градусов размах
-      
+      const spreadAngle = Math.PI / 2.5; // ~72 градуса размах веера
+
       for (let i = 0; i < featherCount; i++) {
         const angle = -spreadAngle / 2 + (i / (featherCount - 1)) * spreadAngle;
         const isCenter = i === Math.floor(featherCount / 2);
-        const length = isCenter ? 0.5 : 0.35 + Math.random() * 0.1;
-        const width = isCenter ? 0.12 : 0.08 + Math.random() * 0.04;
-        
+        const distFromCenter = Math.abs(i - (featherCount - 1) / 2);
+        const length = isCenter ? 0.6 : 0.45 - distFromCenter * 0.05;
+        const width = isCenter ? 0.13 : 0.10 - distFromCenter * 0.015;
+
         const feather = new THREE.Mesh(
           new THREE.ConeGeometry(width, length, 6),
           isCenter ? tailMaterial : darkMaterial
         );
+
+        // Поворот для веера: раскрываем по Z и наклоняем назад по X
+        feather.rotation.z = angle;
+        feather.rotation.x = -Math.PI / 2 + 0.15;
         
-        feather.position.set(0, 0, -length / 2);
-        feather.rotation.x = angle;
+        // Смещение по дуге
+        feather.position.set(Math.sin(angle) * 0.18, 0, -0.25 - Math.cos(angle) * 0.08);
+        
         feather.castShadow = true;
         feather.receiveShadow = true;
         tailGroup.add(feather);
-      }
       
+      }
       return tailGroup;
+
+
     }
     
     const tailGroup = createTail();
     tailGroup.position.set(0, -0.15, -0.85);
-    tailGroup.rotation.x = Math.PI;
+    
     birdGroup.add(tailGroup);
 
     scene.add(birdGroup);
