@@ -48,40 +48,6 @@
             z-index: 100;
         }
         
-        #gameOver {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            display: none;
-            z-index: 200;
-        }
-        
-        #gameOver h2 {
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        
-        #restartBtn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            padding: 15px 40px;
-            font-size: 24px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        #restartBtn:hover {
-            transform: scale(1.1);
-        }
-        
         #startScreen {
             position: absolute;
             top: 50%;
@@ -119,19 +85,13 @@
     
     <div id="instructions">
         Press SPACE or Click to Flap<br>
-        Avoid the pipes!
+        Fly through the pipes!
     </div>
     
     <div id="startScreen">
         <h1>🐦 3D Flappy Bird</h1>
         <p>Third Person Perspective</p>
         <button id="startBtn">Start Game</button>
-    </div>
-    
-    <div id="gameOver">
-        <h2>Game Over!</h2>
-        <p id="finalScore">Score: 0</p>
-        <button id="restartBtn">Play Again</button>
     </div>
     
     <canvas id="gameCanvas"></canvas>
@@ -144,7 +104,6 @@
         let pipes = [];
         let score = 0;
         let gameRunning = false;
-        let gameOver = false;
         const gravity = 0.015;
         const jumpStrength = 0.25;
         const pipeSpeed = 0.08;
@@ -197,7 +156,6 @@
             document.addEventListener('keydown', handleKeyPress);
             document.addEventListener('click', handleClick);
             document.getElementById('startBtn').addEventListener('click', startGame);
-            document.getElementById('restartBtn').addEventListener('click', restartGame);
             window.addEventListener('resize', handleResize);
             
             // Start animation loop
@@ -379,13 +337,13 @@
         }
         
         function handleKeyPress(event) {
-            if (event.code === 'Space' && gameRunning && !gameOver) {
+            if (event.code === 'Space' && gameRunning) {
                 jump();
             }
         }
         
         function handleClick() {
-            if (gameRunning && !gameOver) {
+            if (gameRunning) {
                 jump();
             }
         }
@@ -417,9 +375,10 @@
             // Rotate bird based on velocity
             bird.rotation.z = Math.min(Math.max(birdVelocity * 2, -0.5), 0.5);
             
-            // Ground collision
+            // Ground collision - teleport bird above ground instead of dying
             if (bird.position.y < -9) {
-                endGame();
+                bird.position.y = -8;
+                birdVelocity = 0;
             }
             
             // Ceiling collision
@@ -487,7 +446,8 @@
                 
                 // Collision detection using sphere vs box for accurate geometry-based collision
                 if (checkCollision(pipe)) {
-                    endGame();
+                    // Push bird up and away from pipe instead of dying
+                    birdVelocity = jumpStrength * 0.5;
                 }
                 
                 // Remove off-screen pipes
@@ -516,7 +476,6 @@
         function startGame() {
             document.getElementById('startScreen').style.display = 'none';
             gameRunning = true;
-            gameOver = false;
             score = 0;
             document.getElementById('score').textContent = score;
             
@@ -537,18 +496,6 @@
             lastPipeTime = Date.now();
         }
         
-        function endGame() {
-            gameRunning = false;
-            gameOver = true;
-            document.getElementById('finalScore').textContent = 'Score: ' + score;
-            document.getElementById('gameOver').style.display = 'block';
-        }
-        
-        function restartGame() {
-            document.getElementById('gameOver').style.display = 'none';
-            startGame();
-        }
-        
         function handleResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -558,11 +505,11 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            if (gameRunning && !gameOver) {
+            if (gameRunning) {
                 updateBird();
                 updatePipes();
                 updateCamera();
-            } else if (!gameRunning && !gameOver) {
+            } else if (!gameRunning) {
                 // Idle animation before game starts
                 bird.position.y = Math.sin(Date.now() * 0.002) * 2;
                 updateCamera();
