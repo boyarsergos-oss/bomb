@@ -318,7 +318,7 @@
             }
         }
         
-        function createPipe(xPosition) {
+        function createPipe(zPosition) {
             const pipeGap = 6;
             const pipeWidth = 3;
             const pipeDepth = 3;
@@ -338,18 +338,18 @@
             
             // Верхняя труба (свисает сверху)
             const topPipeHeight = ceilingLevel - (gapY + pipeGap / 2);
-            const topPipeGeometry = new THREE.BoxGeometry(pipeDepth, topPipeHeight, pipeWidth);
+            const topPipeGeometry = new THREE.BoxGeometry(pipeWidth, topPipeHeight, pipeDepth);
             const topPipe = new THREE.Mesh(topPipeGeometry, pipeMaterial);
-            topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, 0);
+            topPipe.position.set(0, ceilingLevel - topPipeHeight / 2, zPosition);
             topPipe.castShadow = true;
             topPipe.receiveShadow = true;
             scene.add(topPipe);
             
             // Нижняя труба (растет снизу)
             const bottomPipeHeight = gapY - groundLevel;
-            const bottomPipeGeometry = new THREE.BoxGeometry(pipeDepth, bottomPipeHeight, pipeWidth);
+            const bottomPipeGeometry = new THREE.BoxGeometry(pipeWidth, bottomPipeHeight, pipeDepth);
             const bottomPipe = new THREE.Mesh(bottomPipeGeometry, pipeMaterial);
-            bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, 0);
+            bottomPipe.position.set(0, groundLevel + bottomPipeHeight / 2, zPosition);
             bottomPipe.castShadow = true;
             bottomPipe.receiveShadow = true;
             scene.add(bottomPipe);
@@ -359,13 +359,13 @@
             const capMaterial = new THREE.MeshPhongMaterial({ color: 0x3CB371 });
             
             const topCap = new THREE.Mesh(topCapGeometry, capMaterial);
-            topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, 0);
+            topCap.position.set(0, ceilingLevel - topPipeHeight + 0.25, zPosition);
             topCap.castShadow = true;
             scene.add(topCap);
             
             // Pipe cap для нижней трубы
             const bottomCap = new THREE.Mesh(topCapGeometry, capMaterial);
-            bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, 0);
+            bottomCap.position.set(0, groundLevel + bottomPipeHeight - 0.25, zPosition);
             bottomCap.castShadow = true;
             scene.add(bottomCap);
             
@@ -411,6 +411,9 @@
             birdVelocity -= gravity;
             bird.position.y += birdVelocity;
             
+            // Птичка летит вперёд по оси Z
+            bird.position.z += pipeSpeed;
+            
             // Rotate bird based on velocity
             bird.rotation.z = Math.min(Math.max(birdVelocity * 2, -0.5), 0.5);
             
@@ -429,9 +432,10 @@
         function updatePipes() {
             const currentTime = Date.now();
             
-            // Spawn new pipes
+            // Spawn new pipes - спавним трубу на позиции Z птицы + расстояние впереди
             if (currentTime - lastPipeTime > pipeSpawnInterval) {
-                createPipe(50);
+                const spawnZ = bird.position.z + 50;
+                createPipe(spawnZ);
                 lastPipeTime = currentTime;
             }
             
@@ -439,14 +443,14 @@
             for (let i = pipes.length - 1; i >= 0; i--) {
                 const pipe = pipes[i];
                 
-                // Move pipes
-                pipe.top.position.x -= pipeSpeed;
-                pipe.bottom.position.x -= pipeSpeed;
-                pipe.topCap.position.x -= pipeSpeed;
-                pipe.bottomCap.position.x -= pipeSpeed;
+                // Move pipes along Z axis (вместе с птичкой по оси Z)
+                pipe.top.position.z -= pipeSpeed;
+                pipe.bottom.position.z -= pipeSpeed;
+                pipe.topCap.position.z -= pipeSpeed;
+                pipe.bottomCap.position.z -= pipeSpeed;
                 
                 // Check if bird passed the pipe
-                if (!pipe.passed && pipe.top.position.x < bird.position.x) {
+                if (!pipe.passed && pipe.top.position.z < bird.position.z) {
                     pipe.passed = true;
                     score++;
                     document.getElementById('score').textContent = score;
@@ -462,7 +466,7 @@
                 }
                 
                 // Remove off-screen pipes
-                if (pipe.top.position.x < -30) {
+                if (pipe.top.position.z < bird.position.z - 30) {
                     scene.remove(pipe.top);
                     scene.remove(pipe.bottom);
                     scene.remove(pipe.topCap);
@@ -476,10 +480,12 @@
             // Smooth camera follow
             const targetX = bird.position.x - 15;
             const targetY = bird.position.y + 5;
+            const targetZ = bird.position.z + 20;
             
             camera.position.x += (targetX - camera.position.x) * 0.1;
             camera.position.y += (targetY - camera.position.y) * 0.1;
-            camera.lookAt(bird.position.x, bird.position.y, 0);
+            camera.position.z += (targetZ - camera.position.z) * 0.1;
+            camera.lookAt(bird.position.x, bird.position.y, bird.position.z);
         }
         
         function startGame() {
