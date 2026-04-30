@@ -24,6 +24,18 @@
         const sphere = new THREE.Mesh(geometry, material);
         scene.add(sphere);
 
+        // Крылья
+        const wingGeometry = new THREE.BoxGeometry(1.5, 0.1, 1);
+        const wingMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
+        
+        const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+        leftWing.position.set(-1.7, 0, 0);
+        scene.add(leftWing);
+        
+        const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+        rightWing.position.set(1.7, 0, 0);
+        scene.add(rightWing);
+
         function animate() {
             requestAnimationFrame(animate);
             renderer.render(scene, camera);
