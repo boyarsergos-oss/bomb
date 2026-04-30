@@ -562,11 +562,10 @@
         
         // Проверка столкновений с трубами
         const birdPos = birdGroup.position.clone();
-        const birdRadiusSq = birdRadius * birdRadius; // Используем квадрат радиуса для оптимизации
         
         for (const obstacle of obstacles) {
-          // Проверяем только препятствия поблизости
-          if (Math.abs(obstacle.position.z - birdPos.z) > 3) continue;
+          // Проверяем только препятствия поблизости (с запасом)
+          if (Math.abs(obstacle.position.z - birdPos.z) > 5) continue;
           
           // Получаем все меши препятствия
           obstacle.children.forEach(child => {
@@ -586,8 +585,10 @@
               // Вычисляем расстояние от центра птички до ближайшей точки
               const distanceSq = birdPos.distanceToSquared(closestPoint);
               
-              // Столкновение, если расстояние меньше радиуса птички
-              if (distanceSq < birdRadiusSq) {
+              // Столкновение, если расстояние меньше радиуса птички (с небольшим запасом)
+              // Используем 0.85 * birdRadius для более честной коллизии
+              const collisionRadius = birdRadius * 0.85;
+              if (distanceSq < collisionRadius * collisionRadius) {
                 isGameOver = true;
               }
             }
