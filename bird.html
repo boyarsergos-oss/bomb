@@ -526,14 +526,9 @@
     let score = 0; // Счёт пролетевших труб
     
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') {
+      if (e.code === 'Space' && !isGameOver) {
         e.preventDefault();
-        if (!isGameOver) {
-          birdVelocityY = flapVelocity;
-        } else {
-          // Рестарт игры
-          restartGame();
-        }
+        birdVelocityY = flapVelocity;
       }
     });
 
@@ -690,9 +685,6 @@
         ctx.font = 'bold 48px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('ИГРА ОКОНЧЕНА', canvas.width / 2, canvas.height / 2 - 30);
-        
-        ctx.font = '24px Arial';
-        ctx.fillText('Нажмите ПРОБЕЛ для рестарта', canvas.width / 2, canvas.height / 2 + 30);
       } else {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
@@ -726,36 +718,6 @@
     });
 
     animate();
-
-    // Функция перезапуска игры
-    function restartGame() {
-      // Сбрасываем счёт
-      score = 0;
-      document.getElementById('score').textContent = 'Счёт: 0';
-      
-      // Сбрасываем позицию и скорость птички
-      birdGroup.position.set(0, 1.5, 0);
-      birdGroup.rotation.set(0, 0, 0);
-      birdVelocityY = 0;
-      distanceTraveled = 0;
-      
-      // Удаляем все препятствия
-      for (const obstacle of obstacles) {
-        scene.remove(obstacle);
-      }
-      obstacles.length = 0;
-      
-      // Создаём первое препятствие
-      const firstObstacle = createObstacle(obstacleSpawnInterval);
-      obstacles.push(firstObstacle);
-      scene.add(firstObstacle);
-      
-      // Сбрасываем флаг игры
-      isGameOver = false;
-      
-      // Очищаем canvas сообщений
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
 
     console.log('🐣 Птичка готова! Хвост сделан веером.');
   </script>
