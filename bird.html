@@ -48,17 +48,16 @@
       display: none;
     }
     #view-selector {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
       background: rgba(0,0,0,0.85);
       padding: 30px 40px;
       border-radius: 20px;
       text-align: center;
       color: white;
       backdrop-filter: blur(8px);
-      z-index: 100;
+      transform: translate(-50%, -50%);
+      left: 50%;
+      top: 50%;
+      position: absolute;
     }
     #view-selector h2 {
       margin: 0 0 20px 0;
@@ -88,16 +87,10 @@
   </style>
 </head>
 <body>
-  <div id="view-selector">
-    <h2>🎮 Выберите вид камеры</h2>
-    <button class="view-btn" data-view="rear">📷 Вид сзади</button>
-    <button class="view-btn" data-view="side">📷 Вид сбоку</button>
-    <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
-  </div>
   <div id="info" style="display: none;">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
   <div id="hint" style="display: none;">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
-
+  
   <script type="importmap">
     {
       "imports": {
@@ -109,7 +102,7 @@
 
   <script type="module">
     import * as THREE from 'three';
-    import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ==================== НАСТРОЙКИ СЦЕНЫ ====================
@@ -149,6 +142,7 @@
     labelRenderer.domElement.style.top = '0px';
     labelRenderer.domElement.style.left = '0px';
     labelRenderer.domElement.style.pointerEvents = 'none';
+    labelRenderer.domElement.style.zIndex = '10';
     document.body.appendChild(labelRenderer.domElement);
 
     // ==================== ОСВЕЩЕНИЕ ====================
@@ -541,6 +535,21 @@
     
     birdGroup.add(tailGroup);
 
+    // ==================== МЕНЮ ВЫБОРА КАМЕРЫ (CSS2D) ====================
+    const viewSelectorDiv = document.createElement('div');
+    viewSelectorDiv.id = 'view-selector';
+    viewSelectorDiv.innerHTML = `
+      <h2>🎮 Выберите вид камеры</h2>
+      <button class="view-btn" data-view="rear">📷 Вид сзади</button>
+      <button class="view-btn" data-view="side">📷 Вид сбоку</button>
+      <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
+    `;
+    viewSelectorDiv.style.pointerEvents = 'auto';
+    
+    const viewLabel = new CSS2DObject(viewSelectorDiv);
+    viewLabel.position.set(0, 1.5, -3);
+    birdGroup.add(viewLabel);
+
     scene.add(birdGroup);
 
     // ==================== ОБЛАКА ====================
@@ -585,10 +594,11 @@
     
     // Обработчик выбора вида камеры при старте
     const viewSelector = document.getElementById('view-selector');
-    const viewButtons = document.querySelectorAll('.view-btn');
+    const viewButtons = viewSelectorDiv.querySelectorAll('.view-btn');
     
     viewButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const selectedView = btn.getAttribute('data-view');
         currentViewMode = selectedView;
         
