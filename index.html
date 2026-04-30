@@ -472,15 +472,21 @@
                 const halfPipeDepth = pipeDepth / 2;
                 
                 // Only check collision if pipe is near the bird on X axis
-                if (Math.abs(pipeX - birdX) < (halfPipeDepth + birdRadius)) {
-                    // Get top pipe bounds
-                    const topPipeBottom = pipe.top.position.y - pipe.top.geometry.parameters.height / 2;
+                // Pipe depth is 3, so we check if bird is within pipe bounds + bird radius
+                const pipeFront = pipeX + halfPipeDepth;  // Front face of pipe (closest to bird)
+                const pipeBack = pipeX - halfPipeDepth;   // Back face of pipe
+                
+                if (birdX + birdRadius > pipeBack && birdX - birdRadius < pipeFront) {
+                    // Bird is within the X range of the pipe, now check Y and Z
                     
-                    // Get bottom pipe bounds  
-                    const bottomPipeTop = pipe.bottom.position.y + pipe.bottom.geometry.parameters.height / 2;
+                    // Get top pipe bottom edge (lowest point of top pipe)
+                    const topPipeBottomY = pipe.top.position.y - pipe.top.geometry.parameters.height / 2;
                     
-                    // Check Z-axis overlap (bird is at z=0, pipes are centered at z=0)
-                    const zOverlap = Math.abs(birdZ) < (halfPipeWidth + birdRadius * 0.5);
+                    // Get bottom pipe top edge (highest point of bottom pipe)  
+                    const bottomPipeTopY = pipe.bottom.position.y + pipe.bottom.geometry.parameters.height / 2;
+                    
+                    // Check Z-axis overlap (bird is at z=0, pipes extend from -pipeDepth/2 to +pipeDepth/2)
+                    const zOverlap = Math.abs(birdZ) < (halfPipeWidth + birdRadius);
                     
                     // Visualize collision boxes (debug)
                     const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
@@ -489,13 +495,13 @@
                     visualizeCollisionBox(bottomPipeBox, 0x0000ff); // Blue for bottom pipe
                     
                     // Check collision with top pipe
-                    if (zOverlap && birdY + birdRadius > topPipeBottom && birdX < pipeX + halfPipeDepth && birdX > pipeX - halfPipeDepth) {
+                    if (zOverlap && birdY + birdRadius > topPipeBottomY) {
                         endGame();
                         return;
                     }
                     
                     // Check collision with bottom pipe
-                    if (zOverlap && birdY - birdRadius < bottomPipeTop && birdX < pipeX + halfPipeDepth && birdX > pipeX - halfPipeDepth) {
+                    if (zOverlap && birdY - birdRadius < bottomPipeTopY) {
                         endGame();
                         return;
                     }
