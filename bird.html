@@ -230,7 +230,20 @@
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.castShadow = true;
     body.receiveShadow = true;
+    
+    // Хитбокс птички (красная прозрачная сфера для отладки)
+    const birdHitboxGeometry = new THREE.SphereGeometry(0.9, 16, 16);
+    const birdHitboxMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xff0000, 
+      transparent: true, 
+      opacity: 0.5,
+      wireframe: true
+    });
+    const birdHitbox = new THREE.Mesh(birdHitboxGeometry, birdHitboxMaterial);
+    birdHitbox.visible = true; // Включено по умолчанию
+    
     birdGroup.add(body);
+    birdGroup.add(birdHitbox);
 
     // Глаза
     function createEye(xOffset, yOffset, zOffset) {
