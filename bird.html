@@ -22,6 +22,7 @@
       letter-spacing: 1px;
       pointer-events: none;
       backdrop-filter: blur(5px);
+      z-index: 200;
     }
     #hint {
       position: absolute;
@@ -33,6 +34,7 @@
       border-radius: 20px;
       font-size: 13px;
       backdrop-filter: blur(4px);
+      z-index: 200;
     }
     #death-hint {
       position: absolute;
@@ -46,19 +48,15 @@
       font-size: 14px;
       backdrop-filter: blur(4px);
       display: none;
+      z-index: 200;
     }
     #view-selector {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
       background: rgba(0,0,0,0.85);
       padding: 30px 40px;
       border-radius: 20px;
       text-align: center;
       color: white;
       backdrop-filter: blur(8px);
-      z-index: 100;
     }
     #view-selector h2 {
       margin: 0 0 20px 0;
@@ -88,12 +86,6 @@
   </style>
 </head>
 <body>
-  <div id="view-selector">
-    <h2>🎮 Выберите вид камеры</h2>
-    <button class="view-btn" data-view="rear">📷 Вид сзади</button>
-    <button class="view-btn" data-view="side">📷 Вид сбоку</button>
-    <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
-  </div>
   <div id="info" style="display: none;">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
   <div id="hint" style="display: none;">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
@@ -148,8 +140,36 @@
     labelRenderer.domElement.style.position = 'absolute';
     labelRenderer.domElement.style.top = '0px';
     labelRenderer.domElement.style.left = '0px';
-    labelRenderer.domElement.style.pointerEvents = 'none';
+    labelRenderer.domElement.style.pointerEvents = 'auto';
+    labelRenderer.domElement.style.zIndex = '150';
     document.body.appendChild(labelRenderer.domElement);
+
+    // ==================== МЕНЮ ВЫБОРА КАМЕРЫ (3D ОБЪЕКТ) ====================
+    // Создаём панель для меню выбора камеры как 3D объект
+    const viewSelectorDiv = document.createElement('div');
+    viewSelectorDiv.id = 'view-selector';
+    viewSelectorDiv.innerHTML = `
+      <h2>🎮 Выберите вид камеры</h2>
+      <button class="view-btn" data-view="rear">📷 Вид сзади</button>
+      <button class="view-btn" data-view="side">📷 Вид сбоку</button>
+      <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
+    `;
+    
+    // Позиционируем div в центре экрана через CSS
+    viewSelectorDiv.style.position = 'absolute';
+    viewSelectorDiv.style.top = '50%';
+    viewSelectorDiv.style.left = '50%';
+    viewSelectorDiv.style.transform = 'translate(-50%, -50%)';
+    viewSelectorDiv.style.zIndex = '200';
+    
+    // Создаём CSS2DObject для меню
+    const viewSelectorLabel = new THREE.CSS2DObject(viewSelectorDiv);
+    // Позиционируем меню перед камерой в начальной позиции
+    viewSelectorLabel.position.set(0, 1.5, -4);
+    scene.add(viewSelectorLabel);
+    
+    // Включаем pointer events для кнопок меню
+    viewSelectorDiv.style.pointerEvents = 'auto';
 
     // ==================== ОСВЕЩЕНИЕ ====================
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -584,8 +604,7 @@
     let gameStarted = false; // Игра ещё не началась (ждём выбора вида)
     
     // Обработчик выбора вида камеры при старте
-    const viewSelector = document.getElementById('view-selector');
-    const viewButtons = document.querySelectorAll('.view-btn');
+    const viewButtons = viewSelectorDiv.querySelectorAll('.view-btn');
     
     viewButtons.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -614,7 +633,7 @@
         }
         
         // Скрываем селектор и показываем интерфейс игры
-        viewSelector.style.display = 'none';
+        viewSelectorDiv.style.display = 'none';
         document.getElementById('info').style.display = 'block';
         document.getElementById('hint').style.display = 'block';
         
@@ -781,6 +800,15 @@
         // controls.update() вызывается ниже после всех проверок
       }
       
+      // Обновляем позицию меню выбора камеры, чтобы оно всегда было перед камерой
+      if (!gameStarted && viewSelectorDiv.style.display !== 'none') {
+        // Меню остаётся на месте в центре экрана (позиция задаётся через CSS)
+        // CSS2DObject автоматически проецирует 3D координаты на экран
+        // Позиционируем меню так, чтобы оно было в центре экрана
+        viewSelectorLabel.position.copy(camera.position);
+        viewSelectorLabel.lookAt(camera.position.clone().add(new THREE.Vector3(0, 0, -1)));
+      }
+      
       // Обновляем контролы в конце кадра (для инерции)
       if (controls && controls.enabled) {
         controls.update();
@@ -881,7 +909,7 @@
     canvas.style.top = '0';
     canvas.style.left = '0';
     canvas.style.pointerEvents = 'none';
-    canvas.style.zIndex = '100';
+    canvas.style.zIndex = '50';
     document.body.appendChild(canvas);
     const ctx = canvas.getContext('2d');
     
