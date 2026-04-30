@@ -47,10 +47,25 @@
       backdrop-filter: blur(4px);
       display: none;
     }
+    #score {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      background: rgba(0,0,0,0.6);
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 18px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      pointer-events: none;
+      backdrop-filter: blur(5px);
+    }
   </style>
 </head>
 <body>
   <div id="info">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
+  <div id="score">Счёт: 0</div>
   <div id="hint">␣ ПРОБЕЛ: рывок вверх (Flappy Bird)</div>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
 
@@ -526,12 +541,16 @@
     let forwardSpeed = 8.0; // Скорость полёта вперёд
     let distanceTraveled = 0; // Пройденное расстояние
     let isGameOver = false; // Флаг окончания игры
+    let score = 0; // Счёт пролетевших труб
     
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
         if (!isGameOver) {
           birdVelocityY = flapVelocity;
+        } else {
+          // Рестарт игры
+          restartGame();
         }
       }
     });
@@ -575,6 +594,13 @@
         for (const obstacle of obstacles) {
           // Проверяем только препятствия поблизости (с запасом)
           if (Math.abs(obstacle.position.z - birdPos.z) > 5) continue;
+          
+          // Подсчёт очков: если птичка пролетела трубу (препятствие осталось позади)
+          if (!obstacle.userData.passed && obstacle.position.z < birdPos.z) {
+            obstacle.userData.passed = true;
+            score++;
+            document.getElementById('score').textContent = 'Счёт: ' + score;
+          }
           
           // Получаем все меши препятствия
           obstacle.children.forEach(child => {
@@ -750,6 +776,40 @@
     });
 
     animate();
+
+    // Функция перезапуска игры
+    function restartGame() {
+      // Сбрасываем счёт
+      score = 0;
+      document.getElementById('score').textContent = 'Счёт: 0';
+      
+      // Сбрасываем позицию и скорость птички
+      birdGroup.position.set(0, 1.5, 0);
+      birdVelocityY = 0;
+      distanceTraveled = 0;
+      
+      // Удаляем все препятствия
+      for (const obstacle of obstacles) {
+        scene.remove(obstacle);
+      }
+      obstacles.length = 0;
+      
+      // Создаём первое препятствие
+      const firstObstacle = createObstacle(obstacleSpawnInterval);
+      obstacles.push(firstObstacle);
+      scene.add(firstObstacle);
+      
+      // Сбрасываем флаг игры
+      isGameOver = false;
+      
+      // Отключаем контролы камеры если они были включены
+      if (controls) {
+        controls.enabled = false;
+      }
+      
+      // Очищаем canvas сообщений
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 
     console.log('🐣 Птичка готова! Хвост сделан веером.');
   </script>
