@@ -318,7 +318,7 @@
             }
         }
         
-        function createPipe(xPosition, birdY) {
+        function createPipe(xPosition, birdY, birdZ) {
             const pipeGap = 6;
             const pipeWidth = 3;
             const pipeDepth = 3;
@@ -328,11 +328,10 @@
             const ceilingLevel = 10;
             
             // Позиция разрыва между трубами центрируется относительно позиции птички по Y
-            // Добавляем небольшой случайный разброс для сложности
-            const randomOffset = (Math.random() - 0.5) * 4;
+            // Убираем случайный разброс - трубы должны быть точно по центру птички
             const gapY = Math.max(groundLevel + minPipeLength + pipeGap / 2, 
                           Math.min(ceilingLevel - minPipeLength - pipeGap / 2, 
-                                   birdY + randomOffset));
+                                   birdY));
             
             // Pipe material
             const pipeMaterial = new THREE.MeshPhongMaterial({ 
@@ -344,7 +343,7 @@
             const topPipeHeight = ceilingLevel - (gapY + pipeGap / 2);
             const topPipeGeometry = new THREE.BoxGeometry(pipeDepth, topPipeHeight, pipeWidth);
             const topPipe = new THREE.Mesh(topPipeGeometry, pipeMaterial);
-            topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, 0);
+            topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, birdZ);
             topPipe.castShadow = true;
             topPipe.receiveShadow = true;
             scene.add(topPipe);
@@ -353,7 +352,7 @@
             const bottomPipeHeight = gapY - groundLevel;
             const bottomPipeGeometry = new THREE.BoxGeometry(pipeDepth, bottomPipeHeight, pipeWidth);
             const bottomPipe = new THREE.Mesh(bottomPipeGeometry, pipeMaterial);
-            bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, 0);
+            bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, birdZ);
             bottomPipe.castShadow = true;
             bottomPipe.receiveShadow = true;
             scene.add(bottomPipe);
@@ -363,13 +362,13 @@
             const capMaterial = new THREE.MeshPhongMaterial({ color: 0x3CB371 });
             
             const topCap = new THREE.Mesh(topCapGeometry, capMaterial);
-            topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, 0);
+            topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, birdZ);
             topCap.castShadow = true;
             scene.add(topCap);
             
             // Pipe cap для нижней трубы
             const bottomCap = new THREE.Mesh(topCapGeometry, capMaterial);
-            bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, 0);
+            bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, birdZ);
             bottomCap.castShadow = true;
             scene.add(bottomCap);
             
@@ -439,7 +438,7 @@
             // Spawn new pipes - спавним трубу на позиции X птицы + расстояние впереди
             if (currentTime - lastPipeTime > pipeSpawnInterval) {
                 const spawnX = bird.position.x + 50;
-                createPipe(spawnX, bird.position.y);
+                createPipe(spawnX, bird.position.y, bird.position.z);
                 lastPipeTime = currentTime;
             }
             
