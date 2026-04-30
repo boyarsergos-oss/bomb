@@ -318,7 +318,7 @@
             }
         }
         
-        function createPipe(xPosition) {
+        function createPipe(xPosition, birdY) {
             const pipeGap = 6;
             const pipeWidth = 3;
             const pipeDepth = 3;
@@ -327,8 +327,12 @@
             const groundLevel = -10;
             const ceilingLevel = 10;
             
-            // Случайная позиция разрыва между трубами
-            const gapY = (minPipeLength + Math.random() * (maxPipeLength - minPipeLength)) + groundLevel + pipeGap / 2;
+            // Позиция разрыва между трубами центрируется относительно позиции птички по Y
+            // Добавляем небольшой случайный разброс для сложности
+            const randomOffset = (Math.random() - 0.5) * 4;
+            const gapY = Math.max(groundLevel + minPipeLength + pipeGap / 2, 
+                          Math.min(ceilingLevel - minPipeLength - pipeGap / 2, 
+                                   birdY + randomOffset));
             
             // Pipe material
             const pipeMaterial = new THREE.MeshPhongMaterial({ 
@@ -435,7 +439,7 @@
             // Spawn new pipes - спавним трубу на позиции X птицы + расстояние впереди
             if (currentTime - lastPipeTime > pipeSpawnInterval) {
                 const spawnX = bird.position.x + 50;
-                createPipe(spawnX);
+                createPipe(spawnX, bird.position.y);
                 lastPipeTime = currentTime;
             }
             
