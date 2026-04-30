@@ -300,6 +300,7 @@
     
     // Создаём первое препятствие
     const firstObstacle = createObstacle(obstacleSpawnInterval);
+    firstObstacle.passed = false;
     obstacles.push(firstObstacle);
     scene.add(firstObstacle);
 
@@ -690,8 +691,17 @@
       if (lastObstacle && birdZ > lastObstacle.position.z - obstacleSpawnInterval) {
         const newObstacleZ = lastObstacle.position.z + obstacleSpawnInterval;
         const newObstacle = createObstacle(newObstacleZ);
+        newObstacle.passed = false;
         obstacles.push(newObstacle);
         scene.add(newObstacle);
+      }
+      
+      // Проверяем, пролетела ли птичка мимо препятствия (счёт)
+      for (let i = 0; i < obstacles.length; i++) {
+        if (!obstacles[i].passed && birdZ > obstacles[i].position.z) {
+          obstacles[i].passed = true;
+          score++;
+        }
       }
       
       // Удаляем препятствия, которые остались далеко позади
@@ -699,7 +709,6 @@
         if (obstacles[i].position.z < birdZ - 30) {
           scene.remove(obstacles[i]);
           obstacles.splice(i, 1);
-          score++;
         }
       }
       
