@@ -16,29 +16,35 @@ venv/
 .venv/
 .env
 .env.local
-*.env.*
+.env.*
 
 # Build directories
 dist/
 build/
 target/
+
+# Python specific
+*.pyc
+__pycache__/
 .mypy_cache/
 .pytest_cache/
 .coverage
 coverage/
 htmlcov/
 
-# Editors and IDEs
+# Editors
 .vscode/
 .idea/
 *.swp
 *.swo
-*.tmp
 
 # System files
 .DS_Store
 Thumbs.db
+
+# Logs and temp files
 *.log
+*.tmp
 
 # Compressed files
 *.zip
@@ -67,153 +73,12 @@ Thumbs.db
 # Gradle
 .gradle/
 
-# Python specific
-*.pyc
-__pycache__/
-*.pyo
-*.pyd
-.Python
-*.so
+# JVM
+.classpath
+.project
+.settings/
 
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
-.hypothesis/
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-
-# Translations
-*.mo
-*.pot
-
-# Django
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask
-instance/
-.webassets-cache
-
-# Scrapy
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-ENV/
-env.bak/
-ENV.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre
-.pyre/
-
-# pytype
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-# JetBrains specific template is maintained in a separate file.
-.idea/
-
-# Coverage
-coverage/
-.coverage*
-.nox/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# End of standard Python gitignore
+# Node
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

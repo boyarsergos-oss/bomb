@@ -113,16 +113,16 @@
       poop.position.copy(position);
       poop.position.y -= 0.3; // Начинаем чуть ниже птички
       
-      // Начальная скорость: быстрее и под 45 градусов вниз
-      // При 45 градусах вниз: vx = vz (горизонтально), vy = -vz (вертикально вниз)
-      const speed = 12; // Увеличенная скорость
-      const horizontalSpeed = speed * Math.cos(Math.PI / 4); // cos(45°) ≈ 0.707
-      const verticalSpeed = -speed * Math.sin(Math.PI / 4); // sin(45°) ≈ 0.707, отрицательно для направления вниз
+      // Начальная скорость: быстрее и под 45 градусов вниз-на-камеру
+      // При 45 градусах вниз-на-камеру: vy (вниз) = vz (на камеру), vx небольшой разброс
+      const speed = 18; // Еще более высокая скорость
+      const verticalSpeed = -speed * Math.sin(Math.PI / 4); // Вниз (Y отрицательный)
+      const forwardSpeed = speed * Math.cos(Math.PI / 4); // На камеру (Z положительный)
       
       poop.userData.velocity = new THREE.Vector3(
-        (Math.random() - 0.5) * horizontalSpeed, // Случайное отклонение по X
-        verticalSpeed + (Math.random() - 0.5) * 2, // Вниз с небольшим разбросом
-        horizontalSpeed + Math.random() * 3 // Вперёд с небольшим разбросом
+        (Math.random() - 0.5) * 3, // Небольшой разброс по X (влево-вправо)
+        verticalSpeed,             // Строго вниз под 45 градусов
+        forwardSpeed + Math.random() * 2 // На камеру с небольшим разбросом
       );
       poop.userData.rotationSpeed = new THREE.Vector3(
         Math.random() * 0.3,
