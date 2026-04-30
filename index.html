@@ -395,22 +395,29 @@
             // Get bird position
             const birdPos = bird.position;
             
-            // Check top pipe collision using Box3
-            const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
-            
-            // Check bottom pipe collision using Box3
-            const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
-            
             // Create a sphere for the bird
             const birdSphere = new THREE.Sphere(birdPos.clone(), birdCollisionRadius);
             
-            // Check intersection with top pipe
+            // Check top pipe and cap collision using Box3
+            const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
             if (topPipeBox.intersectsSphere(birdSphere)) {
                 return true;
             }
             
-            // Check intersection with bottom pipe
+            // Check bottom pipe and cap collision using Box3
+            const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
             if (bottomPipeBox.intersectsSphere(birdSphere)) {
+                return true;
+            }
+            
+            // Also check caps for more accurate collision
+            const topCapBox = new THREE.Box3().setFromObject(pipe.topCap);
+            if (topCapBox.intersectsSphere(birdSphere)) {
+                return true;
+            }
+            
+            const bottomCapBox = new THREE.Box3().setFromObject(pipe.bottomCap);
+            if (bottomCapBox.intersectsSphere(birdSphere)) {
                 return true;
             }
             
