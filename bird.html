@@ -122,19 +122,26 @@
     scene.add(fillLight);
 
     // ==================== ЗЕМЛЯ ====================
-    // Используем одну большую плоскость для земли, чтобы избежать видимых швов
-    const groundGeometry = new THREE.PlaneGeometry(100, 200);
-    const groundMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x7cb342, 
-      roughness: 0.9,
-      side: THREE.DoubleSide
-    });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -4.0;
-    ground.position.z = 50; // Центрируем относительно области движения
-    ground.receiveShadow = true;
-    scene.add(ground);
+    // Создаём несколько сегментов земли для бесконечного эффекта
+    const groundSegments = [];
+    const groundSegmentLength = 100;
+    const numGroundSegments = 5; // Количество сегментов
+    
+    for (let i = 0; i < numGroundSegments; i++) {
+      const groundGeometry = new THREE.PlaneGeometry(groundSegmentLength, 200);
+      const groundMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x7cb342, 
+        roughness: 0.9,
+        side: THREE.DoubleSide
+      });
+      const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -4.0;
+      ground.position.z = 50 + i * groundSegmentLength;
+      ground.receiveShadow = true;
+      scene.add(ground);
+      groundSegments.push(ground);
+    }
     
     // Массивы для объектов мира, чтобы двигать их
     const grassBlades = [];
@@ -655,11 +662,12 @@
       const cycleDistance = 80; // Расстояние, через которое объекты повторяются
       const birdZ = birdGroup.position.z;
       
-      // Перемещение земли (одна большая плоскость)
-      const groundSize = 200;
-      if (ground.position.z - groundSize / 2 > birdZ + 10) {
-        ground.position.z -= groundSize;
-      }
+      // Перемещение сегментов земли (бесконечная земля)
+      groundSegments.forEach(segment => {
+        if (segment.position.z < birdZ - 60) {
+          segment.position.z += numGroundSegments * groundSegmentLength;
+        }
+      });
       
       // Перемещение облаков (теперь летим в плюс Z, поэтому объекты, которые остались сзади (меньше birdZ), телепортируются вперед)
       clouds.forEach(cloud => {
