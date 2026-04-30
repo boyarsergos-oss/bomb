@@ -471,30 +471,33 @@
                 const halfPipeWidth = pipeWidth / 2;
                 const halfPipeDepth = pipeDepth / 2;
                 
-                // Only check collision if pipe is near the bird on X axis
-                // Pipe depth is 3, so we check if bird is within pipe bounds + bird radius
-                const pipeFront = pipeX + halfPipeDepth;  // Front face of pipe (closest to bird)
-                const pipeBack = pipeX - halfPipeDepth;   // Back face of pipe
+                // Calculate exact edges of pipes based on their positions and heights
+                const topPipeHeight = pipe.top.geometry.parameters.height;
+                const bottomPipeHeight = pipe.bottom.geometry.parameters.height;
                 
-                if (birdX + birdRadius > pipeBack && birdX - birdRadius < pipeFront) {
-                    // Bird is within the X range of the pipe, now check Y and Z
-                    
-                    // Calculate exact edges of pipes based on their positions and heights
-                    const topPipeHeight = pipe.top.geometry.parameters.height;
-                    const bottomPipeHeight = pipe.bottom.geometry.parameters.height;
-                    
-                    // Top pipe: position.y is center, extends downward
-                    // Bottom edge of top pipe = center - height/2
-                    const topPipeBottomY = pipe.top.position.y - topPipeHeight / 2;
-                    
-                    // Bottom pipe: position.y is center, extends upward  
-                    // Top edge of bottom pipe = center + height/2
-                    const bottomPipeTopY = pipe.bottom.position.y + bottomPipeHeight / 2;
-                    
-                    // Check Z-axis overlap (bird is at z=0, pipes extend from -pipeDepth/2 to +pipeDepth/2 in Z)
-                    // pipeWidth is actually the Z-dimension for our pipes
-                    const zOverlap = Math.abs(birdZ) < (halfPipeWidth + birdRadius);
-                    
+                // Top pipe: position.y is center, extends downward
+                // Bottom edge of top pipe = center - height/2
+                const topPipeBottomY = pipe.top.position.y - topPipeHeight / 2;
+                
+                // Bottom pipe: position.y is center, extends upward  
+                // Top edge of bottom pipe = center + height/2
+                const bottomPipeTopY = pipe.bottom.position.y + bottomPipeHeight / 2;
+                
+                // Pipe bounds in X axis
+                const pipeLeft = pipeX - halfPipeDepth;
+                const pipeRight = pipeX + halfPipeDepth;
+                
+                // Bird bounds in X axis
+                const birdLeft = birdX - birdRadius;
+                const birdRight = birdX + birdRadius;
+                
+                // Check if bird overlaps with pipe in X axis
+                const xOverlap = birdRight > pipeLeft && birdLeft < pipeRight;
+                
+                // Check Z-axis overlap (bird is at z=0, pipes extend from -halfPipeWidth to +halfPipeWidth in Z)
+                const zOverlap = Math.abs(birdZ) < (halfPipeWidth + birdRadius);
+                
+                if (xOverlap && zOverlap) {
                     // Visualize collision boxes (debug)
                     const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
                     const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
@@ -502,13 +505,13 @@
                     visualizeCollisionBox(bottomPipeBox, 0x0000ff); // Blue for bottom pipe
                     
                     // Check collision with top pipe - bird's top exceeds bottom of top pipe
-                    if (zOverlap && birdY + birdRadius > topPipeBottomY) {
+                    if (birdY + birdRadius > topPipeBottomY) {
                         endGame();
                         return;
                     }
                     
                     // Check collision with bottom pipe - bird's bottom goes below top of bottom pipe
-                    if (zOverlap && birdY - birdRadius < bottomPipeTopY) {
+                    if (birdY - birdRadius < bottomPipeTopY) {
                         endGame();
                         return;
                     }
