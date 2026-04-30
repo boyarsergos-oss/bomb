@@ -340,8 +340,9 @@
             });
             
             // Верхняя труба (свисает сверху)
-            const topPipeHeight = ceilingLevel - (gapY + pipeGap / 2);
-            const topPipeGeometry = new THREE.BoxGeometry(pipeDepth, topPipeHeight, pipeWidth);
+            const topPipeBottom = gapY + pipeGap / 2;
+            const topPipeHeight = ceilingLevel - topPipeBottom;
+            const topPipeGeometry = new THREE.BoxGeometry(pipeWidth, topPipeHeight, pipeDepth);
             const topPipe = new THREE.Mesh(topPipeGeometry, pipeMaterial);
             topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, pipeZ);
             topPipe.castShadow = true;
@@ -349,8 +350,9 @@
             scene.add(topPipe);
             
             // Нижняя труба (растет снизу)
-            const bottomPipeHeight = gapY - groundLevel;
-            const bottomPipeGeometry = new THREE.BoxGeometry(pipeDepth, bottomPipeHeight, pipeWidth);
+            const bottomPipeTop = gapY - pipeGap / 2;
+            const bottomPipeHeight = bottomPipeTop - groundLevel;
+            const bottomPipeGeometry = new THREE.BoxGeometry(pipeWidth, bottomPipeHeight, pipeDepth);
             const bottomPipe = new THREE.Mesh(bottomPipeGeometry, pipeMaterial);
             bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, pipeZ);
             bottomPipe.castShadow = true;
@@ -362,13 +364,15 @@
             const capMaterial = new THREE.MeshPhongMaterial({ color: 0x3CB371 });
             
             const topCap = new THREE.Mesh(topCapGeometry, capMaterial);
-            topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, pipeZ);
+            topCap.rotation.x = Math.PI / 2;
+            topCap.position.set(xPosition, topPipeBottom + 0.25, pipeZ);
             topCap.castShadow = true;
             scene.add(topCap);
             
             // Pipe cap для нижней трубы
             const bottomCap = new THREE.Mesh(topCapGeometry, capMaterial);
-            bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, pipeZ);
+            bottomCap.rotation.x = Math.PI / 2;
+            bottomCap.position.set(xPosition, bottomPipeTop - 0.25, pipeZ);
             bottomCap.castShadow = true;
             scene.add(bottomCap);
             
