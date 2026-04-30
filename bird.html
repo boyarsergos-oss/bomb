@@ -103,7 +103,7 @@
     fillLight.position.set(-5, 0, -5);
     scene.add(fillLight);
 
-    // ==================== ЗЕМЛЯ (бесконечная) ====================
+    // ==================== ЗЕМЛЯ ====================
     const groundGeometry = new THREE.PlaneGeometry(60, 60);
     const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x7cb342, roughness: 0.9 });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -112,20 +112,17 @@
     ground.receiveShadow = true;
     scene.add(ground);
     
-    // Массив для хранения травинок, чтобы управлять их перемещением
-    const grassBlades = [];
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 60; i++) {
       const blade = new THREE.Mesh(
         new THREE.ConeGeometry(0.08, 0.3, 4),
         new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.7 })
       );
-      blade.position.x = (Math.random() - 0.5) * 60;
-      blade.position.z = (Math.random() - 0.5) * 60;
+      blade.position.x = (Math.random() - 0.5) * 25;
+      blade.position.z = (Math.random() - 0.5) * 25;
       blade.position.y = -2.65;
       blade.castShadow = true;
       blade.receiveShadow = true;
       scene.add(blade);
-      grassBlades.push(blade);
     }
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
@@ -300,7 +297,6 @@
     scene.add(birdGroup);
 
     // ==================== ОБЛАКА ====================
-    const clouds = [];
     function createCloud(x, y, z) {
       const cloudGroup = new THREE.Group();
       const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.85 });
@@ -316,14 +312,13 @@
       return cloudGroup;
     }
     
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 30; i++) {
       const cloud = createCloud(
-        (Math.random() - 0.5) * 60,
+        (Math.random() - 0.5) * 45,
         4 + Math.random() * 8,
-        (Math.random() - 0.5) * 80
+        (Math.random() - 0.5) * 40
       );
       scene.add(cloud);
-      clouds.push(cloud);
     }
 
     // ==================== ФИЗИКА FLAPPY BIRD ====================
@@ -335,8 +330,6 @@
     const minY = groundLevel + birdRadius + 0.05;
     
     let birdVelocityY = 0.0;
-    let forwardSpeed = 8.0; // Скорость полета вперед
-    let distanceTraveled = 0; // Пройденное расстояние
     
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
@@ -358,10 +351,6 @@
 
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
-      
-      // Движение вперед (птичка летит в отрицательном направлении Z)
-      distanceTraveled += forwardSpeed * delta;
-      birdGroup.position.z -= forwardSpeed * delta;
       
       birdVelocityY += gravity * delta;
       if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
@@ -395,30 +384,12 @@
       leftWing.rotation.z = -0.35 + flapValue * 0.1;
       rightWing.rotation.z = 0.35 - flapValue * 0.1;
       
-      // Камера следует за птичкой
+      // Камера
       const targetCamY = birdGroup.position.y + cameraOffsetY;
-      const targetCamZ = birdGroup.position.z + cameraZ;
       camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
-      camera.position.z += (targetCamZ - camera.position.z) * Math.min(cameraLerpSpeed * delta, 1);
       camera.position.x = cameraX;
-      camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z - 3);
-      
-      // Бесконечный мир: перемещаем облака и траву вслед за птичкой
-      // Облака: если улетели далеко позади, перемещаем вперед
-      clouds.forEach(cloud => {
-        if (cloud.position.z > birdGroup.position.z + 20) {
-          cloud.position.z = birdGroup.position.z - 60 + Math.random() * 20;
-          cloud.position.x = (Math.random() - 0.5) * 60;
-        }
-      });
-      
-      // Травинки: если улетели далеко позади, перемещаем вперед
-      grassBlades.forEach(blade => {
-        if (blade.position.z > birdGroup.position.z + 15) {
-          blade.position.z = birdGroup.position.z - 45 + Math.random() * 15;
-          blade.position.x = (Math.random() - 0.5) * 60;
-        }
-      });
+      camera.position.z = cameraZ;
+      camera.lookAt(0, birdGroup.position.y + 0.6, 0);
       
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
