@@ -59,6 +59,7 @@
       color: white;
       backdrop-filter: blur(8px);
       z-index: 100;
+      pointer-events: auto;
     }
     #view-selector h2 {
       margin: 0 0 20px 0;
@@ -85,10 +86,14 @@
     .view-btn:active {
       transform: scale(0.98);
     }
+    /* Скрываем HTML меню, так как теперь оно в сцене */
+    #view-selector-html {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <div id="view-selector">
+  <div id="view-selector-html">
     <h2>🎮 Выберите вид камеры</h2>
     <button class="view-btn" data-view="rear">📷 Вид сзади</button>
     <button class="view-btn" data-view="side">📷 Вид сбоку</button>
@@ -109,7 +114,7 @@
 
   <script type="module">
     import * as THREE from 'three';
-    import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ==================== НАСТРОЙКИ СЦЕНЫ ====================
@@ -150,6 +155,62 @@
     labelRenderer.domElement.style.left = '0px';
     labelRenderer.domElement.style.pointerEvents = 'none';
     document.body.appendChild(labelRenderer.domElement);
+
+    // ==================== МЕНЮ ВЫБОРА КАМЕРЫ В СЦЕНЕ ====================
+    // Создаём меню выбора камеры как часть сцены (CSS2DObject)
+    const viewSelectorDiv = document.createElement('div');
+    viewSelectorDiv.className = 'view-selector-scene';
+    viewSelectorDiv.innerHTML = `
+      <h2>🎮 Выберите вид камеры</h2>
+      <button class="view-btn" data-view="rear">📷 Вид сзади</button>
+      <button class="view-btn" data-view="side">📷 Вид сбоку</button>
+      <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
+    `;
+    
+    // Стили для меню в сцене
+    viewSelectorDiv.style.background = 'rgba(0,0,0,0.85)';
+    viewSelectorDiv.style.padding = '30px 40px';
+    viewSelectorDiv.style.borderRadius = '20px';
+    viewSelectorDiv.style.textAlign = 'center';
+    viewSelectorDiv.style.color = 'white';
+    viewSelectorDiv.style.backdropFilter = 'blur(8px)';
+    viewSelectorDiv.style.pointerEvents = 'auto';
+    
+    const viewSelectorObject = new CSS2DObject(viewSelectorDiv);
+    // Размещаем меню перед камерой на старте - позиция будет обновляться в animate()
+    viewSelectorObject.position.set(0, 1.5, -5);
+    scene.add(viewSelectorObject);
+    
+    // Добавляем стили для кнопок внутри меню сцены
+    const style = document.createElement('style');
+    style.textContent = `
+      .view-selector-scene h2 {
+        margin: 0 0 20px 0;
+        font-size: 24px;
+        letter-spacing: 1px;
+      }
+      .view-selector-scene .view-btn {
+        display: block;
+        width: 100%;
+        margin: 10px 0;
+        padding: 12px 24px;
+        font-size: 16px;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .view-selector-scene .view-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+      }
+      .view-selector-scene .view-btn:active {
+        transform: scale(0.98);
+      }
+    `;
+    document.head.appendChild(style);
 
     // ==================== ОСВЕЩЕНИЕ ====================
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -584,10 +645,10 @@
     let gameStarted = false; // Игра ещё не началась (ждём выбора вида)
     
     // Обработчик выбора вида камеры при старте
-    const viewSelector = document.getElementById('view-selector');
-    const viewButtons = document.querySelectorAll('.view-btn');
+    const viewSelectorHtml = document.getElementById('view-selector-html');
+    const viewButtonsScene = viewSelectorDiv.querySelectorAll('.view-btn');
     
-    viewButtons.forEach(btn => {
+    viewButtonsScene.forEach(btn => {
       btn.addEventListener('click', () => {
         const selectedView = btn.getAttribute('data-view');
         currentViewMode = selectedView;
@@ -613,8 +674,8 @@
           camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z);
         }
         
-        // Скрываем селектор и показываем интерфейс игры
-        viewSelector.style.display = 'none';
+        // Скрываем меню из сцены и показываем интерфейс игры
+        scene.remove(viewSelectorObject);
         document.getElementById('info').style.display = 'block';
         document.getElementById('hint').style.display = 'block';
         
@@ -779,6 +840,12 @@
         // Если контролы активны, просто обновляем их target и сами контролы
         controls.target.copy(birdGroup.position);
         // controls.update() вызывается ниже после всех проверок
+      }
+      
+      // Обновляем позицию меню выбора камеры, чтобы оно следовало за камерой (пока не выбран вид)
+      if (!gameStarted && viewSelectorObject) {
+        viewSelectorObject.position.copy(camera.position);
+        viewSelectorObject.position.z -= 5; // Меню перед камерой
       }
       
       // Обновляем контролы в конце кадра (для инерции)
