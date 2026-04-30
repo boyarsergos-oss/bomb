@@ -103,7 +103,7 @@
     fillLight.position.set(-5, 0, -5);
     scene.add(fillLight);
 
-    // ==================== ЗЕМЛЯ ====================
+    // ==================== ЗЕМЛЯ (бесконечная) ====================
     const groundGeometry = new THREE.PlaneGeometry(60, 60);
     const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x7cb342, roughness: 0.9 });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -112,17 +112,20 @@
     ground.receiveShadow = true;
     scene.add(ground);
     
-    for (let i = 0; i < 60; i++) {
+    // Массив для хранения травинок, чтобы управлять их перемещением
+    const grassBlades = [];
+    for (let i = 0; i < 150; i++) {
       const blade = new THREE.Mesh(
         new THREE.ConeGeometry(0.08, 0.3, 4),
         new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.7 })
       );
-      blade.position.x = (Math.random() - 0.5) * 25;
-      blade.position.z = (Math.random() - 0.5) * 25;
+      blade.position.x = (Math.random() - 0.5) * 60;
+      blade.position.z = (Math.random() - 0.5) * 60;
       blade.position.y = -2.65;
       blade.castShadow = true;
       blade.receiveShadow = true;
       scene.add(blade);
+      grassBlades.push(blade);
     }
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
@@ -297,6 +300,7 @@
     scene.add(birdGroup);
 
     // ==================== ОБЛАКА ====================
+    const clouds = [];
     function createCloud(x, y, z) {
       const cloudGroup = new THREE.Group();
       const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, transparent: true, opacity: 0.85 });
@@ -312,13 +316,14 @@
       return cloudGroup;
     }
     
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 40; i++) {
       const cloud = createCloud(
-        (Math.random() - 0.5) * 45,
+        (Math.random() - 0.5) * 60,
         4 + Math.random() * 8,
-        (Math.random() - 0.5) * 40
+        (Math.random() - 0.5) * 80
       );
       scene.add(cloud);
+      clouds.push(cloud);
     }
 
     // ==================== ФИЗИКА FLAPPY BIRD ====================
@@ -354,7 +359,7 @@
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
       
-      // Движение вперед
+      // Движение вперед (птичка летит в отрицательном направлении Z)
       distanceTraveled += forwardSpeed * delta;
       birdGroup.position.z -= forwardSpeed * delta;
       
@@ -396,21 +401,22 @@
       camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
       camera.position.z += (targetCamZ - camera.position.z) * Math.min(cameraLerpSpeed * delta, 1);
       camera.position.x = cameraX;
-      camera.lookAt(0, birdGroup.position.y + 0.6, birdGroup.position.z);
+      camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z - 3);
       
       // Бесконечный мир: перемещаем облака и траву вслед за птичкой
-      scene.children.forEach(child => {
-        if (child.type === 'Group' && child !== birdGroup) {
-          // Если объект остался далеко позади, перемещаем его вперед
-          if (child.position.z > birdGroup.position.z + 15) {
-            child.position.z -= 100;
-          }
+      // Облака: если улетели далеко позади, перемещаем вперед
+      clouds.forEach(cloud => {
+        if (cloud.position.z > birdGroup.position.z + 20) {
+          cloud.position.z = birdGroup.position.z - 60 + Math.random() * 20;
+          cloud.position.x = (Math.random() - 0.5) * 60;
         }
-        // Перемещаем отдельные объекты (травинки)
-        if (child.geometry?.type === 'ConeGeometry' && child.position.y > -2.7) {
-          if (child.position.z > birdGroup.position.z + 15) {
-            child.position.z -= 100;
-          }
+      });
+      
+      // Травинки: если улетели далеко позади, перемещаем вперед
+      grassBlades.forEach(blade => {
+        if (blade.position.z > birdGroup.position.z + 15) {
+          blade.position.z = birdGroup.position.z - 45 + Math.random() * 15;
+          blade.position.x = (Math.random() - 0.5) * 60;
         }
       });
       
