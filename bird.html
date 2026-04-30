@@ -126,6 +126,10 @@
     const clouds = [];
     const obstacles = []; // Массив препятствий (труб)
     
+    // Уровень земли и радиус птички (должны быть объявлены до createObstacle)
+    const groundLevel = -2.8;
+    const birdRadius = 0.9;
+    
     // Параметры для спавна препятствий
     const obstacleSpawnInterval = 25; // Расстояние между препятствиями
     const obstacleGapHeight = 5.0; // Высота проёма между трубами
@@ -135,7 +139,7 @@
     // Диапазон высот для центра прохода (от пола до потолка)
     // Пол на y = -2.8, потолок камеры ~9.5, птичка радиусом 0.9
     // Центр прохода должен быть в диапазоне, чтобы проход был доступен
-    const gapCenterMinY = -2.8 + obstacleGapHeight / 2 + 0.5; // Минимальная позиция центра прохода
+    const gapCenterMinY = groundLevel + obstacleGapHeight / 2 + 0.5; // Минимальная позиция центра прохода
     const gapCenterMaxY = 9.5 - obstacleGapHeight / 2 - 0.5; // Максимальная позиция центра прохода
     
     for (let i = 0; i < 60; i++) {
@@ -413,8 +417,7 @@
     const gravity = -14.0;
     const flapVelocity = 6.8;
     const maxFallSpeed = -9.0;
-    const groundLevel = -2.8;
-    const birdRadius = 0.9;
+    // groundLevel и birdRadius уже объявлены выше (строки 130-131)
     const minY = groundLevel + birdRadius + 0.05;
     
     let birdVelocityY = 0.0;
