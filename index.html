@@ -437,7 +437,7 @@
             
             // Spawn new pipes - спавним трубу на позиции X птицы + расстояние впереди
             if (currentTime - lastPipeTime > pipeSpawnInterval) {
-                const spawnX = bird.position.x + 50;
+                const spawnX = bird.position.x + 55;
                 createPipe(spawnX);
                 lastPipeTime = currentTime;
             }
