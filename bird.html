@@ -109,8 +109,17 @@
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -2.8;
+    ground.position.z = 0;
     ground.receiveShadow = true;
     scene.add(ground);
+    
+    // Вторая плоскость земли для бесшовного цикла
+    const ground2 = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground2.rotation.x = -Math.PI / 2;
+    ground2.position.y = -2.8;
+    ground2.position.z = 60;
+    ground2.receiveShadow = true;
+    scene.add(ground2);
     
     // Массивы для объектов мира, чтобы двигать их
     const grassBlades = [];
@@ -407,6 +416,15 @@
       // Циклическое перемещение облаков и травы вслед за птичкой
       const cycleDistance = 80; // Расстояние, через которое объекты повторяются
       const birdZ = birdGroup.position.z;
+      
+      // Перемещение земли (две плоскости для бесшовного цикла)
+      const groundSize = 60;
+      if (ground.position.z + groundSize / 2 < birdZ - 10) {
+        ground.position.z += cycleDistance;
+      }
+      if (ground2.position.z + groundSize / 2 < birdZ - 10) {
+        ground2.position.z += cycleDistance;
+      }
       
       // Перемещение облаков (теперь летим в плюс Z, поэтому объекты, которые остались сзади (меньше birdZ), телепортируются вперед)
       clouds.forEach(cloud => {
