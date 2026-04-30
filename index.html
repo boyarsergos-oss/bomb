@@ -404,59 +404,107 @@
             
             // Helper function to check cylinder collision
             function checkCylinderCollision(cylinderMesh) {
-                const cylBox = new THREE.Box3().setFromObject(cylinderMesh);
-                if (!cylBox.intersectsSphere(birdSphere)) return false;
-                
-                // Get cylinder properties
+                // Get cylinder world position and properties
                 const cylCenter = new THREE.Vector3();
                 cylinderMesh.getWorldPosition(cylCenter);
-                const geometry = cylinderMesh.geometry;
-                const radius = geometry.parameters.radiusTop;
-                const height = geometry.parameters.height;
                 
-                // For vertical cylinders (no rotation)
+                const geometry = cylinderMesh.geometry;
+                const baseRadius = geometry.parameters.radiusTop;
+                const baseHeight = geometry.parameters.height;
+                
+                // Get world scale
                 const worldMatrix = cylinderMesh.matrixWorld;
                 const scale = new THREE.Vector3();
                 worldMatrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
-                const effectiveRadius = radius * Math.max(scale.x, scale.z);
                 
-                // Find closest point on cylinder axis to bird
-                // Cylinder is along Y axis (vertical)
-                const halfHeight = (height / 2) * Math.abs(scale.y);
+                const effectiveRadius = baseRadius * Math.max(scale.x, scale.z);
+                const effectiveHalfHeight = (baseHeight / 2) * Math.abs(scale.y);
+                
+                // Calculate bird position relative to cylinder center
                 const dx = birdPos.x - cylCenter.x;
-                const dy = Math.abs(birdPos.y - cylCenter.y);
+                const dy = birdPos.y - cylCenter.y;
                 const dz = birdPos.z - cylCenter.z;
                 
-                // Check if within cylinder height
-                if (dy > halfHeight + birdCollisionRadius) return false;
-                
-                // Check radial distance in XZ plane
+                // Find closest point on cylinder to bird
+                // For vertical cylinder: clamp Y to [-halfHeight, halfHeight], calculate radial distance in XZ
+                const clampedY = Math.max(-effectiveHalfHeight, Math.min(effectiveHalfHeight, dy));
                 const radialDist = Math.sqrt(dx * dx + dz * dz);
-                const minRadialDist = effectiveRadius + birdCollisionRadius;
                 
-                if (radialDist < minRadialDist) {
+                // Distance from bird to closest point on cylinder surface
+                let distToSurface;
+                let closestPoint;
+                
+                if (radialDist > effectiveRadius) {
+                    // Bird is outside the cylinder radius
+                    // Closest point is on the side surface at clamped Y
+                    const sidePointX = cylCenter.x + (dx / radialDist) * effectiveRadius;
+                    const sidePointZ = cylCenter.z + (dz / radialDist) * effectiveRadius;
+                    const sidePointY = cylCenter.y + clampedY;
+                    
+                    closestPoint = new THREE.Vector3(sidePointX, sidePointY, sidePointZ);
+                    distToSurface = Math.sqrt(
+                        Math.pow(birdPos.x - sidePointX, 2) +
+                        Math.pow(birdPos.y - sidePointY, 2) +
+                        Math.pow(birdPos.z - sidePointZ, 2)
+                    );
+                } else {
+                    // Bird is within the cylinder radius horizontally
+                    // Check if above or below the cylinder
+                    if (dy > effectiveHalfHeight) {
+                        // Above cylinder - closest point is top cap center area
+                        closestPoint = new THREE.Vector3(cylCenter.x + dx, cylCenter.y + effectiveHalfHeight, cylCenter.z + dz);
+                        distToSurface = dy - effectiveHalfHeight;
+                    } else if (dy < -effectiveHalfHeight) {
+                        // Below cylinder - closest point is bottom cap center area
+                        closestPoint = new THREE.Vector3(cylCenter.x + dx, cylCenter.y - effectiveHalfHeight, cylCenter.z + dz);
+                        distToSurface = -effectiveHalfHeight - dy;
+                    } else {
+                        // Inside the cylinder - collision
+                        collisionDetected = true;
+                        pushDistance = effectiveRadius - radialDist + birdCollisionRadius;
+                        
+                        // Push outward radially
+                        if (radialDist > 0.001) {
+                            collisionNormal.set(dx / radialDist, 0, dz / radialDist);
+                        } else {
+                            collisionNormal.set(1, 0, 0);
+                        }
+                        return true;
+                    }
+                }
+                
+                // Check if bird sphere intersects with cylinder
+                if (distToSurface < birdCollisionRadius) {
                     collisionDetected = true;
                     
-                    // Calculate push direction (normal) - horizontal push away from cylinder
-                    if (radialDist > 0.001) {
-                        const pushDir = new THREE.Vector3(dx / radialDist, 0, dz / radialDist);
-                        const currentPush = pushDistance;
-                        const newPush = minRadialDist - radialDist;
-                        
-                        if (newPush > currentPush) {
-                            pushDistance = newPush;
-                            collisionNormal.copy(pushDir);
-                        }
+                    // Calculate push direction and distance
+                    const pushVec = new THREE.Vector3().subVectors(birdPos, closestPoint);
+                    const pushLen = pushVec.length();
+                    
+                    if (pushLen > 0.001) {
+                        collisionNormal.copy(pushVec).normalize();
                     } else {
-                        // Bird center is on cylinder axis
-                        pushDistance = Math.max(pushDistance, effectiveRadius + birdCollisionRadius);
-                        collisionNormal.set(1, 0, 0);
+                        // Bird center exactly at closest point - push radially outward
+                        if (Math.abs(dy) <= effectiveHalfHeight) {
+                            // On the side - push radially
+                            if (radialDist > 0.001) {
+                                collisionNormal.set(dx / radialDist, 0, dz / radialDist);
+                            } else {
+                                collisionNormal.set(1, 0, 0);
+                            }
+                        } else if (dy > 0) {
+                            collisionNormal.set(0, 1, 0);
+                        } else {
+                            collisionNormal.set(0, -1, 0);
+                        }
                     }
+                    
+                    pushDistance = birdCollisionRadius - distToSurface + 0.01;
                     return true;
                 }
+                
                 return false;
             }
-            
             // Check top pipe collision
             checkCylinderCollision(pipe.top);
             
