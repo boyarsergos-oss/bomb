@@ -750,14 +750,21 @@
       // Камера следует за птичкой (только если контролы не активны)
       if (!controls || !controls.enabled) {
         const viewMode = viewModes[currentViewMode];
-        // Для вида от первого лица камера на клюве и смотрит вперёд, повторяя движения птицы
+        // Для вида от первого лица камера на клюве и полностью повторяет движения птицы
         if (currentViewMode === 'firstPerson') {
+          // Позиция камеры: позиция птички + смещение к клюву
           camera.position.set(
             birdGroup.position.x + viewMode.offsetX,
             birdGroup.position.y + viewMode.offsetY,
             birdGroup.position.z + viewMode.offsetZ
           );
-          camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.5, birdGroup.position.z + 5);
+          
+          // Направление взгляда: берём направление вперёд птички и применяем её повороты
+          const lookAtDistance = 10;
+          const lookAtX = birdGroup.position.x + Math.sin(birdGroup.rotation.y) * lookAtDistance;
+          const lookAtY = birdGroup.position.y + viewMode.offsetY + Math.sin(-birdGroup.rotation.x) * lookAtDistance;
+          const lookAtZ = birdGroup.position.z + Math.cos(birdGroup.rotation.y) * lookAtDistance;
+          camera.lookAt(lookAtX, lookAtY, lookAtZ);
         } else {
           const targetCamX = birdGroup.position.z * 0 + viewMode.offsetX;
           const targetCamY = birdGroup.position.y + viewMode.offsetY;
