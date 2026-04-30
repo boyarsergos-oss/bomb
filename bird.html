@@ -315,7 +315,7 @@
     for (let i = 0; i < 30; i++) {
       const cloud = createCloud(
         (Math.random() - 0.5) * 45,
-        4 + Math.random() * 8,
+        12 + Math.random() * 8, // Облака всегда выше 12 единиц (выше потолка камеры)
         (Math.random() - 0.5) * 40
       );
       scene.add(cloud);
