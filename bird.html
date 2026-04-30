@@ -340,9 +340,9 @@
       localStorage.setItem('birdInjuries', JSON.stringify(injuries));
     }
     
-    // Функция добавления случайного повреждения (синяк/ссадина)
+    // Функция добавления случайного повреждения (синяк/ссадина/вмятина)
     function addInjury() {
-      const injuryTypes = ['bruise', 'scratch', 'contusion'];
+      const injuryTypes = ['bruise', 'scratch', 'contusion', 'dent'];
       const type = injuryTypes[Math.floor(Math.random() * injuryTypes.length)];
       
       // Случайная позиция на сфере (в UV координатах)
@@ -362,9 +362,13 @@
         // Ссадины: красные, розовые
         const colors = ['#8b1c1c', '#6b1c1c', '#a83c3c', '#c44c4c'];
         color = colors[Math.floor(Math.random() * colors.length)];
-      } else {
+      } else if (type === 'contusion') {
         // Ушибы: тёмно-фиолетовые, коричневые
         const colors = ['#3c1c2c', '#4c2c3c', '#5c3c4c', '#2c1c1c'];
+        color = colors[Math.floor(Math.random() * colors.length)];
+      } else {
+        // Вмятины: тёмные с эффектом тени
+        const colors = ['#1a1a2e', '#2d2d44', '#3d3d5c', '#4a4a6a'];
         color = colors[Math.floor(Math.random() * colors.length)];
       }
       
@@ -421,7 +425,7 @@
           bodyCtx.lineTo(length/4, (Math.random() - 0.5) * radius * 0.3);
           bodyCtx.lineTo(length/2, (Math.random() - 0.5) * radius * 0.5);
           bodyCtx.stroke();
-        } else {
+        } else if (injury.type === 'contusion') {
           // Ушиб - более тёмное пятно
           const gradient = bodyCtx.createRadialGradient(0, 0, 0, 0, 0, radius);
           gradient.addColorStop(0, injury.color);
@@ -431,6 +435,35 @@
           bodyCtx.beginPath();
           bodyCtx.arc(0, 0, radius * 0.8, 0, Math.PI * 2);
           bodyCtx.fill();
+        } else if (injury.type === 'dent') {
+          // Вмятина - тёмное пятно с эффектом глубины и тени
+          // Внешняя тень
+          const outerGradient = bodyCtx.createRadialGradient(0, 0, 0, 0, 0, radius * 1.2);
+          outerGradient.addColorStop(0, injury.color);
+          outerGradient.addColorStop(0.4, injury.color + 'ee');
+          outerGradient.addColorStop(0.7, injury.color + '99');
+          outerGradient.addColorStop(1, 'transparent');
+          bodyCtx.fillStyle = outerGradient;
+          bodyCtx.beginPath();
+          bodyCtx.ellipse(0, 0, radius, radius * 0.8, 0, 0, Math.PI * 2);
+          bodyCtx.fill();
+          
+          // Внутренняя тень для эффекта глубины
+          const innerGradient = bodyCtx.createRadialGradient(-radius*0.2, -radius*0.2, 0, 0, 0, radius * 0.6);
+          innerGradient.addColorStop(0, '#0a0a1a');
+          innerGradient.addColorStop(0.5, injury.color + 'aa');
+          innerGradient.addColorStop(1, 'transparent');
+          bodyCtx.fillStyle = innerGradient;
+          bodyCtx.beginPath();
+          bodyCtx.ellipse(0, 0, radius * 0.5, radius * 0.4, 0, 0, Math.PI * 2);
+          bodyCtx.fill();
+          
+          // Блик на краю вмятины
+          bodyCtx.strokeStyle = '#ffffff44';
+          bodyCtx.lineWidth = 1;
+          bodyCtx.beginPath();
+          bodyCtx.ellipse(radius*0.3, radius*0.3, radius * 0.3, radius * 0.2, Math.PI/4, 0, Math.PI * 2);
+          bodyCtx.stroke();
         }
         
         bodyCtx.restore();
