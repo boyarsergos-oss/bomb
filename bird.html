@@ -719,8 +719,7 @@
       // Отображение сообщения о проигрыше
       const deathHintEl = document.getElementById('death-hint');
       if (isGameOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         ctx.fillStyle = 'white';
         ctx.font = 'bold 48px Arial';
