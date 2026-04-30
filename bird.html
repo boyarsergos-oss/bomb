@@ -330,6 +330,8 @@
     const minY = groundLevel + birdRadius + 0.05;
     
     let birdVelocityY = 0.0;
+    let forwardSpeed = 8.0; // Скорость полета вперед
+    let distanceTraveled = 0; // Пройденное расстояние
     
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
@@ -351,6 +353,10 @@
 
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
+      
+      // Движение вперед
+      distanceTraveled += forwardSpeed * delta;
+      birdGroup.position.z -= forwardSpeed * delta;
       
       birdVelocityY += gravity * delta;
       if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
@@ -384,12 +390,29 @@
       leftWing.rotation.z = -0.35 + flapValue * 0.1;
       rightWing.rotation.z = 0.35 - flapValue * 0.1;
       
-      // Камера
+      // Камера следует за птичкой
       const targetCamY = birdGroup.position.y + cameraOffsetY;
+      const targetCamZ = birdGroup.position.z + cameraZ;
       camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
+      camera.position.z += (targetCamZ - camera.position.z) * Math.min(cameraLerpSpeed * delta, 1);
       camera.position.x = cameraX;
-      camera.position.z = cameraZ;
-      camera.lookAt(0, birdGroup.position.y + 0.6, 0);
+      camera.lookAt(0, birdGroup.position.y + 0.6, birdGroup.position.z);
+      
+      // Бесконечный мир: перемещаем облака и траву вслед за птичкой
+      scene.children.forEach(child => {
+        if (child.type === 'Group' && child !== birdGroup) {
+          // Если объект остался далеко позади, перемещаем его вперед
+          if (child.position.z > birdGroup.position.z + 15) {
+            child.position.z -= 100;
+          }
+        }
+        // Перемещаем отдельные объекты (травинки)
+        if (child.geometry?.type === 'ConeGeometry' && child.position.y > -2.7) {
+          if (child.position.z > birdGroup.position.z + 15) {
+            child.position.z -= 100;
+          }
+        }
+      });
       
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
