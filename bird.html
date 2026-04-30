@@ -332,6 +332,9 @@
     const birdHitbox = new THREE.Mesh(birdHitboxGeometry, birdHitboxMaterial);
     birdHitbox.visible = true; // Включено по умолчанию
     
+    // Флаг смерти птички
+    let birdIsDead = false;
+    
     birdGroup.add(body);
     birdGroup.add(birdHitbox);
 
@@ -601,6 +604,7 @@
               const collisionRadius = birdRadius;
               if (distanceSq < collisionRadius * collisionRadius) {
                 isGameOver = true;
+                birdIsDead = true;
                 // Включаем контролы камеры для осмотра места смерти
                 if (!controls) {
                   controls = new OrbitControls(camera, renderer.domElement);
@@ -625,7 +629,10 @@
         // Наклон: взлетает — смотрит вверх (-45°), падает — вниз (+45°)
         const speedThreshold = 0.5;
         let targetRotX = 0;
-        if (birdVelocityY > speedThreshold) {
+        if (birdIsDead) {
+          // При смерти птичка переворачивается вверх ногами
+          targetRotX = THREE.MathUtils.degToRad(180);
+        } else if (birdVelocityY > speedThreshold) {
           targetRotX = THREE.MathUtils.degToRad(-45);
         } else if (birdVelocityY < -speedThreshold) {
           targetRotX = THREE.MathUtils.degToRad(45);
