@@ -435,9 +435,9 @@
         function updatePipes() {
             const currentTime = Date.now();
             
-            // Spawn new pipes - спавним трубу на позиции X птицы + расстояние впереди
+            // Spawn new pipes - спавним трубу на той же позиции X, где находится птичка
             if (currentTime - lastPipeTime > pipeSpawnInterval) {
-                const spawnX = bird.position.x + 55;
+                const spawnX = bird.position.x;
                 createPipe(spawnX);
                 lastPipeTime = currentTime;
             }
