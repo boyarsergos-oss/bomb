@@ -1,46 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yellow Sphere</title>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
-    </style>
+    <title>3D Шар с Крыльями</title>
+    <style>body { margin: 0; overflow: hidden; background-color: #87CEEB; }</style>
 </head>
 <body>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script>
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 3;
-        const renderer = new THREE.WebGLRenderer();
+<script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
+
+    // Сцена и камера
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 5;
+
+    // Рендерер
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Освещение
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(5, 5, 5);
+    scene.add(dirLight);
+
+    // Создаем настоящий 3D шар (Сфера)
+    const sphereGeometry = new THREE.SphereGeometry(1, 64, 64);
+    const sphereMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, roughness: 0.4, metalness: 0.1 });
+    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    scene.add(sphere);
+
+    // Функция для создания 3D крыла
+    function createWing() {
+        const wingGroup = new THREE.Group();
+
+        // Основная форма крыла (сплюснутая сфера/капля)
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.bezierCurveTo(1.5, 0.5, 2.5, 1.5, 2, 3);
+        shape.bezierCurveTo(1.5, 4, 0.5, 3.5, 0, 3);
+        shape.bezierCurveTo(-0.5, 3.5, -1.5, 4, -2, 3);
+        shape.bezierCurveTo(-2.5, 1.5, -1.5, 0.5, 0, 0);
+
+        const extrudeSettings = { depth: 0.2, bevelEnabled: true, bevelSegments: 2, steps: 2, bevelSize: 0.1, bevelThickness: 0.1 };
+        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        
+        // Центрируем геометрию
+        geometry.center();
+        
+        const material = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(geometry, material);
+        
+        // Поворачиваем, чтобы выглядело как крыло
+        mesh.rotation.y = Math.PI / 2; 
+        mesh.rotation.z = Math.PI / 6;
+        
+        wingGroup.add(mesh);
+        return wingGroup;
+    }
+
+    // Левое крыло
+    const leftWing = createWing();
+    leftWing.position.x = -1.2;
+    scene.add(leftWing);
+
+    // Правое крыло (зеркальное отражение)
+    const rightWing = createWing();
+    rightWing.position.x = 1.2;
+    rightWing.scale.x = -1; // Отражаем по оси X
+    scene.add(rightWing);
+
+    // Анимация (только рендер, без вращения)
+    function animate() {
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // Адаптация под размер окна
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        const geometry = new THREE.SphereGeometry(1, 32, 32);
-        const material = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
-        const sphere = new THREE.Mesh(geometry, material);
-        scene.add(sphere);
-
-        // Крылья
-        const wingGeometry = new THREE.BoxGeometry(1.5, 0.1, 1);
-        const wingMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
-        
-        const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
-        leftWing.position.set(-1.7, 0, 0);
-        scene.add(leftWing);
-        
-        const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
-        rightWing.position.set(1.7, 0, 0);
-        scene.add(rightWing);
-
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-        animate();
-    </script>
+    });
+</script>
 </body>
 </html>
