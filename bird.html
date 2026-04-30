@@ -319,6 +319,10 @@
     body.castShadow = true;
     body.receiveShadow = true;
     
+    // Сохраняем ссылку на тело для добавления повреждений
+    window.bodyMesh = body;
+    window.birdGroupRef = birdGroup;
+    
     // Хитбокс птички (красная прозрачная сфера для отладки)
     // Используем полный радиус birdRadius для честной коллизии, соответствующей визуальному телу
     const collisionRadius = birdRadius;
@@ -437,6 +441,10 @@
     const rightWing = createWing(1);
     birdGroup.add(leftWing);
     birdGroup.add(rightWing);
+    
+    // Сохраняем ссылки на крылья для добавления повреждений
+    window.leftWingMesh = leftWing;
+    window.rightWingMesh = rightWing;
 
     // --- ХВОСТ (веер) ---
     function createTail() {
@@ -528,15 +536,131 @@
     let distanceTraveled = 0; // Пройденное расстояние
     let isGameOver = false; // Флаг окончания игры
     let score = 0; // Счёт пролетевших труб
+    let deathCount = 0; // Количество смертей для накопления повреждений
+    
+    // Массивы для хранения элементов повреждений
+    const bodyInjuries = [];
+    const wingDamageParts = [];
     
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        if (!isGameOver) {
+        if (isGameOver) {
+          // Рестарт игры
+          resetGame();
+        } else {
           birdVelocityY = flapVelocity;
         }
       }
     });
+    
+    // Функция добавления повреждений при смерти
+    function addInjury() {
+      deathCount++;
+      const birdGroupRef = window.birdGroupRef;
+      const bodyMesh = window.bodyMesh;
+      
+      if (!birdGroupRef || !bodyMesh) return;
+      
+      // Случайная позиция на поверхности тела для ссадины/синяка
+      const injuryType = Math.random();
+      
+      if (injuryType < 0.5) {
+        // Синяк (тёмное пятно)
+        const bruiseGeometry = new THREE.CircleGeometry(0.08 + Math.random() * 0.1, 8);
+        const bruiseMaterial = new THREE.MeshBasicMaterial({ 
+          color: new THREE.Color().setHSL(0.7, 0.8, 0.2 + Math.random() * 0.15),
+          transparent: true,
+          opacity: 0.7
+        });
+        const bruise = new THREE.Mesh(bruiseGeometry, bruiseMaterial);
+        
+        // Позиционируем на поверхности сферы
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI;
+        const radius = 0.91; // Чуть больше радиуса тела
+        
+        bruise.position.set(
+          radius * Math.sin(phi) * Math.cos(theta),
+          radius * Math.sin(phi) * Math.sin(theta),
+          radius * Math.cos(phi)
+        );
+        bruise.lookAt(new THREE.Vector3(0, 0, 0));
+        
+        bodyMesh.add(bruise);
+        bodyInjuries.push(bruise);
+      } else if (injuryType < 0.8) {
+        // Ссадина (красноватая полоса)
+        const scrapeGeometry = new THREE.PlaneGeometry(0.15 + Math.random() * 0.1, 0.03);
+        const scrapeMaterial = new THREE.MeshBasicMaterial({ 
+          color: 0x8b0000,
+          transparent: true,
+          opacity: 0.6,
+          side: THREE.DoubleSide
+        });
+        const scrape = new THREE.Mesh(scrapeGeometry, scrapeMaterial);
+        
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI;
+        const radius = 0.91;
+        
+        scrape.position.set(
+          radius * Math.sin(phi) * Math.cos(theta),
+          radius * Math.sin(phi) * Math.sin(theta),
+          radius * Math.cos(phi)
+        );
+        scrape.lookAt(new THREE.Vector3(0, 0, 0));
+        scrape.rotation.z = Math.random() * Math.PI;
+        
+        bodyMesh.add(scrape);
+        bodyInjuries.push(scrape);
+      } else {
+        // Отваливающийся кусок крыла
+        const wing = Math.random() < 0.5 ? window.leftWingMesh : window.rightWingMesh;
+        if (wing && wing.children.length > 0) {
+          // Удаляем одно перо из крыла
+          const featherIndex = Math.floor(Math.random() * wing.children.length);
+          const feather = wing.children[featherIndex];
+          
+          if (feather) {
+            // Создаём эффект отломленного куска
+            const brokenPieceGeometry = new THREE.SphereGeometry(0.15, 4, 4);
+            const brokenPieceMaterial = new THREE.MeshStandardMaterial({ 
+              color: 0xffaa00,
+              roughness: 0.4
+            });
+            const brokenPiece = new THREE.Mesh(brokenPieceGeometry, brokenPieceMaterial);
+            
+            // Позиция рядом с крылом
+            brokenPiece.position.copy(feather.position);
+            brokenPiece.position.y -= 0.3; // Свисает вниз
+            
+            wing.add(brokenPiece);
+            wingDamageParts.push({ piece: brokenPiece, wing: wing, originalFeather: feather });
+            
+            // Скрываем или удаляем оригинальное перо
+            feather.visible = false;
+          }
+        }
+      }
+    }
+    
+    // Функция сброса игры
+    function resetGame() {
+      isGameOver = false;
+      birdVelocityY = 0;
+      distanceTraveled = 0;
+      birdGroup.position.set(0, 1.5, 0);
+      score = 0;
+      
+      // Отключаем контролы камеры
+      if (controls) {
+        controls.enabled = false;
+      }
+      
+      // Добавляем повреждения при каждом рестарте
+      addInjury();
+    }
 
     // ==================== АНИМАЦИЯ ====================
     let wingAngle = 0;
@@ -565,6 +689,22 @@
         if (birdGroup.position.y <= minY) {
           birdGroup.position.y = minY;
           birdVelocityY = 0;
+          // Падение на землю тоже вызывает повреждение
+          if (!isGameOver) {
+            isGameOver = true;
+            addInjury();
+            // Включаем контролы камеры
+            if (!controls) {
+              controls = new OrbitControls(camera, renderer.domElement);
+              controls.enableDamping = true;
+              controls.dampingFactor = 0.05;
+              controls.screenSpacePanning = false;
+              controls.minDistance = 3;
+              controls.maxDistance = 20;
+            }
+            controls.enabled = true;
+            controls.target.copy(birdGroup.position);
+          }
         }
         if (birdGroup.position.y > 20.0) {
           birdGroup.position.y = 20.0;
@@ -601,6 +741,8 @@
               const collisionRadius = birdRadius;
               if (distanceSq < collisionRadius * collisionRadius) {
                 isGameOver = true;
+                // Добавляем повреждение при столкновении
+                addInjury();
                 // Включаем контролы камеры для осмотра места смерти
                 if (!controls) {
                   controls = new OrbitControls(camera, renderer.domElement);
