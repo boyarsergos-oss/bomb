@@ -526,6 +526,7 @@
     let forwardSpeed = 8.0; // Скорость полёта вперёд
     let distanceTraveled = 0; // Пройденное расстояние
     let isGameOver = false; // Флаг окончания игры
+    let score = 0; // Счёт пролетевших труб
     
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
@@ -698,6 +699,7 @@
         if (obstacles[i].position.z < birdZ - 30) {
           scene.remove(obstacles[i]);
           obstacles.splice(i, 1);
+          score++;
         }
       }
       
@@ -719,6 +721,12 @@
       } else {
         // Скрываем подсказку когда игра активна
         deathHintEl.style.display = 'none';
+        
+        // Отображаем счёт
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 36px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Счёт: ' + score, canvas.width / 2, 50);
       }
       
       renderer.render(scene, camera);
