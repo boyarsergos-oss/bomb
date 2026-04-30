@@ -561,17 +561,33 @@
         }
         
         // Проверка столкновений с трубами
-        const birdBox = new THREE.Box3().setFromObject(body);
+        const birdPos = birdGroup.position.clone();
+        const birdRadiusSq = birdRadius * birdRadius; // Используем квадрат радиуса для оптимизации
         
         for (const obstacle of obstacles) {
           // Проверяем только препятствия поблизости
-          if (Math.abs(obstacle.position.z - birdGroup.position.z) > 3) continue;
+          if (Math.abs(obstacle.position.z - birdPos.z) > 3) continue;
           
           // Получаем все меши препятствия
           obstacle.children.forEach(child => {
-            if (child.isMesh) {
+            if (child.isMesh && child.visible) {
+              // Пропускаем отладочные хитбоксы (wireframe) и безопасную зону
+              if (child.material.wireframe) return;
+              
+              // Получаем bounding box только для визуальных частей труб
               const obstacleBox = new THREE.Box3().setFromObject(child);
-              if (birdBox.intersectsBox(obstacleBox)) {
+              
+              // Находим ближайшую точку на коробке трубы к центру птички
+              const closestPoint = new THREE.Vector3();
+              closestPoint.x = Math.max(obstacleBox.min.x, Math.min(birdPos.x, obstacleBox.max.x));
+              closestPoint.y = Math.max(obstacleBox.min.y, Math.min(birdPos.y, obstacleBox.max.y));
+              closestPoint.z = Math.max(obstacleBox.min.z, Math.min(birdPos.z, obstacleBox.max.z));
+              
+              // Вычисляем расстояние от центра птички до ближайшей точки
+              const distanceSq = birdPos.distanceToSquared(closestPoint);
+              
+              // Столкновение, если расстояние меньше радиуса птички
+              if (distanceSq < birdRadiusSq) {
                 isGameOver = true;
               }
             }
