@@ -360,9 +360,9 @@
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
       
-      // Движение птички вперёд (по отрицательной оси Z)
+      // Движение птички вперёд (по положительной оси Z)
       distanceTraveled += forwardSpeed * delta;
-      birdGroup.position.z = -distanceTraveled;
+      birdGroup.position.z = distanceTraveled;
       
       birdVelocityY += gravity * delta;
       if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
@@ -408,17 +408,17 @@
       const cycleDistance = 80; // Расстояние, через которое объекты повторяются
       const birdZ = birdGroup.position.z;
       
-      // Перемещение облаков
+      // Перемещение облаков (теперь летим в плюс Z, поэтому объекты, которые остались сзади (меньше birdZ), телепортируются вперед)
       clouds.forEach(cloud => {
-        if (cloud.position.z > birdZ + 20) {
-          cloud.position.z -= cycleDistance;
+        if (cloud.position.z < birdZ - 20) {
+          cloud.position.z += cycleDistance;
         }
       });
       
       // Перемещение травинок
       grassBlades.forEach(blade => {
-        if (blade.position.z > birdZ + 20) {
-          blade.position.z -= cycleDistance;
+        if (blade.position.z < birdZ - 20) {
+          blade.position.z += cycleDistance;
         }
       });
       
