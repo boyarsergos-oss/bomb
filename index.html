@@ -451,15 +451,26 @@
                 }
                 
                 // Collision detection - используем очень маленький хитбокс для птицы
-                const birdSize = 0.4; // Очень маленький хитбокс - только тело птицы
+                const birdSize = 0.25; // Очень маленький хитбокс - только тело птицы
+                const birdMargin = 0.3; // Дополнительный отступ для безопасности
                 const birdBox = new THREE.Box3(
-                    new THREE.Vector3(bird.position.x - birdSize, bird.position.y - birdSize, bird.position.z - birdSize),
-                    new THREE.Vector3(bird.position.x + birdSize, bird.position.y + birdSize, bird.position.z + birdSize)
+                    new THREE.Vector3(bird.position.x - birdSize + birdMargin, bird.position.y - birdSize + birdMargin, bird.position.z - birdSize + birdMargin),
+                    new THREE.Vector3(bird.position.x + birdSize - birdMargin, bird.position.y + birdSize - birdMargin, bird.position.z + birdSize - birdMargin)
                 );
                 
                 // Получаем bounding box только для основной части труб (без caps)
+                // Уменьшаем хитбокс труб, исключая переднюю грань
+                const topPipeGeometry = pipe.top.geometry;
+                const bottomPipeGeometry = pipe.bottom.geometry;
+                
+                // Создаём уменьшенные боксы для труб (игнорируем переднюю часть)
+                const pipeDepthReduction = 1.5; // Уменьшаем глубину трубы для коллизии
                 const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
                 const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
+                
+                // Сжимаем боксы труб по оси X спереди
+                topPipeBox.min.x += pipeDepthReduction;
+                bottomPipeBox.min.x += pipeDepthReduction;
                 
                 // Отладка: проверяем дистанцию до трубы
                 const distToPipe = Math.abs(pipe.top.position.x - bird.position.x);
