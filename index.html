@@ -322,11 +322,13 @@
             const pipeGap = 6;
             const pipeWidth = 3;
             const pipeDepth = 3;
-            const minHeight = 5;
-            const maxHeight = 15;
+            const minPipeLength = 5;
+            const maxPipeLength = 12;
+            const groundLevel = -10;
+            const ceilingLevel = 10;
             
-            const topPipeHeight = minHeight + Math.random() * (maxHeight - minHeight);
-            const bottomPipeHeight = topPipeHeight + pipeGap;
+            // Случайная позиция разрыва между трубами
+            const gapY = (minPipeLength + Math.random() * (maxPipeLength - minPipeLength)) + groundLevel + pipeGap / 2;
             
             // Pipe material
             const pipeMaterial = new THREE.MeshPhongMaterial({ 
@@ -334,33 +336,36 @@
                 shininess: 50
             });
             
-            // Top pipe
+            // Верхняя труба (свисает сверху)
+            const topPipeHeight = ceilingLevel - (gapY + pipeGap / 2);
             const topPipeGeometry = new THREE.BoxGeometry(pipeDepth, topPipeHeight, pipeWidth);
             const topPipe = new THREE.Mesh(topPipeGeometry, pipeMaterial);
-            topPipe.position.set(xPosition, 10 + topPipeHeight / 2, 0);
+            topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, 0);
             topPipe.castShadow = true;
             topPipe.receiveShadow = true;
             scene.add(topPipe);
             
-            // Bottom pipe
+            // Нижняя труба (растет снизу)
+            const bottomPipeHeight = gapY - groundLevel;
             const bottomPipeGeometry = new THREE.BoxGeometry(pipeDepth, bottomPipeHeight, pipeWidth);
             const bottomPipe = new THREE.Mesh(bottomPipeGeometry, pipeMaterial);
-            bottomPipe.position.set(xPosition, -10 - bottomPipeHeight / 2, 0);
+            bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, 0);
             bottomPipe.castShadow = true;
             bottomPipe.receiveShadow = true;
             scene.add(bottomPipe);
             
-            // Pipe cap (decorative ring)
-            const capGeometry = new THREE.CylinderGeometry(pipeWidth/2 + 0.3, pipeWidth/2 + 0.3, 0.5, 16);
+            // Pipe cap (decorative ring) для верхней трубы
+            const topCapGeometry = new THREE.CylinderGeometry(pipeWidth/2 + 0.3, pipeWidth/2 + 0.3, 0.5, 16);
             const capMaterial = new THREE.MeshPhongMaterial({ color: 0x3CB371 });
             
-            const topCap = new THREE.Mesh(capGeometry, capMaterial);
-            topCap.position.set(xPosition, 10, 0);
+            const topCap = new THREE.Mesh(topCapGeometry, capMaterial);
+            topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, 0);
             topCap.castShadow = true;
             scene.add(topCap);
             
-            const bottomCap = new THREE.Mesh(capGeometry, capMaterial);
-            bottomCap.position.set(xPosition, -10, 0);
+            // Pipe cap для нижней трубы
+            const bottomCap = new THREE.Mesh(topCapGeometry, capMaterial);
+            bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, 0);
             bottomCap.castShadow = true;
             scene.add(bottomCap);
             
