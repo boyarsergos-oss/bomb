@@ -112,6 +112,10 @@
     ground.receiveShadow = true;
     scene.add(ground);
     
+    // Массивы для объектов мира, чтобы двигать их
+    const grassBlades = [];
+    const clouds = [];
+    
     for (let i = 0; i < 60; i++) {
       const blade = new THREE.Mesh(
         new THREE.ConeGeometry(0.08, 0.3, 4),
@@ -335,10 +339,6 @@
     let forwardSpeed = 12.0; // Скорость полёта вперёд
     let distanceTraveled = 0; // Пройденное расстояние
     
-    // Массивы для объектов мира, чтобы двигать их
-    const clouds = [];
-    const grassBlades = [];
-
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
