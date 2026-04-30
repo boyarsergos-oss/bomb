@@ -86,23 +86,12 @@
             requestAnimationFrame(animate);
             time += 0.05;
 
-            // Птичка летает по кругу
-            bird.position.x = Math.sin(time) * 5;
-            bird.position.z = Math.cos(time) * 5;
-            bird.position.y = Math.sin(time * 2) * 2 + 2;
-
             // Машем крыльями
             leftWing.rotation.z = Math.sin(time * 10) * 0.5;
             rightWing.rotation.z = -Math.sin(time * 10) * 0.5;
 
-            // Птичка смотрит в направлении движения
-            bird.rotation.y = -time;
-
-            // Камера следует за птичкой
-            camera.position.x = bird.position.x - Math.sin(time) * 8;
-            camera.position.z = bird.position.z - Math.cos(time) * 8;
-            camera.position.y = bird.position.y + 3;
-            camera.lookAt(bird.position);
+            // Легкое покачивание вверх-вниз
+            bird.position.y = Math.sin(time * 2) * 0.5 + 2;
 
             renderer.render(scene, camera);
         }
