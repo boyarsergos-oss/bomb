@@ -138,7 +138,8 @@
     labelRenderer.domElement.style.position = 'absolute';
     labelRenderer.domElement.style.top = '0px';
     labelRenderer.domElement.style.left = '0px';
-    labelRenderer.domElement.style.pointerEvents = 'none';
+    labelRenderer.domElement.style.pointerEvents = 'auto';
+    labelRenderer.domElement.style.zIndex = '1000';
     document.body.appendChild(labelRenderer.domElement);
 
     // ==================== МЕНЮ ВЫБОРА КАМЕРЫ (CSS2DObject) ====================
@@ -152,7 +153,8 @@
     `;
     
     const viewSelector = new CSS2DObject(viewSelectorDiv);
-    viewSelector.position.set(0, 1.5, 8); // Размещаем перед камерой на расстоянии 8 единиц
+    // Начальная позиция (будет перезаписана в animate)
+    viewSelector.position.set(0, 1.5, 8);
     scene.add(viewSelector);
 
     // ==================== ОСВЕЩЕНИЕ ====================
@@ -628,7 +630,35 @@
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        if (gameStarted && !isGameOver) {
+        if (!gameStarted) {
+          // Если игра ещё не началась, ничего не делаем (ждем выбора вида в меню)
+          return;
+        }
+        if (isGameOver) {
+          // Рестарт игры
+          isGameOver = false;
+          distanceTraveled = 0;
+          birdGroup.position.set(0, 1.5, 0);
+          birdVelocityY = 0;
+          score = 0;
+          
+          // Очищаем препятствия
+          obstacles.forEach(obs => scene.remove(obs));
+          obstacles.length = 0;
+          
+          // Создаём первое препятствие
+          const firstObstacle = createObstacle(obstacleSpawnInterval);
+          firstObstacle.passed = false;
+          obstacles.push(firstObstacle);
+          scene.add(firstObstacle);
+          
+          // Скрываем сообщение о смерти
+          document.getElementById('death-hint').style.display = 'none';
+          
+          // Показываем селектор камеры снова
+          viewSelector.visible = true;
+          gameStarted = false;
+        } else {
           birdVelocityY = flapVelocity;
         }
       }
@@ -661,13 +691,17 @@
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
       
-      // Обновляем позицию меню выбора камеры, чтобы оно всегда было перед камерой
+      // Обновляем позицию меню выбора камеры, чтобы оно всегда было перед камерой по центру экрана
       if (!gameStarted) {
         const menuDistance = 8;
         const cameraDirection = new THREE.Vector3();
         camera.getWorldDirection(cameraDirection);
+        cameraDirection.normalize();
         viewSelector.position.copy(camera.position).add(cameraDirection.multiplyScalar(menuDistance));
         viewSelector.lookAt(camera.position);
+      } else {
+        // Скрываем меню когда игра началась или окончена
+        viewSelector.visible = false;
       }
       
       if (gameStarted && !isGameOver) {
