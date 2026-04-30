@@ -327,6 +327,9 @@
             const groundLevel = -10;
             const ceilingLevel = 10;
             
+            // Позиция Z трубы должна совпадать с позицией Z птички
+            const pipeZ = bird.position.z;
+            
             // Случайная позиция разрыва между трубами
             const gapY = (minPipeLength + Math.random() * (maxPipeLength - minPipeLength)) + groundLevel + pipeGap / 2;
             
@@ -340,7 +343,7 @@
             const topPipeHeight = ceilingLevel - (gapY + pipeGap / 2);
             const topPipeGeometry = new THREE.BoxGeometry(pipeDepth, topPipeHeight, pipeWidth);
             const topPipe = new THREE.Mesh(topPipeGeometry, pipeMaterial);
-            topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, 0);
+            topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, pipeZ);
             topPipe.castShadow = true;
             topPipe.receiveShadow = true;
             scene.add(topPipe);
@@ -349,7 +352,7 @@
             const bottomPipeHeight = gapY - groundLevel;
             const bottomPipeGeometry = new THREE.BoxGeometry(pipeDepth, bottomPipeHeight, pipeWidth);
             const bottomPipe = new THREE.Mesh(bottomPipeGeometry, pipeMaterial);
-            bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, 0);
+            bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, pipeZ);
             bottomPipe.castShadow = true;
             bottomPipe.receiveShadow = true;
             scene.add(bottomPipe);
@@ -359,13 +362,13 @@
             const capMaterial = new THREE.MeshPhongMaterial({ color: 0x3CB371 });
             
             const topCap = new THREE.Mesh(topCapGeometry, capMaterial);
-            topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, 0);
+            topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, pipeZ);
             topCap.castShadow = true;
             scene.add(topCap);
             
             // Pipe cap для нижней трубы
             const bottomCap = new THREE.Mesh(topCapGeometry, capMaterial);
-            bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, 0);
+            bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, pipeZ);
             bottomCap.castShadow = true;
             scene.add(bottomCap);
             
