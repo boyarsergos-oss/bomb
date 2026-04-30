@@ -398,30 +398,66 @@
             // Create a sphere for the bird
             const birdSphere = new THREE.Sphere(birdPos.clone(), birdCollisionRadius);
             
+            let collisionDetected = false;
+            let collisionNormal = new THREE.Vector3(0, 0, 0);
+            let pushDistance = 0;
+            
             // Check top pipe and cap collision using Box3
             const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
             if (topPipeBox.intersectsSphere(birdSphere)) {
-                return true;
+                collisionDetected = true;
+                // Calculate collision normal - push bird down from top pipe
+                const boxCenter = new THREE.Vector3();
+                topPipeBox.getCenter(boxCenter);
+                if (birdPos.y > boxCenter.y) {
+                    collisionNormal.set(0, 1, 0);
+                    pushDistance = topPipeBox.max.y - (birdPos.y - birdCollisionRadius);
+                }
             }
             
             // Check bottom pipe and cap collision using Box3
             const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
             if (bottomPipeBox.intersectsSphere(birdSphere)) {
-                return true;
+                collisionDetected = true;
+                // Calculate collision normal - push bird up from bottom pipe
+                const boxCenter = new THREE.Vector3();
+                bottomPipeBox.getCenter(boxCenter);
+                if (birdPos.y < boxCenter.y) {
+                    collisionNormal.set(0, -1, 0);
+                    pushDistance = (birdPos.y + birdCollisionRadius) - bottomPipeBox.min.y;
+                }
             }
             
             // Also check caps for more accurate collision
             const topCapBox = new THREE.Box3().setFromObject(pipe.topCap);
             if (topCapBox.intersectsSphere(birdSphere)) {
-                return true;
+                collisionDetected = true;
+                const boxCenter = new THREE.Vector3();
+                topCapBox.getCenter(boxCenter);
+                if (birdPos.y > boxCenter.y) {
+                    collisionNormal.set(0, 1, 0);
+                    pushDistance = Math.max(pushDistance, topCapBox.max.y - (birdPos.y - birdCollisionRadius));
+                }
             }
             
             const bottomCapBox = new THREE.Box3().setFromObject(pipe.bottomCap);
             if (bottomCapBox.intersectsSphere(birdSphere)) {
-                return true;
+                collisionDetected = true;
+                const boxCenter = new THREE.Vector3();
+                bottomCapBox.getCenter(boxCenter);
+                if (birdPos.y < boxCenter.y) {
+                    collisionNormal.set(0, -1, 0);
+                    pushDistance = Math.max(pushDistance, (birdPos.y + birdCollisionRadius) - bottomCapBox.min.y);
+                }
             }
             
-            return false;
+            // Apply collision response - push bird away from pipe
+            if (collisionDetected && pushDistance > 0) {
+                bird.position.y += collisionNormal.y * (pushDistance + 0.1);
+                birdVelocity = collisionNormal.y * jumpStrength * 0.8;
+            }
+            
+            return collisionDetected;
         }
         
         function updatePipes() {
