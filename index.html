@@ -294,36 +294,40 @@
                 shininess: 50
             });
             
-            // Верхняя труба (свисает сверху)
+            // Верхняя труба (свисает сверху) - ЦИЛИНДРИЧЕСКАЯ
             const topPipeHeight = ceilingLevel - (gapY + pipeGap / 2);
-            const topPipeGeometry = new THREE.BoxGeometry(pipeDepth, topPipeHeight, pipeWidth);
+            const topPipeGeometry = new THREE.CylinderGeometry(pipeWidth/2, pipeWidth/2, topPipeHeight, 16);
             const topPipe = new THREE.Mesh(topPipeGeometry, pipeMaterial);
             topPipe.position.set(xPosition, ceilingLevel - topPipeHeight / 2, 0);
+            topPipe.rotation.z = Math.PI / 2; // Поворот чтобы цилиндр лежал горизонтально
             topPipe.castShadow = true;
             topPipe.receiveShadow = true;
             scene.add(topPipe);
             
-            // Нижняя труба (растет снизу)
+            // Нижняя труба (растет снизу) - ЦИЛИНДРИЧЕСКАЯ
             const bottomPipeHeight = gapY - groundLevel;
-            const bottomPipeGeometry = new THREE.BoxGeometry(pipeDepth, bottomPipeHeight, pipeWidth);
+            const bottomPipeGeometry = new THREE.CylinderGeometry(pipeWidth/2, pipeWidth/2, bottomPipeHeight, 16);
             const bottomPipe = new THREE.Mesh(bottomPipeGeometry, pipeMaterial);
             bottomPipe.position.set(xPosition, groundLevel + bottomPipeHeight / 2, 0);
+            bottomPipe.rotation.z = Math.PI / 2; // Поворот чтобы цилиндр лежал горизонтально
             bottomPipe.castShadow = true;
             bottomPipe.receiveShadow = true;
             scene.add(bottomPipe);
             
-            // Pipe cap (decorative ring) для верхней трубы
+            // Pipe cap (decorative ring) для верхней трубы - уже цилиндр, но теперь вертикальный
             const topCapGeometry = new THREE.CylinderGeometry(pipeWidth/2 + 0.3, pipeWidth/2 + 0.3, 0.5, 16);
             const capMaterial = new THREE.MeshPhongMaterial({ color: 0x3CB371 });
             
             const topCap = new THREE.Mesh(topCapGeometry, capMaterial);
             topCap.position.set(xPosition, ceilingLevel - topPipeHeight + 0.25, 0);
+            topCap.rotation.z = Math.PI / 2;
             topCap.castShadow = true;
             scene.add(topCap);
             
             // Pipe cap для нижней трубы
             const bottomCap = new THREE.Mesh(topCapGeometry, capMaterial);
             bottomCap.position.set(xPosition, groundLevel + bottomPipeHeight - 0.25, 0);
+            bottomCap.rotation.z = Math.PI / 2;
             bottomCap.castShadow = true;
             scene.add(bottomCap);
             
@@ -402,72 +406,74 @@
             let collisionNormal = new THREE.Vector3(0, 0, 0);
             let pushDistance = 0;
             
-            // Check top pipe and cap collision using Box3
-            const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
-            if (topPipeBox.intersectsSphere(birdSphere)) {
-                collisionDetected = true;
-                // Calculate collision normal - push bird down from top pipe
-                const boxCenter = new THREE.Vector3();
-                topPipeBox.getCenter(boxCenter);
-                if (birdPos.y > boxCenter.y) {
-                    collisionNormal.set(0, 1, 0);
-                    pushDistance = topPipeBox.max.y - (birdPos.y - birdCollisionRadius);
-                }
-            }
-            
-            // Check bottom pipe and cap collision using Box3
-            const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
-            if (bottomPipeBox.intersectsSphere(birdSphere)) {
-                collisionDetected = true;
-                // Calculate collision normal - push bird up from bottom pipe
-                // Bird is hitting the top surface of bottom pipe
-                const closestPoint = bottomPipeBox.clampPoint(birdPos.clone(), new THREE.Vector3());
-                const direction = birdPos.clone().sub(closestPoint).normalize();
+            // Helper function to check cylinder collision
+            function checkCylinderCollision(cylinderMesh) {
+                const cylBox = new THREE.Box3().setFromObject(cylinderMesh);
+                if (!cylBox.intersectsSphere(birdSphere)) return false;
                 
-                if (direction.y > 0 || Math.abs(direction.y) < 0.1) {
-                    // Hitting from above - push up
-                    collisionNormal.set(0, 1, 0);
-                    pushDistance = Math.max(pushDistance, bottomPipeBox.max.y - (birdPos.y - birdCollisionRadius));
-                } else {
-                    // Hitting from below - push down
-                    collisionNormal.set(0, -1, 0);
-                    pushDistance = Math.max(pushDistance, (birdPos.y + birdCollisionRadius) - bottomPipeBox.min.y);
-                }
-            }
-            
-            // Also check caps for more accurate collision
-            const topCapBox = new THREE.Box3().setFromObject(pipe.topCap);
-            if (topCapBox.intersectsSphere(birdSphere)) {
-                collisionDetected = true;
-                const boxCenter = new THREE.Vector3();
-                topCapBox.getCenter(boxCenter);
-                if (birdPos.y > boxCenter.y) {
-                    collisionNormal.set(0, 1, 0);
-                    pushDistance = Math.max(pushDistance, topCapBox.max.y - (birdPos.y - birdCollisionRadius));
-                }
-            }
-            
-            const bottomCapBox = new THREE.Box3().setFromObject(pipe.bottomCap);
-            if (bottomCapBox.intersectsSphere(birdSphere)) {
-                collisionDetected = true;
-                // Use closest point method for accurate collision normal
-                const closestPoint = bottomCapBox.clampPoint(birdPos.clone(), new THREE.Vector3());
-                const direction = birdPos.clone().sub(closestPoint).normalize();
+                // Get cylinder properties
+                const cylCenter = new THREE.Vector3();
+                cylinderMesh.getWorldPosition(cylCenter);
+                const geometry = cylinderMesh.geometry;
+                const radius = geometry.parameters.radiusTop;
+                const height = geometry.parameters.height;
                 
-                if (direction.y > 0 || Math.abs(direction.y) < 0.1) {
-                    // Hitting from above - push up
-                    collisionNormal.set(0, 1, 0);
-                    pushDistance = Math.max(pushDistance, bottomCapBox.max.y - (birdPos.y - birdCollisionRadius));
-                } else {
-                    // Hitting from below - push down
-                    collisionNormal.set(0, -1, 0);
-                    pushDistance = Math.max(pushDistance, (birdPos.y + birdCollisionRadius) - bottomCapBox.min.y);
+                // For horizontal cylinders (rotated around Z)
+                const worldMatrix = cylinderMesh.matrixWorld;
+                const scale = new THREE.Vector3();
+                worldMatrix.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+                const effectiveRadius = radius * Math.max(scale.x, scale.y);
+                
+                // Find closest point on cylinder axis to bird
+                // Cylinder is along X axis after rotation
+                const halfHeight = (height / 2) * Math.abs(scale.x);
+                const dx = Math.abs(birdPos.x - cylCenter.x);
+                const dy = birdPos.y - cylCenter.y;
+                const dz = birdPos.z - cylCenter.z;
+                
+                // Check if within cylinder length
+                if (dx > halfHeight + birdCollisionRadius) return false;
+                
+                // Check radial distance
+                const radialDist = Math.sqrt(dy * dy + dz * dz);
+                const minRadialDist = effectiveRadius + birdCollisionRadius;
+                
+                if (radialDist < minRadialDist) {
+                    collisionDetected = true;
+                    
+                    // Calculate push direction (normal)
+                    if (radialDist > 0.001) {
+                        const pushDir = new THREE.Vector3(0, dy / radialDist, dz / radialDist);
+                        const currentPush = pushDistance;
+                        const newPush = minRadialDist - radialDist;
+                        
+                        if (newPush > currentPush) {
+                            pushDistance = newPush;
+                            collisionNormal.copy(pushDir);
+                        }
+                    } else {
+                        // Bird center is on cylinder axis
+                        pushDistance = Math.max(pushDistance, effectiveRadius + birdCollisionRadius);
+                        collisionNormal.set(0, 1, 0);
+                    }
+                    return true;
                 }
+                return false;
             }
+            
+            // Check top pipe collision
+            checkCylinderCollision(pipe.top);
+            
+            // Check bottom pipe collision
+            checkCylinderCollision(pipe.bottom);
+            
+            // Check caps collision
+            checkCylinderCollision(pipe.topCap);
+            checkCylinderCollision(pipe.bottomCap);
             
             // Apply collision response - push bird away from pipe
             if (collisionDetected && pushDistance > 0) {
-                bird.position.y += collisionNormal.y * (pushDistance + 0.1);
+                bird.position.add(collisionNormal.clone().multiplyScalar(pushDistance + 0.1));
                 birdVelocity = collisionNormal.y * jumpStrength * 0.8;
             }
             
