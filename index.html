@@ -450,16 +450,25 @@
                     document.getElementById('score').textContent = score;
                 }
                 
-                // Collision detection - используем уменьшенный хитбокс для птицы
-                const birdSize = 0.8; // Уменьшаем размер хитбокса
+                // Collision detection - используем очень маленький хитбокс для птицы
+                const birdSize = 0.4; // Очень маленький хитбокс - только тело птицы
                 const birdBox = new THREE.Box3(
                     new THREE.Vector3(bird.position.x - birdSize, bird.position.y - birdSize, bird.position.z - birdSize),
                     new THREE.Vector3(bird.position.x + birdSize, bird.position.y + birdSize, bird.position.z + birdSize)
                 );
+                
+                // Получаем bounding box только для основной части труб (без caps)
                 const topPipeBox = new THREE.Box3().setFromObject(pipe.top);
                 const bottomPipeBox = new THREE.Box3().setFromObject(pipe.bottom);
                 
+                // Отладка: проверяем дистанцию до трубы
+                const distToPipe = Math.abs(pipe.top.position.x - bird.position.x);
+                
                 if (birdBox.intersectsBox(topPipeBox) || birdBox.intersectsBox(bottomPipeBox)) {
+                    console.log('Collision! Distance to pipe:', distToPipe);
+                    console.log('Bird position:', bird.position);
+                    console.log('Top pipe position:', pipe.top.position);
+                    console.log('Bottom pipe position:', pipe.bottom.position);
                     endGame();
                 }
                 
