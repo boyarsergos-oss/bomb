@@ -9,6 +9,7 @@
       margin: 0;
       overflow: hidden;
       font-family: 'Arial', sans-serif;
+      background: #a0d8ef; /* Цвет фона совпадает с цветом сцены */
     }
     #info {
       position: absolute;
@@ -140,12 +141,15 @@
 
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true,
-      powerPreference: "high-performance"
+      powerPreference: "high-performance",
+      alpha: true // Прозрачный фон для WebGL canvas
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.zIndex = '1'; // WebGL canvas на заднем плане
     document.body.appendChild(renderer.domElement);
 
     const labelRenderer = new CSS2DRenderer();
@@ -153,7 +157,8 @@
     labelRenderer.domElement.style.position = 'absolute';
     labelRenderer.domElement.style.top = '0px';
     labelRenderer.domElement.style.left = '0px';
-    labelRenderer.domElement.style.pointerEvents = 'none';
+    labelRenderer.domElement.style.pointerEvents = 'auto'; // Разрешаем события указателя для кнопок
+    labelRenderer.domElement.style.zIndex = '999'; // Убедимся, что рендерер поверх canvas, но под UI
     document.body.appendChild(labelRenderer.domElement);
 
     // ==================== МЕНЮ ВЫБОРА КАМЕРЫ В СЦЕНЕ ====================
@@ -175,6 +180,12 @@
     viewSelectorDiv.style.color = 'white';
     viewSelectorDiv.style.backdropFilter = 'blur(8px)';
     viewSelectorDiv.style.pointerEvents = 'auto';
+    viewSelectorDiv.style.zIndex = '1000'; // Убедимся, что меню поверх всего
+    viewSelectorDiv.style.position = 'absolute';
+    viewSelectorDiv.style.top = '50%';
+    viewSelectorDiv.style.left = '50%';
+    viewSelectorDiv.style.transform = 'translate(-50%, -50%)';
+    viewSelectorDiv.style.width = '300px';
     
     const viewSelectorObject = new CSS2DObject(viewSelectorDiv);
     // Размещаем меню перед камерой на старте - позиция будет обновляться в animate()
@@ -844,8 +855,16 @@
       
       // Обновляем позицию меню выбора камеры, чтобы оно следовало за камерой (пока не выбран вид)
       if (!gameStarted && viewSelectorObject) {
-        viewSelectorObject.position.copy(camera.position);
-        viewSelectorObject.position.z -= 5; // Меню перед камерой
+        // Размещаем меню перед камерой на расстоянии 5 единиц
+        const menuDistance = 5;
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        viewSelectorObject.position.copy(camera.position).add(direction.multiplyScalar(menuDistance));
+        // Заставляем меню смотреть на камеру
+        viewSelectorObject.lookAt(camera.position);
+        
+        // Важно: обновляем матрицы объекта перед рендером
+        viewSelectorObject.updateMatrixWorld(true);
       }
       
       // Обновляем контролы в конце кадра (для инерции)
