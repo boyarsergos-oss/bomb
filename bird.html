@@ -34,19 +34,6 @@
       font-size: 13px;
       backdrop-filter: blur(4px);
     }
-    #death-hint {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: white;
-      background: rgba(0,0,0,0.7);
-      padding: 10px 20px;
-      border-radius: 20px;
-      font-size: 14px;
-      backdrop-filter: blur(4px);
-      display: none;
-    }
     #score {
       position: absolute;
       top: 20px;
@@ -67,7 +54,6 @@
   <div id="info">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
   <div id="score">Счёт: 0</div>
   <div id="hint">␣ ПРОБЕЛ: рывок вверх (Flappy Bird)</div>
-  <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
 
   <script type="importmap">
     {
@@ -81,7 +67,6 @@
   <script type="module">
     import * as THREE from 'three';
     import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ==================== НАСТРОЙКИ СЦЕНЫ ====================
     const scene = new THREE.Scene();
@@ -92,9 +77,6 @@
     camera.position.set(0, 4.3, -6.5);
     camera.lookAt(0, 1.5, 0);
     
-    // Контролы для вращения камеры (включаются только при смерти)
-    let controls = null;
-
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true,
       powerPreference: "high-performance"
@@ -625,25 +607,9 @@
               const collisionRadius = birdRadius;
               if (distanceSq < collisionRadius * collisionRadius) {
                 isGameOver = true;
-                // Включаем контролы камеры для осмотра места смерти
-                if (!controls) {
-                  controls = new OrbitControls(camera, renderer.domElement);
-                  controls.enableDamping = true;
-                  controls.dampingFactor = 0.05;
-                  controls.screenSpacePanning = false;
-                  controls.minDistance = 3;
-                  controls.maxDistance = 20;
-                }
-                controls.enabled = true;
-                controls.target.copy(birdGroup.position);
               }
             }
           });
-        }
-        
-        // Обновляем цель контролов если они активны (для плавного слежения во время игры)
-        if (controls && controls.enabled) {
-          controls.target.lerp(birdGroup.position, 0.1);
         }
         
         // Наклон: взлетает — смотрит вверх (-45°), падает — вниз (+45°)
@@ -665,24 +631,13 @@
         rightWing.rotation.z = 0.35 - flapValue * 0.1;
       }
       
-      // Камера следует за птичкой (только если контролы не активны)
-      if (!controls || !controls.enabled) {
-        const targetCamY = birdGroup.position.y + cameraOffsetY;
-        const targetCamZ = birdGroup.position.z + cameraZ;
-        camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
-        camera.position.z += (targetCamZ - camera.position.z) * Math.min(cameraLerpSpeed * delta, 1);
-        camera.position.x = cameraX;
-        camera.lookAt(0, birdGroup.position.y + 0.6, birdGroup.position.z);
-      } else if (controls && controls.enabled) {
-        // Если контролы активны, просто обновляем их target и сами контролы
-        controls.target.copy(birdGroup.position);
-        // controls.update() вызывается ниже после всех проверок
-      }
-      
-      // Обновляем контролы в конце кадра (для инерции)
-      if (controls && controls.enabled) {
-        controls.update();
-      }
+      // Камера следует за птичкой
+      const targetCamY = birdGroup.position.y + cameraOffsetY;
+      const targetCamZ = birdGroup.position.z + cameraZ;
+      camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
+      camera.position.z += (targetCamZ - camera.position.z) * Math.min(cameraLerpSpeed * delta, 1);
+      camera.position.x = cameraX;
+      camera.lookAt(0, birdGroup.position.y + 0.6, birdGroup.position.z);
       
       // Циклическое перемещение облаков и травы вслед за птичкой
       const cycleDistance = 80; // Расстояние, через которое объекты повторяются
@@ -728,7 +683,6 @@
       }
       
       // Отображение сообщения о проигрыше
-      const deathHintEl = document.getElementById('death-hint');
       if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
@@ -739,12 +693,8 @@
         
         ctx.font = '24px Arial';
         ctx.fillText('Нажмите ПРОБЕЛ для рестарта', canvas.width / 2, canvas.height / 2 + 30);
-        
-        // Показываем подсказку про управление камерой
-        deathHintEl.style.display = 'block';
       } else {
-        // Скрываем подсказку когда игра активна
-        deathHintEl.style.display = 'none';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
       
       renderer.render(scene, camera);
@@ -802,11 +752,6 @@
       
       // Сбрасываем флаг игры
       isGameOver = false;
-      
-      // Отключаем контролы камеры если они были включены
-      if (controls) {
-        controls.enabled = false;
-      }
       
       // Очищаем canvas сообщений
       ctx.clearRect(0, 0, canvas.width, canvas.height);
