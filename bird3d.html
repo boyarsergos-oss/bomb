@@ -76,9 +76,9 @@
         ground.position.y = -5;
         scene.add(ground);
 
-        // Позиция камеры: сзади и сверху птички (вид от третьего лица)
-        camera.position.set(0, 4, 8);
-        camera.lookAt(bird.position);
+        // Позиция камеры: сзади и выше птички, чтобы видеть только спину
+        camera.position.set(0, 3, 6);
+        camera.lookAt(bird.position.x, bird.position.y + 1, bird.position.z - 2); // Смотрим чуть выше и вперед от птички
 
         // Анимация
         let time = 0;
