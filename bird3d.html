@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Птичка</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Сцена, камера, рендерер
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Свет
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        scene.add(directionalLight);
+
+        // Круглая птичка (сфера)
+        const birdGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const birdMaterial = new THREE.MeshPhongMaterial({ color: 0xFFD700, shininess: 100 });
+        const bird = new THREE.Mesh(birdGeometry, birdMaterial);
+        scene.add(bird);
+
+        // Глаза
+        const eyeGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const eyeMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.4, 0.3, 0.85);
+        rightEye.position.set(0.4, 0.3, 0.85);
+        bird.add(leftEye);
+        bird.add(rightEye);
+
+        // Клюв
+        const beakGeometry = new THREE.ConeGeometry(0.25, 0.5, 16);
+        const beakMaterial = new THREE.MeshPhongMaterial({ color: 0xFF6347 });
+        const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+        beak.rotation.x = Math.PI / 2;
+        beak.position.set(0, 0, 1.2);
+        bird.add(beak);
+
+        // Крылья
+        const wingGeometry = new THREE.SphereGeometry(0.6, 16, 16);
+        const wingMaterial = new THREE.MeshPhongMaterial({ color: 0xFFA500 });
+        const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+        const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+        leftWing.position.set(-1.2, 0, 0);
+        leftWing.scale.set(0.5, 1, 0.3);
+        rightWing.position.set(1.2, 0, 0);
+        rightWing.scale.set(0.5, 1, 0.3);
+        bird.add(leftWing);
+        bird.add(rightWing);
+
+        // Земля
+        const groundGeometry = new THREE.PlaneGeometry(100, 100);
+        const groundMaterial = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -5;
+        scene.add(ground);
+
+        // Позиция камеры (вид от третьего лица)
+        camera.position.set(0, 2, 8);
+        camera.lookAt(bird.position);
+
+        // Анимация
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.05;
+
+            // Птичка летает по кругу
+            bird.position.x = Math.sin(time) * 5;
+            bird.position.z = Math.cos(time) * 5;
+            bird.position.y = Math.sin(time * 2) * 2 + 2;
+
+            // Машем крыльями
+            leftWing.rotation.z = Math.sin(time * 10) * 0.5;
+            rightWing.rotation.z = -Math.sin(time * 10) * 0.5;
+
+            // Птичка смотрит в направлении движения
+            bird.rotation.y = -time;
+
+            // Камера следует за птичкой
+            camera.position.x = bird.position.x - Math.sin(time) * 8;
+            camera.position.z = bird.position.z - Math.cos(time) * 8;
+            camera.position.y = bird.position.y + 3;
+            camera.lookAt(bird.position);
+
+            renderer.render(scene, camera);
+        }
+
+        // Адаптация под размер окна
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
