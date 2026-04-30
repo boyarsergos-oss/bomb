@@ -315,8 +315,8 @@
     body.receiveShadow = true;
     
     // Хитбокс птички (красная прозрачная сфера для отладки)
-    // Используем тот же радиус, что и в проверке коллизий (0.85 * birdRadius)
-    const collisionRadius = birdRadius * 0.85;
+    // Используем полный радиус birdRadius для честной коллизии, соответствующей визуальному телу
+    const collisionRadius = birdRadius;
     const birdHitboxGeometry = new THREE.SphereGeometry(collisionRadius, 16, 16);
     const birdHitboxMaterial = new THREE.MeshBasicMaterial({ 
       color: 0xff0000, 
@@ -590,9 +590,9 @@
               // Вычисляем расстояние от центра птички до ближайшей точки
               const distanceSq = birdPos.distanceToSquared(closestPoint);
               
-              // Столкновение, если расстояние меньше радиуса птички (с небольшим запасом)
-              // Используем 0.85 * birdRadius для более честной коллизии
-              const collisionRadius = birdRadius * 0.85;
+              // Столкновение, если расстояние меньше радиуса птички
+              // Используем полный birdRadius для соответствия хитбокса визуальному телу
+              const collisionRadius = birdRadius;
               if (distanceSq < collisionRadius * collisionRadius) {
                 isGameOver = true;
                 // Включаем контролы камеры для осмотра места смерти
