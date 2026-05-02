@@ -564,15 +564,25 @@
     const grassBlades = [];
     const clouds = [];
     const obstacles = []; // Массив препятствий (труб)
-    const mountainsLeft = []; // Горы слева
-    const mountainsRight = []; // Горы справа
+    const mountainsLeft = []; // Горы слева (ближние)
+    const mountainsRight = []; // Горы справа (ближние)
+    const mountainsLeftFar = []; // Горы слева (дальние)
+    const mountainsRightFar = []; // Горы справа (дальние)
     
     // ==================== ГОРЫ НА ГОРИЗОНТЕ ====================
     // Создаём силуэты гор по бокам на всём протяжении пути
-    function createMountain(x, z, height, width, isLeft) {
+    function createMountain(x, z, height, width, isLeft, isFar) {
       const mountainGeometry = new THREE.ConeGeometry(width, height, 4);
+      let color;
+      if (isFar) {
+        // Дальние горы светлее из-за атмосферной дымки
+        color = isLeft ? 0x5a6b7c : 0x6b7c8d;
+      } else {
+        // Ближние горы тёмные силуэты
+        color = isLeft ? 0x2d3436 : 0x3d4a47;
+      }
       const mountainMaterial = new THREE.MeshStandardMaterial({ 
-        color: isLeft ? 0x2d3436 : 0x3d4a47, // Тёмные силуэты (слева темнее, справа чуть светлее)
+        color: color,
         roughness: 0.95,
         flatShading: true
       });
@@ -585,34 +595,65 @@
     
     // Создаём горы слева и справа на большом расстоянии
     const mountainSpacing = 12; // Расстояние между горами
-    const mountainDistance = 60; // Расстояние от центра сцены
+    const mountainDistance = 60; // Расстояние от центра сцены (ближние)
+    const mountainDistanceFar = 90; // Расстояние от центра сцены (дальние)
     const numMountains = 80; // Количество гор с каждой стороны
     
     for (let i = 0; i < numMountains; i++) {
-      const height = 15 + Math.random() * 25; // Высота гор от 15 до 40
-      const width = 10 + Math.random() * 8; // Ширина гор от 8 до 20
+      const height = 15 + Math.random() * 25; // Высота ближних гор от 15 до 40
+      const width = 10 + Math.random() * 8; // Ширина ближних гор от 10 до 18
       
-      // Горы слева
+      // Горы слева (ближние)
       const mountainLeft = createMountain(
         -mountainDistance - Math.random() * 20,
         i * mountainSpacing - 100,
         height,
         width,
-        true
+        true,
+        false
       );
       scene.add(mountainLeft);
       mountainsLeft.push(mountainLeft);
       
-      // Горы справа
+      // Горы справа (ближние)
       const mountainRight = createMountain(
         mountainDistance + Math.random() * 20,
         i * mountainSpacing - 100,
         height,
         width,
+        false,
         false
       );
       scene.add(mountainRight);
       mountainsRight.push(mountainRight);
+
+      // Дальние горы (выше и больше)
+      const heightFar = 25 + Math.random() * 35; // Высота дальних гор от 25 до 60
+      const widthFar = 15 + Math.random() * 12; // Ширина дальних гор от 15 до 27
+      
+      // Горы слева (дальние)
+      const mountainLeftFar = createMountain(
+        -mountainDistanceFar - Math.random() * 30,
+        i * mountainSpacing - 100 + Math.random() * mountainSpacing * 0.5,
+        heightFar,
+        widthFar,
+        true,
+        true
+      );
+      scene.add(mountainLeftFar);
+      mountainsLeftFar.push(mountainLeftFar);
+      
+      // Горы справа (дальние)
+      const mountainRightFar = createMountain(
+        mountainDistanceFar + Math.random() * 30,
+        i * mountainSpacing - 100 + Math.random() * mountainSpacing * 0.5,
+        heightFar,
+        widthFar,
+        false,
+        true
+      );
+      scene.add(mountainRightFar);
+      mountainsRightFar.push(mountainRightFar);
     }
     
     // Уровень земли и радиус птички (должны быть объявлены до createObstacle)
@@ -1401,6 +1442,16 @@
           mountain.position.z += numMountains * mountainSpacing;
         }
       });
+      mountainsLeftFar.forEach(mountain => {
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z += numMountains * mountainSpacing;
+        }
+      });
+      mountainsRightFar.forEach(mountain => {
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z += numMountains * mountainSpacing;
+        }
+      });
       
       // Перемещение травинок
       grassBlades.forEach(blade => {
@@ -1612,6 +1663,18 @@
       });
       mountainsRight.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем горы
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
+        }
+      });
+      mountainsLeftFar.forEach(mountain => {
+        mountain.visible = true; // Принудительно показываем дальние горы
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
+        }
+      });
+      mountainsRightFar.forEach(mountain => {
+        mountain.visible = true; // Принудительно показываем дальние горы
         if (mountain.position.z < birdZ - 50) {
           mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
         }
