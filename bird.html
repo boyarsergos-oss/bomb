@@ -543,6 +543,17 @@
     const groundSegmentLength = 100;
     const numGroundSegments = 5; // Количество сегментов
     
+    // Функция для регенерации сегмента земли с новой текстурой/цветом
+    function regenerateGroundSegment(segment, newZ) {
+      segment.position.z = newZ;
+      // Небольшое изменение оттенка для разнообразия
+      const baseColor = settings.groundColor || 0x7cb342;
+      const hueShift = (Math.random() - 0.5) * 0.05;
+      const color = new THREE.Color(baseColor);
+      color.offsetHSL(hueShift, 0, 0);
+      segment.material.color.copy(color);
+    }
+    
     for (let i = 0; i < numGroundSegments; i++) {
       const groundGeometry = new THREE.PlaneGeometry(groundSegmentLength, 600);
       const groundMaterial = new THREE.MeshStandardMaterial({ 
@@ -593,6 +604,30 @@
       mountain.castShadow = false;
       mountain.receiveShadow = false;
       return mountain;
+    }
+    
+    // Функция регенерации горы с новыми параметрами
+    function regenerateMountain(mountain, baseX, baseZ, isLeft, isFar) {
+      const height = isFar ? 25 + Math.random() * 35 : 15 + Math.random() * 25;
+      const width = isFar ? 15 + Math.random() * 12 : 10 + Math.random() * 8;
+      const variance = isFar ? 30 : 20;
+      
+      mountain.position.x = (isLeft ? -1 : 1) * (isFar ? mountainDistanceFar : mountainDistance) + Math.random() * variance;
+      mountain.position.z = baseZ;
+      mountain.position.y = -15.0 + height / 2;
+      
+      // Обновляем геометрию
+      mountain.geometry.dispose();
+      mountain.geometry = new THREE.ConeGeometry(width, height, 4);
+      
+      // Обновляем цвет
+      let color;
+      if (isFar) {
+        color = isLeft ? 0x5a6b7c : 0x6b7c8d;
+      } else {
+        color = isLeft ? 0x2d3436 : 0x3d4a47;
+      }
+      mountain.material.color.setHex(color);
     }
     
     // Создаём горы слева и справа на большом расстоянии
@@ -1419,10 +1454,11 @@
       const cycleDistance = 80; // Расстояние, через которое объекты повторяются
       const birdZ = birdGroup.position.z;
       
-      // Перемещение сегментов земли (бесконечная земля)
+      // Перемещение сегментов земли (бесконечная земля) с регенерацией
       groundSegments.forEach(segment => {
         if (segment.position.z < birdZ - 60) {
-          segment.position.z += numGroundSegments * groundSegmentLength;
+          const newZ = segment.position.z + numGroundSegments * groundSegmentLength;
+          regenerateGroundSegment(segment, newZ);
         }
       });
       
@@ -1433,25 +1469,29 @@
         }
       });
       
-      // Перемещение гор на горизонте (бесконечный эффект)
-      mountainsLeft.forEach(mountain => {
+      // Перемещение гор на горизонте (бесконечный эффект) с регенерацией
+      mountainsLeft.forEach((mountain, index) => {
         if (mountain.position.z < birdZ - 150) {
-          mountain.position.z += numMountains * mountainSpacing;
+          const newZ = mountain.position.z + numMountains * mountainSpacing;
+          regenerateMountain(mountain, null, newZ, true, false);
         }
       });
-      mountainsRight.forEach(mountain => {
+      mountainsRight.forEach((mountain, index) => {
         if (mountain.position.z < birdZ - 150) {
-          mountain.position.z += numMountains * mountainSpacing;
+          const newZ = mountain.position.z + numMountains * mountainSpacing;
+          regenerateMountain(mountain, null, newZ, false, false);
         }
       });
-      mountainsLeftFar.forEach(mountain => {
+      mountainsLeftFar.forEach((mountain, index) => {
         if (mountain.position.z < birdZ - 150) {
-          mountain.position.z += numMountains * mountainSpacing;
+          const newZ = mountain.position.z + numMountains * mountainSpacing;
+          regenerateMountain(mountain, null, newZ, true, true);
         }
       });
-      mountainsRightFar.forEach(mountain => {
+      mountainsRightFar.forEach((mountain, index) => {
         if (mountain.position.z < birdZ - 150) {
-          mountain.position.z += numMountains * mountainSpacing;
+          const newZ = mountain.position.z + numMountains * mountainSpacing;
+          regenerateMountain(mountain, null, newZ, false, true);
         }
       });
       
