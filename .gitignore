@@ -1,1 +1,13 @@
-Nothing should be ignored based on the provided file changes. The only modified file is `bird.html`, which is a source file and should not be added to .gitignore.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+</html>
+```
