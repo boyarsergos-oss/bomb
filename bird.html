@@ -297,6 +297,8 @@
     camera.lookAt(0, groundLevel + birdRadius + 1.5, 0);
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
+    let bestScore = parseInt(localStorage.getItem('bestScore')) || 0; // Лучший счёт (сохраняется в localStorage)
+    
     const birdGroup = new THREE.Group();
     birdGroup.position.set(0, groundLevel + birdRadius, 0);
     
@@ -598,7 +600,7 @@
     let distanceTraveled = 0; // Пройденное расстояние
     let isGameOver = false; // Флаг окончания игры
     let score = 0; // Счёт пролетевших труб
-    let bestScore = parseInt(localStorage.getItem('bestScore')) || 0; // Лучший счёт (сохраняется в localStorage)
+    // bestScore уже объявлен выше (строка 300)
     let gameStarted = true; // Игра началась сразу
     let isOnGround = true; // Птичка начинается на земле
     
