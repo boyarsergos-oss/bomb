@@ -717,6 +717,10 @@
       obstacleGroup.add(safeZone);
       
       obstacleGroup.position.z = zPosition;
+      
+      // Обновляем карту теней для нового объекта
+      renderer.shadowMap.needsUpdate = true;
+      
       return obstacleGroup;
     }
     
