@@ -365,8 +365,8 @@
     <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
   </div>
   <div id="info" style="display: none;">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
-  <div id="hint" style="display: none;">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
-  <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
+  <div id="hint" style="display: none;">␣ ПРОБЕЛ / ТАП: рывок вверх (Flappy Bird) | V: сменить вид</div>
+  <div id="death-hint">🖱️ Крути мышкой для осмотра | 👆 ТАП для прыжка</div>
   <div id="game-over-panel">
     <h2>💀 ИГРА ОКОНЧЕНА</h2>
     <div class="score-display">Счёт: <span id="final-score">0</span></div>
@@ -932,6 +932,24 @@
           firstPerson: 'вид от первого лица'
         };
         document.getElementById('info').textContent = '🐥 КРУГЛАЯ ПТИЧКА • ' + viewNames[currentViewMode];
+      }
+    });
+
+    // ==================== СЕНСОРНОЕ УПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ ====================
+    // Обработка тапа по экрану для прыжка (аналог пробела)
+    document.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (gameStarted && !isGameOver) {
+        birdVelocityY = flapVelocity;
+      }
+    }, { passive: false });
+
+    // Обработка клика мышкой для ПК (альтернатива пробелу)
+    document.addEventListener('click', (e) => {
+      // Игнорируем клики по кнопкам интерфейса
+      if (e.target.closest('button')) return;
+      if (gameStarted && !isGameOver) {
+        birdVelocityY = flapVelocity;
       }
     });
 
