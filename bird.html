@@ -58,6 +58,64 @@
       text-align: center;
     }
     
+    #game-over-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.85);
+      padding: clamp(20px, 4vh, 30px) clamp(25px, 5vw, 40px);
+      border-radius: clamp(15px, 2vh, 20px);
+      text-align: center;
+      color: white;
+      backdrop-filter: blur(8px);
+      z-index: 101;
+      min-width: clamp(250px, 50vw, 400px);
+      max-width: calc(100vw - 40px);
+      box-sizing: border-box;
+      display: none;
+    }
+    
+    #game-over-panel h2 {
+      margin: 0 0 clamp(15px, 2vh, 20px) 0;
+      font-size: clamp(24px, 4vh, 36px);
+      letter-spacing: 1px;
+      color: #ff6b6b;
+    }
+    
+    #game-over-panel .score-display {
+      font-size: clamp(18px, 2.5vh, 24px);
+      margin: clamp(10px, 1.5vh, 15px) 0;
+    }
+    
+    #game-over-panel .best-score {
+      font-size: clamp(16px, 2vh, 20px);
+      color: #ffd93d;
+      margin-bottom: clamp(15px, 2vh, 20px);
+    }
+    
+    #continue-btn {
+      display: inline-block;
+      padding: clamp(12px, 2.5vh, 16px) clamp(30px, 5vw, 45px);
+      font-size: clamp(16px, 2.5vh, 20px);
+      border: none;
+      border-radius: clamp(10px, 1.5vh, 12px);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: clamp(10px, 1.5vh, 15px);
+    }
+    
+    #continue-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+    }
+    
+    #continue-btn:active {
+      transform: scale(0.98);
+    }
+    
     #view-selector {
       position: absolute;
       top: 50%;
@@ -218,6 +276,12 @@
   <div id="info" style="display: none;">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
   <div id="hint" style="display: none;">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
+  <div id="game-over-panel">
+    <h2>💀 ИГРА ОКОНЧЕНА</h2>
+    <div class="score-display">Счёт: <span id="final-score">0</span></div>
+    <div class="best-score">🏆 Лучший счёт: <span id="best-score">0</span></div>
+    <button id="continue-btn">▶️ Продолжить</button>
+  </div>
 
   <script type="importmap">
     {
@@ -702,7 +766,19 @@
     let distanceTraveled = 0; // Пройденное расстояние
     let isGameOver = false; // Флаг окончания игры
     let score = 0; // Счёт пролетевших труб
+    let bestScore = parseInt(localStorage.getItem('bestScore')) || 0; // Лучший счёт (сохраняется в localStorage)
     let gameStarted = false; // Игра ещё не началась (ждём выбора вида)
+    
+    // Элементы UI для экрана проигрыша
+    const gameOverPanel = document.getElementById('game-over-panel');
+    const finalScoreEl = document.getElementById('final-score');
+    const bestScoreEl = document.getElementById('best-score');
+    const continueBtn = document.getElementById('continue-btn');
+    
+    // Обработчик кнопки "Продолжить"
+    continueBtn.addEventListener('click', () => {
+      restartGame();
+    });
     
     // Обработчик выбора вида камеры при старте
     const viewSelector = document.getElementById('view-selector');
@@ -748,6 +824,9 @@
         e.preventDefault();
         if (gameStarted && !isGameOver) {
           birdVelocityY = flapVelocity;
+        } else if (gameStarted && isGameOver) {
+          // Если игра окончена, пробел тоже перезапускает игру
+          restartGame();
         }
       }
       // Переключение видов камеры на клавишу V
@@ -828,6 +907,13 @@
               const collisionRadius = birdRadius;
               if (distanceSq < collisionRadius * collisionRadius) {
                 isGameOver = true;
+                
+                // Проверяем и сохраняем лучший счёт
+                if (score > bestScore) {
+                  bestScore = score;
+                  localStorage.setItem('bestScore', bestScore);
+                }
+                
                 // Включаем контролы камеры для осмотра места смерти
                 if (!controls) {
                   controls = new OrbitControls(camera, renderer.domElement);
@@ -964,19 +1050,18 @@
       if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 48px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('ИГРА ОКОНЧЕНА', canvas.width / 2, canvas.height / 2 - 30);
-        
-        ctx.font = '24px Arial';
-        ctx.fillText('Нажмите ПРОБЕЛ для рестарта', canvas.width / 2, canvas.height / 2 + 30);
+        // Показываем панель проигрыша с кнопкой и лучшим счётом
+        gameOverPanel.style.display = 'block';
+        finalScoreEl.textContent = score;
+        bestScoreEl.textContent = bestScore;
         
         // Показываем подсказку про управление камерой
         deathHintEl.style.display = 'block';
       } else {
         // Скрываем подсказку когда игра активна
         deathHintEl.style.display = 'none';
+        // Скрываем панель проигрыша
+        gameOverPanel.style.display = 'none';
         
         // Очищаем холст перед отрисовкой счёта
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1015,6 +1100,37 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
       labelRenderer.setSize(window.innerWidth, window.innerHeight);
     });
+    
+    // Функция перезапуска игры
+    function restartGame() {
+      // Сбрасываем переменные игры
+      isGameOver = false;
+      score = 0;
+      distanceTraveled = 0;
+      birdGroup.position.set(0, 0, 0);
+      birdVelocityY = 0;
+      birdGroup.rotation.set(0, 0, 0);
+      
+      // Отключаем контролы камеры
+      if (controls) {
+        controls.enabled = false;
+      }
+      
+      // Очищаем сцену от старых препятствий
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        scene.remove(obstacles[i]);
+        obstacles.splice(i, 1);
+      }
+      
+      // Создаём новое начальное препятствие
+      const firstObstacle = createObstacle(obstacleSpawnInterval);
+      firstObstacle.passed = false;
+      obstacles.push(firstObstacle);
+      scene.add(firstObstacle);
+      
+      // Скрываем панель проигрыша
+      gameOverPanel.style.display = 'none';
+    }
 
     animate();
 
