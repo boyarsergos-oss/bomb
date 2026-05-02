@@ -717,13 +717,11 @@
       return obstacleGroup;
     }
     
-    // Создаём первые три препятствия
-    for (let i = 0; i < 3; i++) {
-      const firstObstacle = createObstacle(obstacleSpawnInterval + i * (obstacleSpawnInterval / 3));
-      firstObstacle.passed = false;
-      obstacles.push(firstObstacle);
-      scene.add(firstObstacle);
-    }
+    // Создаём первое препятствие
+    const firstObstacle = createObstacle(obstacleSpawnInterval);
+    firstObstacle.passed = false;
+    obstacles.push(firstObstacle);
+    scene.add(firstObstacle);
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
     const birdGroup = new THREE.Group();
@@ -1349,18 +1347,14 @@
       });
       
       // Спавн новых препятствий и перемещение старых
-      // Если птичка приблизилась к последнему препятствию, создаём новое (сразу три препятствия)
+      // Если птичка приблизилась к последнему препятствию, создаём новое
       const lastObstacle = obstacles[obstacles.length - 1];
       if (lastObstacle && birdZ > lastObstacle.position.z - obstacleSpawnInterval) {
-        const baseZ = lastObstacle.position.z + obstacleSpawnInterval;
-        // Создаём сразу три препятствия с небольшим интервалом между ними
-        for (let i = 0; i < 3; i++) {
-          const newObstacleZ = baseZ + i * (obstacleSpawnInterval / 3);
-          const newObstacle = createObstacle(newObstacleZ);
-          newObstacle.passed = false;
-          obstacles.push(newObstacle);
-          scene.add(newObstacle);
-        }
+        const newObstacleZ = lastObstacle.position.z + obstacleSpawnInterval;
+        const newObstacle = createObstacle(newObstacleZ);
+        newObstacle.passed = false;
+        obstacles.push(newObstacle);
+        scene.add(newObstacle);
       }
       
       // Проверяем, пролетела ли птичка мимо препятствия (счёт)
@@ -1525,13 +1519,11 @@
         obstacles.splice(i, 1);
       }
       
-      // Создаём новые начальные три препятствия
-      for (let i = 0; i < 3; i++) {
-        const firstObstacle = createObstacle(obstacleSpawnInterval + i * (obstacleSpawnInterval / 3));
-        firstObstacle.passed = false;
-        obstacles.push(firstObstacle);
-        scene.add(firstObstacle);
-      }
+      // Создаём новое начальное препятствие
+      const firstObstacle = createObstacle(obstacleSpawnInterval);
+      firstObstacle.passed = false;
+      obstacles.push(firstObstacle);
+      scene.add(firstObstacle);
       
       // Сбрасываем позиции сегментов земли относительно птицы
       groundSegments.forEach((segment, index) => {
