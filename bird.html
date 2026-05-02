@@ -1148,9 +1148,13 @@
         }
         
         // Движение птички вперёд (по положительной оси Z) - только после первого действия
+        // И только если птичка не на земле или был взмах
         if (!isFirstFlap) {
-          distanceTraveled += forwardSpeed * delta;
-          birdGroup.position.z = distanceTraveled;
+          // Двигаемся вперед только если птичка в воздухе или был взмах
+          if (!onGround || hasFlapped) {
+            distanceTraveled += forwardSpeed * delta;
+            birdGroup.position.z = distanceTraveled;
+          }
           
           // Применяем гравитацию только если птичка не на земле или имеет положительную скорость
           if (!onGround || birdVelocityY > 0) {
