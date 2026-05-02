@@ -26,6 +26,7 @@
       pointer-events: none;
       backdrop-filter: blur(5px);
       max-width: calc(100vw - 40px);
+      display: none;
     }
     
     #hint {
@@ -40,6 +41,7 @@
       backdrop-filter: blur(4px);
       max-width: calc(100vw - 40px);
       text-align: right;
+      display: none;
     }
     
     #death-hint {
@@ -976,8 +978,6 @@
         
         // Скрываем селектор и показываем интерфейс игры
         viewSelector.style.display = 'none';
-        document.getElementById('info').style.display = 'block';
-        document.getElementById('hint').style.display = 'block';
         
         gameStarted = true;
       });
