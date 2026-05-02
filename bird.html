@@ -955,6 +955,7 @@
     const bestScoreEl = document.getElementById('best-score');
     const continueBtn = document.getElementById('continue-btn');
     const changeViewBtn = document.getElementById('change-view-btn');
+    const deathHintEl = document.getElementById('death-hint');
     
     // Обработчик кнопки "Продолжить"
     continueBtn.addEventListener('click', () => {
@@ -1117,6 +1118,14 @@
                   controls.screenSpacePanning = false;
                   controls.minDistance = 3;
                   controls.maxDistance = 20;
+                  
+                  // Скрываем все меню когда игрок начинает вращать камеру
+                  controls.addEventListener('start', () => {
+                    gameOverPanel.style.display = 'none';
+                    deathHintEl.style.display = 'none';
+                    document.getElementById('info').style.display = 'none';
+                    document.getElementById('hint').style.display = 'none';
+                  });
                 }
                 controls.enabled = true;
                 controls.target.copy(birdGroup.position);
@@ -1241,7 +1250,6 @@
       }
       
       // Отображение сообщения о проигрыше
-      const deathHintEl = document.getElementById('death-hint');
       if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
@@ -1333,8 +1341,11 @@
       obstacles.push(firstObstacle);
       scene.add(firstObstacle);
       
-      // Скрываем панель проигрыша
+      // Скрываем панель проигрыша и показываем подсказки
       gameOverPanel.style.display = 'none';
+      deathHintEl.style.display = 'none';
+      document.getElementById('info').style.display = 'block';
+      document.getElementById('hint').style.display = 'block';
     }
 
     animate();
