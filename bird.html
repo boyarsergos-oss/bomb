@@ -1252,6 +1252,27 @@
         if (!obstacles[i].passed && birdZ > obstacles[i].position.z) {
           obstacles[i].passed = true;
           score++;
+          
+          // Делаем верхнюю трубу невидимой после пролёта
+          const obstacle = obstacles[i];
+          // Находим верхнюю трубу и крышку в группе препятствия и скрываем их
+          obstacle.children.forEach(child => {
+            // Скрываем верхнюю трубу и верхнюю крышку (но не хитбоксы)
+            if (child.geometry && child.geometry.parameters) {
+              const params = child.geometry.parameters;
+              // Верхняя труба: высота 100, ширина 2.5, глубина 2.0
+              if (params.height === 100 && params.width === 2.5 && params.depth === 2.0) {
+                child.visible = false;
+              }
+              // Верхняя крышка: высота 0.3, ширина 2.8, глубина 2.3
+              else if (params.height === 0.3 && params.width === 2.8 && params.depth === 2.3) {
+                // Проверяем, что это верхняя крышка (она находится выше)
+                if (child.position.y > 5) {
+                  child.visible = false;
+                }
+              }
+            }
+          });
         }
       }
       
