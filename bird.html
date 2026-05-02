@@ -1142,29 +1142,25 @@
         // Проверяем, находится ли птичка на земле
         const onGround = birdGroup.position.y <= minY;
         
-        // Если был взмах в этом кадре и птичка на земле - применяем скорость взлёта
-        if (hasFlapped && onGround) {
+        // Если был взмах в этом кадре - применяем скорость взлёта (даже на земле)
+        if (hasFlapped) {
           birdVelocityY = flapVelocity;
         }
         
-        // Движение птички вперёд (по положительной оси Z) - только после первого действия и не на земле
-        if (!isFirstFlap && !onGround) {
+        // Движение птички вперёд (по положительной оси Z) - только после первого действия
+        if (!isFirstFlap) {
           distanceTraveled += forwardSpeed * delta;
           birdGroup.position.z = distanceTraveled;
           
-          birdVelocityY += gravity * delta;
-          if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
+          // Применяем гравитацию только если птичка не на земле или имеет положительную скорость
+          if (!onGround || birdVelocityY > 0) {
+            birdVelocityY += gravity * delta;
+            if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
+          }
           
           birdGroup.position.y += birdVelocityY * delta;
-        } else if (!isFirstFlap && onGround) {
-          // Птичка на земле - не двигаемся вперёд, но гравитация действует
-          // Если не было взмаха, обнуляем скорость
-          if (!hasFlapped) {
-            birdVelocityY = 0;
-          }
-          birdGroup.position.y = minY;
         } else {
-          // До первого действия птичка остаётся на месте
+          // До первого действия птичка остаётся на стартовой позиции
           birdVelocityY = 0;
         }
         
