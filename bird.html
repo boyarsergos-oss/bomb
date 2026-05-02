@@ -850,12 +850,13 @@
         }
         
         // Наклон: взлетает — смотрит вверх (-45°), падает — вниз (+45°)
+        // Убран наклон для вертикального падения под 90 градусов
         const speedThreshold = 0.5;
         let targetRotX = 0;
         if (birdVelocityY > speedThreshold) {
           targetRotX = THREE.MathUtils.degToRad(-45);
         } else if (birdVelocityY < -speedThreshold) {
-          targetRotX = THREE.MathUtils.degToRad(45);
+          targetRotX = 0; // Птичка остаётся горизонтальной при падении (90 градусов к земле)
         }
         birdGroup.rotation.x += (targetRotX - birdGroup.rotation.x) * Math.min(rotationLerpSpeed * delta, 1);
         
