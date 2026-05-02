@@ -454,6 +454,9 @@
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 200);
     
+    // Сохраняем начальное соотношение сторон для фиксации FOV
+    const initialAspectRatio = window.innerWidth / window.innerHeight;
+    
     // Настройки видов камеры
     const viewModes = {
       rear: { name: 'rear', offsetX: 0, offsetY: 2.8, offsetZ: -6.5 },      // вид сзади (текущий)
@@ -1267,8 +1270,7 @@
     window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
+      // Не меняем aspect у камеры, чтобы сохранить FOV постоянным при смене ориентации
       renderer.setSize(window.innerWidth, window.innerHeight);
       labelRenderer.setSize(window.innerWidth, window.innerHeight);
     });
