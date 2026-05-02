@@ -1018,12 +1018,13 @@
     
     // Функция для выполнения прыжка
     function doFlap() {
+      // Взлетаем всегда, если игра активна и не gameOver
       if (gameStarted && !isGameOver) {
         birdVelocityY = flapVelocity;
-      }
-      // Первое действие игрока - начинаем движение
-      if (gameStarted && !isGameOver && isFirstFlap) {
-        isFirstFlap = false;
+        // Первое действие игрока - начинаем движение
+        if (isFirstFlap) {
+          isFirstFlap = false;
+        }
       }
     }
     
