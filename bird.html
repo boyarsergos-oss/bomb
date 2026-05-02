@@ -1660,25 +1660,25 @@
       mountainsLeft.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем горы
         if (mountain.position.z < birdZ - 50) {
-          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
+          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing - 30;
         }
       });
       mountainsRight.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем горы
         if (mountain.position.z < birdZ - 50) {
-          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
+          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing - 30;
         }
       });
       mountainsLeftFar.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем дальние горы
         if (mountain.position.z < birdZ - 50) {
-          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
+          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing - 30;
         }
       });
       mountainsRightFar.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем дальние горы
         if (mountain.position.z < birdZ - 50) {
-          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
+          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing - 30;
         }
       });
       
