@@ -584,13 +584,13 @@
     }
     
     // Создаём горы слева и справа на большом расстоянии
-    const mountainSpacing = 25; // Расстояние между горами
+    const mountainSpacing = 12; // Расстояние между горами
     const mountainDistance = 60; // Расстояние от центра сцены
-    const numMountains = 40; // Количество гор с каждой стороны
+    const numMountains = 80; // Количество гор с каждой стороны
     
     for (let i = 0; i < numMountains; i++) {
       const height = 15 + Math.random() * 25; // Высота гор от 15 до 40
-      const width = 8 + Math.random() * 12; // Ширина гор от 8 до 20
+      const width = 10 + Math.random() * 8; // Ширина гор от 8 до 20
       
       // Горы слева
       const mountainLeft = createMountain(
