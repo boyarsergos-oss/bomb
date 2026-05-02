@@ -936,6 +936,66 @@
       scene.add(cloud);
     }
 
+    // ==================== ГОРЫ НА ГОРИЗОНТЕ ====================
+    // Функция для создания силуэта горы
+    function createMountainShape(width, height, peakOffset) {
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.lineTo(peakOffset, height);
+      shape.lineTo(width, 0);
+      shape.lineTo(0, 0);
+      return shape;
+    }
+
+    const mountainMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x2d3e50, 
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.8
+    });
+
+    // Горы слева
+    const leftMountainsGroup = new THREE.Group();
+    for (let i = 0; i < 15; i++) {
+      const width = 8 + Math.random() * 6;
+      const height = 6 + Math.random() * 8;
+      const peakOffset = Math.random() * width;
+      
+      const mountainShape = createMountainShape(width, height, peakOffset);
+      const mountainGeometry = new THREE.ShapeGeometry(mountainShape);
+      const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+      
+      mountain.position.set(
+        -25 - Math.random() * 15, // Слева от центра
+        -4 + height * 0.3, // На уровне земли
+        -30 - Math.random() * 20 // На заднем плане
+      );
+      mountain.rotation.y = (Math.random() - 0.5) * 0.3;
+      leftMountainsGroup.add(mountain);
+    }
+    scene.add(leftMountainsGroup);
+
+    // Горы справа
+    const rightMountainsGroup = new THREE.Group();
+    for (let i = 0; i < 15; i++) {
+      const width = 8 + Math.random() * 6;
+      const height = 6 + Math.random() * 8;
+      const peakOffset = Math.random() * width;
+      
+      const mountainShape = createMountainShape(width, height, peakOffset);
+      const mountainGeometry = new THREE.ShapeGeometry(mountainShape);
+      const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+      
+      mountain.position.set(
+        25 + Math.random() * 15, // Справа от центра
+        -4 + height * 0.3, // На уровне земли
+        -30 - Math.random() * 20 // На заднем плане
+      );
+      mountain.rotation.y = (Math.random() - 0.5) * 0.3;
+      rightMountainsGroup.add(mountain);
+    }
+    scene.add(rightMountainsGroup);
+
     // ==================== ФИЗИКА И ДВИЖЕНИЕ ====================
     const gravity = -80.0;
     const flapVelocity = 27.0;
