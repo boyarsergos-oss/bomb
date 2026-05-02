@@ -575,6 +575,7 @@
     // Параметры для спавна препятствий
     const obstacleSpawnInterval = 15; // Расстояние между препятствиями
     const obstacleInitialDistance = 30; // Начальное расстояние до первого препятствия (спавн впереди)
+    const obstacleInitialDistanceRear = 50; // Начальное расстояние до первого препятствия для вида сзади (ещё дальше впереди)
     const obstacleGapHeight = 8.5; // Высота проёма между трубами (увеличено)
     const obstacleWidth = 2.5; // Ширина трубы
     const obstacleDepth = 2.0; // Глубина трубы
@@ -720,7 +721,8 @@
     }
     
     // Создаём первое препятствие (спавним впереди птицы)
-    const firstObstacle = createObstacle(obstacleInitialDistance);
+    const firstObstacleDistance = currentViewMode === 'rear' ? obstacleInitialDistanceRear : obstacleInitialDistance;
+    const firstObstacle = createObstacle(firstObstacleDistance);
     firstObstacle.passed = false;
     obstacles.push(firstObstacle);
     scene.add(firstObstacle);
@@ -1522,7 +1524,8 @@
       }
       
       // Создаём новое начальное препятствие (спавним впереди птицы)
-      const firstObstacle = createObstacle(obstacleInitialDistance);
+      const firstObstacleDistance = currentViewMode === 'rear' ? obstacleInitialDistanceRear : obstacleInitialDistance;
+      const firstObstacle = createObstacle(firstObstacleDistance);
       firstObstacle.passed = false;
       obstacles.push(firstObstacle);
       scene.add(firstObstacle);
