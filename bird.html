@@ -448,6 +448,9 @@
     // ==================== НАСТРОЙКИ СЦЕНЫ ====================
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa0d8ef);
+    
+    // Добавляем туман на горизонте для эффекта глубины
+    scene.fog = new THREE.Fog(0xa0d8ef, 40, 120);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 200);
     
@@ -1135,6 +1138,9 @@
       
       // Меняем цвет фона
       scene.background.setHex(settings.background);
+      
+      // Меняем цвет тумана
+      scene.fog.color.setHex(settings.fog);
       
       // Меняем освещение
       ambientLight.intensity = settings.ambientLight;
