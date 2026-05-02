@@ -946,6 +946,7 @@
     let bestScore = parseInt(localStorage.getItem('bestScore')) || 0; // Лучший счёт (сохраняется в localStorage)
     let gameStarted = false; // Игра ещё не началась (ждём выбора вида)
     let isFirstFlap = true; // Ждём первого действия игрока
+    let hasFlapped = false; // Флаг текущего кадра - был ли взмах
     let lastTimeChangeScore = 0; // Последний счёт, при котором менялось время суток
     
     // ==================== ВРЕМЯ СУТОК ====================
@@ -1021,6 +1022,7 @@
       // Взлетаем всегда, если игра активна и не gameOver
       if (gameStarted && !isGameOver) {
         birdVelocityY = flapVelocity;
+        hasFlapped = true; // Отмечаем, что был взмах в этом кадре
         // Первое действие игрока - начинаем движение
         if (isFirstFlap) {
           isFirstFlap = false;
@@ -1140,6 +1142,11 @@
         // Проверяем, находится ли птичка на земле
         const onGround = birdGroup.position.y <= minY;
         
+        // Если был взмах в этом кадре и птичка на земле - применяем скорость взлёта
+        if (hasFlapped && onGround) {
+          birdVelocityY = flapVelocity;
+        }
+        
         // Движение птички вперёд (по положительной оси Z) - только после первого действия и не на земле
         if (!isFirstFlap && !onGround) {
           distanceTraveled += forwardSpeed * delta;
@@ -1151,12 +1158,18 @@
           birdGroup.position.y += birdVelocityY * delta;
         } else if (!isFirstFlap && onGround) {
           // Птичка на земле - не двигаемся вперёд, но гравитация действует
-          birdVelocityY = 0;
+          // Если не было взмаха, обнуляем скорость
+          if (!hasFlapped) {
+            birdVelocityY = 0;
+          }
           birdGroup.position.y = minY;
         } else {
           // До первого действия птичка остаётся на месте
           birdVelocityY = 0;
         }
+        
+        // Сбрасываем флаг взмаха для следующего кадра
+        hasFlapped = false;
         
         if (birdGroup.position.y <= minY) {
           birdGroup.position.y = minY;
@@ -1479,6 +1492,7 @@
       currentTimeIndex = 0; // Индекс дня (day)
       distanceTraveled = 0;
       isFirstFlap = true; // Ждём первого действия игрока
+      hasFlapped = false; // Сбрасываем флаг взмаха
       birdGroup.position.set(0, startY, 0);
       birdVelocityY = 0;
       birdGroup.rotation.set(0, 0, 0);
