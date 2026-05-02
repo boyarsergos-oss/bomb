@@ -945,6 +945,7 @@
     let score = 0; // Счёт пролетевших труб
     let bestScore = parseInt(localStorage.getItem('bestScore')) || 0; // Лучший счёт (сохраняется в localStorage)
     let gameStarted = false; // Игра ещё не началась (ждём выбора вида)
+    let isFirstFlap = true; // Ждём первого действия игрока
     let lastTimeChangeScore = 0; // Последний счёт, при котором менялось время суток
     
     // ==================== ВРЕМЯ СУТОК ====================
@@ -1019,6 +1020,10 @@
     function doFlap() {
       if (gameStarted && !isGameOver) {
         birdVelocityY = flapVelocity;
+      }
+      // Первое действие игрока - начинаем движение
+      if (gameStarted && !isGameOver && isFirstFlap) {
+        isFirstFlap = false;
       }
     }
     
@@ -1131,14 +1136,19 @@
       const delta = Math.min(clock.getDelta(), 0.1);
       
       if (gameStarted && !isGameOver) {
-        // Движение птички вперёд (по положительной оси Z)
-        distanceTraveled += forwardSpeed * delta;
-        birdGroup.position.z = distanceTraveled;
-        
-        birdVelocityY += gravity * delta;
-        if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
-        
-        birdGroup.position.y += birdVelocityY * delta;
+        // Движение птички вперёд (по положительной оси Z) - только после первого действия
+        if (!isFirstFlap) {
+          distanceTraveled += forwardSpeed * delta;
+          birdGroup.position.z = distanceTraveled;
+          
+          birdVelocityY += gravity * delta;
+          if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
+          
+          birdGroup.position.y += birdVelocityY * delta;
+        } else {
+          // До первого действия птичка остаётся на месте по Y
+          birdVelocityY = 0;
+        }
         
         if (birdGroup.position.y <= minY) {
           birdGroup.position.y = minY;
@@ -1460,6 +1470,7 @@
       lastTimeChangeScore = 0;
       currentTimeIndex = 0; // Индекс дня (day)
       distanceTraveled = 0;
+      isFirstFlap = true; // Ждём первого действия игрока
       birdGroup.position.set(0, startY, 0);
       birdVelocityY = 0;
       birdGroup.rotation.set(0, 0, 0);
