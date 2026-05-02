@@ -470,10 +470,17 @@
     // Получение смещения камеры с учётом ориентации
     function getCameraOffset(viewMode) {
       const baseOffset = { ...viewModes[viewMode] };
-      // В портретной ориентации отдаляем камеру для вида сзади
-      if (viewMode === 'rear' && isPortraitOrientation()) {
-        baseOffset.offsetZ = -9.0; // Более отдалённая камера в портрете
-        baseOffset.offsetY = 3.5;  // Чуть выше камера
+      // В портретной ориентации отдаляем камеру
+      if (isPortraitOrientation()) {
+        if (viewMode === 'rear') {
+          // Вид сзади: отдаляем камеру в портрете
+          baseOffset.offsetZ = -9.0; // Более отдалённая камера в портрете
+          baseOffset.offsetY = 3.5;  // Чуть выше камера
+        } else if (viewMode === 'side') {
+          // Вид сбоку: ещё сильнее отдаляем камеру в портрете
+          baseOffset.offsetX = -35; // Ещё дальше по оси X
+          baseOffset.offsetY = 4.0; // Выше камера
+        }
       }
       return baseOffset;
     }
