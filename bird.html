@@ -726,6 +726,16 @@
     firstObstacle.passed = false;
     obstacles.push(firstObstacle);
     scene.add(firstObstacle);
+    
+    // Пре-спавн нескольких труб впереди, чтобы они были видны сразу при старте (как земля)
+    // Создаём ещё 4 трубы с интервалом obstacleSpawnInterval
+    for (let i = 1; i < 5; i++) {
+      const preObstacleZ = firstObstacleDistance + i * obstacleSpawnInterval;
+      const preObstacle = createObstacle(preObstacleZ);
+      preObstacle.passed = false;
+      obstacles.push(preObstacle);
+      scene.add(preObstacle);
+    }
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
     const birdGroup = new THREE.Group();
@@ -1351,9 +1361,11 @@
       });
       
       // Спавн новых препятствий и перемещение старых
-      // Если птичка приблизилась к последнему препятствию, создаём новое
+      // Спавним трубы заранее, чтобы они были видны при виде от третьего лица
+      // Создаём новые препятствия, если последнее препятствие находится ближе чем 80 единиц впереди
       const lastObstacle = obstacles[obstacles.length - 1];
-      if (lastObstacle && birdZ > lastObstacle.position.z - obstacleSpawnInterval) {
+      const spawnAheadDistance = 80; // Расстояние впереди птицы, на котором должны быть трубы
+      if (lastObstacle && birdZ > lastObstacle.position.z - spawnAheadDistance) {
         const newObstacleZ = lastObstacle.position.z + obstacleSpawnInterval;
         const newObstacle = createObstacle(newObstacleZ);
         newObstacle.passed = false;
@@ -1529,6 +1541,16 @@
       firstObstacle.passed = false;
       obstacles.push(firstObstacle);
       scene.add(firstObstacle);
+      
+      // Пре-спавн нескольких труб впереди, чтобы они были видны сразу при рестарте (как земля)
+      // Создаём ещё 4 трубы с интервалом obstacleSpawnInterval
+      for (let i = 1; i < 5; i++) {
+        const preObstacleZ = firstObstacleDistance + i * obstacleSpawnInterval;
+        const preObstacle = createObstacle(preObstacleZ);
+        preObstacle.passed = false;
+        obstacles.push(preObstacle);
+        scene.add(preObstacle);
+      }
       
       // Сбрасываем позиции сегментов земли относительно птицы
       groundSegments.forEach((segment, index) => {
