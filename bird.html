@@ -43,7 +43,7 @@
 
   <script type="module">
     import * as THREE from 'three';
-    import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ==================== НАСТРОЙКИ СЦЕНЫ ====================
@@ -524,7 +524,7 @@
     bestScoreDiv.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
     bestScoreDiv.textContent = '🏆 Лучший: ' + bestScore;
     
-    const bestScoreLabel = new THREE.CSS2DObject(bestScoreDiv);
+    const bestScoreLabel = new CSS2DObject(bestScoreDiv);
     bestScoreLabel.position.set(0, 0, 0.2);
     scoreboardGroup.add(bestScoreLabel);
     
