@@ -1352,6 +1352,23 @@
         }
       }
       
+      // Восстанавливаем видимость верхней трубы при рестарте (если игра окончена и птичка умерла)
+      if (isGameOver) {
+        obstacles.forEach(obstacle => {
+          obstacle.children.forEach(child => {
+            if (child.geometry && child.geometry.parameters) {
+              const params = child.geometry.parameters;
+              if (params.height === 100 && params.width === 2.5 && params.depth === 2.0) {
+                child.visible = true;
+              }
+              else if (params.height === 0.3 && params.width === 2.8 && params.depth === 2.3) {
+                child.visible = true;
+              }
+            }
+          });
+        });
+      }
+      
       // Удаляем препятствия, которые остались далеко позади
       for (let i = obstacles.length - 1; i >= 0; i--) {
         if (obstacles[i].position.z < birdZ - 30) {
@@ -1459,6 +1476,29 @@
       firstObstacle.passed = false;
       obstacles.push(firstObstacle);
       scene.add(firstObstacle);
+      
+      // Сбрасываем позиции сегментов земли относительно птицы
+      groundSegments.forEach((segment, index) => {
+        segment.position.set(0, -4.0, 50 + index * groundSegmentLength);
+        segment.visible = true; // Принудительно показываем землю
+      });
+      
+      // Сбрасываем позиции облаков относительно птицы
+      const birdZ = birdGroup.position.z;
+      clouds.forEach(cloud => {
+        cloud.visible = true; // Принудительно показываем облака
+        if (cloud.position.z < birdZ - 20) {
+          cloud.position.z = birdZ + 20 + Math.random() * 60;
+        }
+      });
+      
+      // Сбрасываем позиции травинок относительно птицы
+      grassBlades.forEach(blade => {
+        blade.visible = true; // Принудительно показываем травинки
+        if (blade.position.z < birdZ - 20) {
+          blade.position.z = birdZ + 20 + Math.random() * 60;
+        }
+      });
       
       // Устанавливаем дневное время суток при рестарте
       const daySettings = timeOfDaySettings['day'];
