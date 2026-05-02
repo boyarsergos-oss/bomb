@@ -608,7 +608,7 @@
       // Горы слева (ближние)
       const mountainLeft = createMountain(
         -mountainDistance - Math.random() * 20,
-        i * mountainSpacing - 100,
+        i * mountainSpacing - 500,
         height,
         width,
         true,
@@ -620,7 +620,7 @@
       // Горы справа (ближние)
       const mountainRight = createMountain(
         mountainDistance + Math.random() * 20,
-        i * mountainSpacing - 100,
+        i * mountainSpacing - 500,
         height,
         width,
         false,
@@ -636,7 +636,7 @@
       // Горы слева (дальние)
       const mountainLeftFar = createMountain(
         -mountainDistanceFar - Math.random() * 30,
-        i * mountainSpacing - 100 + Math.random() * mountainSpacing * 0.5,
+        i * mountainSpacing - 500 + Math.random() * mountainSpacing * 0.5,
         heightFar,
         widthFar,
         true,
@@ -648,7 +648,7 @@
       // Горы справа (дальние)
       const mountainRightFar = createMountain(
         mountainDistanceFar + Math.random() * 30,
-        i * mountainSpacing - 100 + Math.random() * mountainSpacing * 0.5,
+        i * mountainSpacing - 500 + Math.random() * mountainSpacing * 0.5,
         heightFar,
         widthFar,
         false,
