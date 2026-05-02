@@ -27,28 +27,10 @@
       max-width: calc(100vw - 40px);
       text-align: center;
     }
-    
-    #best-score-board {
-      position: absolute;
-      top: clamp(60px, 8vh, 80px);
-      left: 50%;
-      transform: translateX(-50%);
-      color: #ffd700;
-      background: rgba(0,0,0,0.7);
-      padding: clamp(10px, 2vh, 15px) clamp(20px, 3vw, 30px);
-      border-radius: clamp(10px, 1.5vh, 15px);
-      font-size: clamp(16px, 2vh, 20px);
-      backdrop-filter: blur(4px);
-      border: 2px solid #ffd700;
-      min-width: clamp(150px, 20vw, 200px);
-      text-align: center;
-      font-weight: bold;
-    }
   </style>
 </head>
 <body>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
-  <div id="best-score-board">🏆 Лучший: 0</div>
 
   <script type="importmap">
     {
@@ -500,6 +482,84 @@
 
     scene.add(birdGroup);
 
+    // ==================== 3D ДОСКА С ЛУЧШИМ СЧЁТОМ ====================
+    // Доска отображается только на старте (когда птичка на земле)
+    const scoreboardGroup = new THREE.Group();
+    scoreboardGroup.position.set(0, groundLevel + birdRadius + 4.5, -3.0);
+    
+    // Деревянная основа доски
+    const boardGeometry = new THREE.BoxGeometry(6, 2.5, 0.3);
+    const boardMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x8b4513, 
+      roughness: 0.7,
+      metalness: 0.1
+    });
+    const boardBase = new THREE.Mesh(boardGeometry, boardMaterial);
+    boardBase.castShadow = true;
+    boardBase.receiveShadow = true;
+    scoreboardGroup.add(boardBase);
+    
+    // Рамка доски (золотая)
+    const frameGeometry = new THREE.BoxGeometry(6.3, 2.8, 0.2);
+    const frameMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xffd700, 
+      roughness: 0.3,
+      metalness: 0.8
+    });
+    const frame = new THREE.Mesh(frameGeometry, frameMaterial);
+    frame.position.z = -0.1;
+    frame.castShadow = true;
+    scoreboardGroup.add(frame);
+    
+    // Текст лучшего счёта (используем CSS2DRenderer для текста)
+    const bestScoreDiv = document.createElement('div');
+    bestScoreDiv.style.color = '#ffffff';
+    bestScoreDiv.style.fontSize = 'clamp(20px, 2.5vh, 28px)';
+    bestScoreDiv.style.fontWeight = 'bold';
+    bestScoreDiv.style.fontFamily = 'Arial, sans-serif';
+    bestScoreDiv.style.textAlign = 'center';
+    bestScoreDiv.style.padding = '10px';
+    bestScoreDiv.style.textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
+    bestScoreDiv.textContent = '🏆 Лучший: ' + bestScore;
+    
+    const bestScoreLabel = new THREE.CSS2DObject(bestScoreDiv);
+    bestScoreLabel.position.set(0, 0, 0.2);
+    scoreboardGroup.add(bestScoreLabel);
+    
+    // Ножки доски (две опоры)
+    const legGeometry = new THREE.CylinderGeometry(0.15, 0.2, 2.5, 8);
+    const legMaterial = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.8 });
+    
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-2, -1.8, 0);
+    leftLeg.castShadow = true;
+    scoreboardGroup.add(leftLeg);
+    
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(2, -1.8, 0);
+    rightLeg.castShadow = true;
+    scoreboardGroup.add(rightLeg);
+    
+    // Добавляем декоративные элементы по углам доски
+    const decorationGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+    const decoMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 0.9 });
+    
+    const positions = [
+      { x: -2.8, y: 1.1 },
+      { x: 2.8, y: 1.1 },
+      { x: -2.8, y: -1.1 },
+      { x: 2.8, y: -1.1 }
+    ];
+    
+    positions.forEach(pos => {
+      const deco = new THREE.Mesh(decorationGeometry, decoMaterial);
+      deco.position.set(pos.x, pos.y, 0.1);
+      deco.castShadow = true;
+      scoreboardGroup.add(deco);
+    });
+    
+    scene.add(scoreboardGroup);
+
     // ==================== ОБЛАКА ====================
     function createCloud(x, y, z) {
       const cloudGroup = new THREE.Group();
@@ -542,9 +602,12 @@
     let gameStarted = true; // Игра началась сразу
     let isOnGround = true; // Птичка начинается на земле
     
-    // Обновляем отображение лучшего счёта при загрузке
-    const bestScoreBoardEl = document.getElementById('best-score-board');
-    bestScoreBoardEl.textContent = '🏆 Лучший: ' + bestScore;
+    // Обновляем отображение лучшего счёта при загрузке (для 3D доски)
+    const bestScoreDivEl = bestScoreDiv;
+    bestScoreDivEl.textContent = '🏆 Лучший: ' + bestScore;
+    
+    // Показываем доску только на старте
+    scoreboardGroup.visible = true;
 
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
@@ -580,9 +643,10 @@
           }
         } else if (gameStarted) {
           if (isOnGround) {
-            // Первый прыжок с земли
+            // Первый прыжок с земли — скрываем доску
             birdVelocityY = flapVelocity;
             isOnGround = false;
+            scoreboardGroup.visible = false; // Скрываем доску когда птичка улетает
           } else {
             // Обычный рывок в воздухе
             birdVelocityY = flapVelocity;
@@ -786,9 +850,14 @@
           if (score > bestScore) {
             bestScore = score;
             localStorage.setItem('bestScore', bestScore);
-            bestScoreBoardEl.textContent = '🏆 Лучший: ' + bestScore;
+            bestScoreDivEl.textContent = '🏆 Лучший: ' + bestScore; // Обновляем 3D доску
           }
         }
+      }
+      
+      // Показываем доску при проигрыше (когда птичка на земле после смерти)
+      if (isGameOver && birdGroup.position.y <= groundLevel + birdRadius + 0.1) {
+        scoreboardGroup.visible = true;
       }
       
       // Удаляем препятствия, которые остались далеко позади
