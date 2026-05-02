@@ -421,7 +421,6 @@
     <button class="view-btn" data-view="firstPerson">👁️ Вид от первого лица</button>
   </div>
   <div id="info" style="display: none;">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
-  <div id="hint" style="display: none;">␣ ПРОБЕЛ / ТАП: рывок вверх (Flappy Bird) | V: сменить вид</div>
   <div id="death-hint">Крути для осмотра</div>
   <div id="game-over-panel">
     <h2>ИГРА ОКОНЧЕНА</h2>
@@ -1248,7 +1247,6 @@
                     gameOverPanel.style.display = 'none';
                     deathHintEl.style.display = 'none';
                     document.getElementById('info').style.display = 'none';
-                    document.getElementById('hint').style.display = 'none';
                   });
                   
                   // Показываем меню обратно когда игрок перестает вращать камеру
@@ -1257,7 +1255,6 @@
                       gameOverPanel.style.display = 'block';
                       deathHintEl.style.display = 'block';
                       document.getElementById('info').style.display = 'block';
-                      document.getElementById('hint').style.display = 'block';
                     }
                   });
                 }
@@ -1575,7 +1572,6 @@
       gameOverPanel.style.display = 'none';
       deathHintEl.style.display = 'none';
       document.getElementById('info').style.display = 'block';
-      document.getElementById('hint').style.display = 'block';
       
       // Сбрасываем флаг вращения камеры для следующей смерти
       hasStartedCameraRotation = false;
