@@ -564,6 +564,56 @@
     const grassBlades = [];
     const clouds = [];
     const obstacles = []; // Массив препятствий (труб)
+    const mountainsLeft = []; // Горы слева
+    const mountainsRight = []; // Горы справа
+    
+    // ==================== ГОРЫ НА ГОРИЗОНТЕ ====================
+    // Создаём силуэты гор по бокам на всём протяжении пути
+    function createMountain(x, z, height, width, isLeft) {
+      const mountainGeometry = new THREE.ConeGeometry(width, height, 4);
+      const mountainMaterial = new THREE.MeshStandardMaterial({ 
+        color: isLeft ? 0x2d3436 : 0x3d4a47, // Тёмные силуэты (слева темнее, справа чуть светлее)
+        roughness: 0.95,
+        flatShading: true
+      });
+      const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+      mountain.position.set(x, -4.0 + height / 2, z);
+      mountain.castShadow = false;
+      mountain.receiveShadow = false;
+      return mountain;
+    }
+    
+    // Создаём горы слева и справа на большом расстоянии
+    const mountainSpacing = 25; // Расстояние между горами
+    const mountainDistance = 60; // Расстояние от центра сцены
+    const numMountains = 40; // Количество гор с каждой стороны
+    
+    for (let i = 0; i < numMountains; i++) {
+      const height = 15 + Math.random() * 25; // Высота гор от 15 до 40
+      const width = 8 + Math.random() * 12; // Ширина гор от 8 до 20
+      
+      // Горы слева
+      const mountainLeft = createMountain(
+        -mountainDistance - Math.random() * 20,
+        i * mountainSpacing - 100,
+        height,
+        width,
+        true
+      );
+      scene.add(mountainLeft);
+      mountainsLeft.push(mountainLeft);
+      
+      // Горы справа
+      const mountainRight = createMountain(
+        mountainDistance + Math.random() * 20,
+        i * mountainSpacing - 100,
+        height,
+        width,
+        false
+      );
+      scene.add(mountainRight);
+      mountainsRight.push(mountainRight);
+    }
     
     // Уровень земли и радиус птички (должны быть объявлены до createObstacle)
     const groundLevel = -4.0;
@@ -1340,6 +1390,18 @@
         }
       });
       
+      // Перемещение гор на горизонте (бесконечный эффект)
+      mountainsLeft.forEach(mountain => {
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z += numMountains * mountainSpacing;
+        }
+      });
+      mountainsRight.forEach(mountain => {
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z += numMountains * mountainSpacing;
+        }
+      });
+      
       // Перемещение травинок
       grassBlades.forEach(blade => {
         if (blade.position.z < birdZ - 20) {
@@ -1538,6 +1600,20 @@
         cloud.visible = true; // Принудительно показываем облака
         if (cloud.position.z < birdZ - 20) {
           cloud.position.z = birdZ + 20 + Math.random() * 60;
+        }
+      });
+      
+      // Сбрасываем позиции гор на горизонте относительно птицы
+      mountainsLeft.forEach(mountain => {
+        mountain.visible = true; // Принудительно показываем горы
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
+        }
+      });
+      mountainsRight.forEach(mountain => {
+        mountain.visible = true; // Принудительно показываем горы
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
         }
       });
       
