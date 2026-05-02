@@ -740,6 +740,9 @@
       obstacles.push(preObstacle);
       scene.add(preObstacle);
     }
+    
+    // Обновляем тени после массового спавна труб, чтобы они все отображались сразу
+    renderer.shadowMap.needsUpdate = true;
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
     const birdGroup = new THREE.Group();
@@ -1555,6 +1558,9 @@
         obstacles.push(preObstacle);
         scene.add(preObstacle);
       }
+      
+      // Обновляем тени после массового спавна труб, чтобы они все отображались сразу
+      renderer.shadowMap.needsUpdate = true;
       
       // Сбрасываем позиции сегментов земли относительно птицы
       groundSegments.forEach((segment, index) => {
