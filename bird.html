@@ -58,6 +58,31 @@
       text-align: center;
     }
     
+    /* Стили для 3D кнопки рестарта */
+    .restart-btn-3d {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(238, 90, 90, 0.5);
+      transition: transform 0.2s, box-shadow 0.2s;
+      user-select: none;
+      pointer-events: auto;
+    }
+    
+    .restart-btn-3d:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 25px rgba(238, 90, 90, 0.7);
+    }
+    
+    .restart-btn-3d:active {
+      transform: scale(1.05);
+    }
+    
     #view-selector {
       position: absolute;
       top: 50%;
@@ -218,6 +243,8 @@
   <div id="info" style="display: none;">🐥 КРУГЛАЯ ПТИЧКА • вид сзади</div>
   <div id="hint" style="display: none;">␣ ПРОБЕЛ: рывок вверх (Flappy Bird) | V: сменить вид</div>
   <div id="death-hint">🖱️ Крути мышкой для осмотра</div>
+  <!-- Контейнер для 3D кнопки рестарта -->
+  <div id="restart-container" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
 
   <script type="importmap">
     {
@@ -231,6 +258,7 @@
   <script type="module">
     import * as THREE from 'three';
     import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+    import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
     // ==================== НАСТРОЙКИ СЦЕНЫ ====================
@@ -271,6 +299,93 @@
     labelRenderer.domElement.style.left = '0px';
     labelRenderer.domElement.style.pointerEvents = 'none';
     document.body.appendChild(labelRenderer.domElement);
+
+    // ==================== 3D КНОПКА РЕСТАРТА ====================
+    let restartButtonObject = null;
+    
+    function createRestartButton() {
+      // Создаём группу для кнопки
+      const buttonGroup = new THREE.Group();
+      
+      // Основная геометрия кнопки (плоский прямоугольник)
+      const buttonGeometry = new THREE.BoxGeometry(4, 1.2, 0.3);
+      const buttonMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xff6b6b,
+        roughness: 0.3,
+        metalness: 0.5
+      });
+      const buttonMesh = new THREE.Mesh(buttonGeometry, buttonMaterial);
+      buttonMesh.castShadow = true;
+      buttonMesh.receiveShadow = true;
+      buttonGroup.add(buttonMesh);
+      
+      // Текст на кнопке (используем CSS2DObject)
+      const textDiv = document.createElement('div');
+      textDiv.className = 'restart-btn-3d';
+      textDiv.textContent = '↺ ЗАНОВО';
+      textDiv.style.pointerEvents = 'auto';
+      textDiv.style.cursor = 'pointer';
+      
+      const textLabel = new CSS2DObject(textDiv);
+      textLabel.position.set(0, 0, 0.2);
+      textLabel.scale.set(0.003, 0.003, 0.003);
+      buttonGroup.add(textLabel);
+      
+      // Обработчик клика
+      textDiv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        restartGame();
+      });
+      
+      // Добавляем свечение вокруг кнопки
+      const glowGeometry = new THREE.BoxGeometry(4.3, 1.5, 0.1);
+      const glowMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xff8888,
+        transparent: true,
+        opacity: 0.4,
+        side: THREE.DoubleSide
+      });
+      const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+      glowMesh.position.z = -0.15;
+      buttonGroup.add(glowMesh);
+      
+      return buttonGroup;
+    }
+    
+    function restartGame() {
+      // Сбрасываем позицию птички
+      birdGroup.position.set(0, 0, 0);
+      birdVelocityY = 0.0;
+      distanceTraveled = 0;
+      score = 0;
+      isGameOver = false;
+      
+      // Удаляем все препятствия
+      obstacles.forEach(obs => scene.remove(obs));
+      obstacles.length = 0;
+      
+      // Создаём новые начальные препятствия
+      for (let i = 0; i < 5; i++) {
+        const obstacleZ = 30 + i * obstacleSpawnInterval;
+        const newObstacle = createObstacle(obstacleZ);
+        newObstacle.passed = false;
+        obstacles.push(newObstacle);
+        scene.add(newObstacle);
+      }
+      
+      // Отключаем контролы камеры
+      if (controls) {
+        controls.enabled = false;
+      }
+      
+      // Скрываем кнопку рестарта
+      if (restartButtonObject) {
+        restartButtonObject.visible = false;
+      }
+      
+      // Скрываем контейнер рестарта
+      document.getElementById('restart-container').style.display = 'none';
+    }
 
     // ==================== ОСВЕЩЕНИЕ ====================
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -748,6 +863,9 @@
         e.preventDefault();
         if (gameStarted && !isGameOver) {
           birdVelocityY = flapVelocity;
+        } else if (gameStarted && isGameOver) {
+          // Рестарт по пробелу при проигрыше
+          restartGame();
         }
       }
       // Переключение видов камеры на клавишу V
@@ -839,6 +957,28 @@
                 }
                 controls.enabled = true;
                 controls.target.copy(birdGroup.position);
+                
+                // Создаём и показываем 3D кнопку рестарта
+                if (!restartButtonObject) {
+                  restartButtonObject = createRestartButton();
+                  // Позиционируем кнопку над птичкой
+                  restartButtonObject.position.set(
+                    birdGroup.position.x,
+                    birdGroup.position.y + 3,
+                    birdGroup.position.z
+                  );
+                  scene.add(restartButtonObject);
+                } else {
+                  restartButtonObject.position.set(
+                    birdGroup.position.x,
+                    birdGroup.position.y + 3,
+                    birdGroup.position.z
+                  );
+                  restartButtonObject.visible = true;
+                }
+                
+                // Показываем контейнер для возможности кликов
+                document.getElementById('restart-container').style.display = 'block';
               }
             }
           });
@@ -970,10 +1110,19 @@
         ctx.fillText('ИГРА ОКОНЧЕНА', canvas.width / 2, canvas.height / 2 - 30);
         
         ctx.font = '24px Arial';
-        ctx.fillText('Нажмите ПРОБЕЛ для рестарта', canvas.width / 2, canvas.height / 2 + 30);
+        ctx.fillText('Нажмите кнопку ЗАНОВО или ПРОБЕЛ для рестарта', canvas.width / 2, canvas.height / 2 + 30);
         
         // Показываем подсказку про управление камерой
         deathHintEl.style.display = 'block';
+        
+        // Обновляем позицию кнопки рестарта, чтобы она следовала за птичкой
+        if (restartButtonObject && restartButtonObject.visible) {
+          restartButtonObject.position.set(
+            birdGroup.position.x,
+            birdGroup.position.y + 3,
+            birdGroup.position.z
+          );
+        }
       } else {
         // Скрываем подсказку когда игра активна
         deathHintEl.style.display = 'none';
