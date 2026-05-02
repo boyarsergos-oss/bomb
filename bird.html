@@ -915,9 +915,6 @@
         e.preventDefault();
         if (gameStarted && !isGameOver) {
           birdVelocityY = flapVelocity;
-        } else if (gameStarted && isGameOver) {
-          // Если игра окончена, пробел тоже перезапускает игру
-          restartGame();
         }
       }
       // Переключение видов камеры на клавишу V
