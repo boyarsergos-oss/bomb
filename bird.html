@@ -1136,8 +1136,11 @@
       const delta = Math.min(clock.getDelta(), 0.1);
       
       if (gameStarted && !isGameOver) {
-        // Движение птички вперёд (по положительной оси Z) - только после первого действия
-        if (!isFirstFlap) {
+        // Проверяем, находится ли птичка на земле
+        const onGround = birdGroup.position.y <= minY;
+        
+        // Движение птички вперёд (по положительной оси Z) - только после первого действия и не на земле
+        if (!isFirstFlap && !onGround) {
           distanceTraveled += forwardSpeed * delta;
           birdGroup.position.z = distanceTraveled;
           
@@ -1145,8 +1148,12 @@
           if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
           
           birdGroup.position.y += birdVelocityY * delta;
+        } else if (!isFirstFlap && onGround) {
+          // Птичка на земле - не двигаемся вперёд, но гравитация действует
+          birdVelocityY = 0;
+          birdGroup.position.y = minY;
         } else {
-          // До первого действия птичка остаётся на месте по Y
+          // До первого действия птичка остаётся на месте
           birdVelocityY = 0;
         }
         
