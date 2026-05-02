@@ -500,6 +500,7 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = false;
     document.body.appendChild(renderer.domElement);
 
     const labelRenderer = new CSS2DRenderer();
@@ -518,16 +519,21 @@
     sunLight.position.set(10, 20, 5);
     sunLight.castShadow = true;
     sunLight.receiveShadow = true;
-    sunLight.shadow.mapSize.width = 1024;
-    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 80;
-    sunLight.shadow.camera.left = -20;
-    sunLight.shadow.camera.right = 20;
-    sunLight.shadow.camera.top = 20;
-    sunLight.shadow.camera.bottom = -20;
+    sunLight.shadow.camera.far = 150;
+    sunLight.shadow.camera.left = -30;
+    sunLight.shadow.camera.right = 30;
+    sunLight.shadow.camera.top = 30;
+    sunLight.shadow.camera.bottom = -30;
     sunLight.shadow.bias = -0.0005;
     scene.add(sunLight);
+    
+    // Добавляем target для DirectionalLight (нужен для корректной работы теней)
+    sunLight.target = new THREE.Object3D();
+    sunLight.target.position.set(0, 0, 0);
+    scene.add(sunLight.target);
     
     const fillLight = new THREE.DirectionalLight(0xccddff, 0.6);
     fillLight.position.set(-5, 0, -5);
@@ -551,6 +557,7 @@
       ground.position.y = -4.0;
       ground.position.z = 50 + i * groundSegmentLength;
       ground.receiveShadow = true;
+      ground.castShadow = true;
       scene.add(ground);
       groundSegments.push(ground);
     }
@@ -1138,6 +1145,15 @@
     function animate() {
       const delta = Math.min(clock.getDelta(), 0.1);
       
+      // Обновляем позицию солнца, чтобы оно следовало за птичкой (тени всегда видны)
+      sunLight.position.set(
+        birdGroup.position.x + 10,
+        20,
+        birdGroup.position.z + 5
+      );
+      sunLight.target.position.copy(birdGroup.position);
+      sunLight.target.updateMatrixWorld();
+      
       if (gameStarted && !isGameOver) {
         // Проверяем, находится ли птичка на земле
         const onGround = birdGroup.position.y <= minY;
@@ -1444,6 +1460,11 @@
         ctx.textAlign = 'center';
         ctx.fillText('Счёт: ' + score, canvas.width / 2, 50);
       }
+      
+      // Обновляем матрицы теней перед рендером
+      sunLight.target.updateMatrixWorld();
+      sunLight.shadow.camera.updateProjectionMatrix();
+      renderer.shadowMap.needsUpdate = true;
       
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
