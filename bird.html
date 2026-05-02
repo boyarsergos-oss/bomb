@@ -450,7 +450,7 @@
     scene.background = new THREE.Color(0xa0d8ef);
     
     // Добавляем туман на горизонте для эффекта глубины
-    scene.fog = new THREE.Fog(0xa0d8ef, 40, 120);
+    scene.fog = new THREE.Fog(0xa0d8ef, 40, 150);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 200);
     
@@ -577,6 +577,7 @@
     const grassBlades = [];
     const clouds = [];
     const obstacles = []; // Массив препятствий (труб)
+    const pipeShadows = []; // Массив теней от труб на земле
     const mountainsLeft = []; // Горы слева (ближние)
     const mountainsRight = []; // Горы справа (ближние)
     const mountainsLeftFar = []; // Горы слева (дальние)
@@ -845,6 +846,21 @@
       obstacleGroup.add(safeZone);
       
       obstacleGroup.position.z = zPosition;
+      
+      // Создаём тень от трубы на земле (для предпросмотра будущих препятствий)
+      const shadowMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x000000, 
+        transparent: true, 
+        opacity: 0.25
+      });
+      const shadowGeometry = new THREE.PlaneGeometry(obstacleWidth + 0.3, obstacleDepth + 0.3);
+      const shadowMesh = new THREE.Mesh(shadowGeometry, shadowMaterial);
+      shadowMesh.rotation.x = -Math.PI / 2;
+      shadowMesh.position.y = groundLevel + 0.02; // Чуть выше земли
+      shadowMesh.position.z = zPosition;
+      scene.add(shadowMesh);
+      pipeShadows.push({ mesh: shadowMesh, zPos: zPosition });
+      
       return obstacleGroup;
     }
     
@@ -1147,6 +1163,8 @@
       
       // Меняем цвет тумана
       scene.fog.color.setHex(settings.fog);
+      scene.fog.near = 40;
+      scene.fog.far = 150;
       
       // Меняем освещение
       ambientLight.intensity = settings.ambientLight;
@@ -1586,6 +1604,14 @@
         }
       }
       
+      // Удаляем тени от труб, которые остались далеко позади
+      for (let i = pipeShadows.length - 1; i >= 0; i--) {
+        if (pipeShadows[i].zPos < birdZ - 30) {
+          scene.remove(pipeShadows[i].mesh);
+          pipeShadows.splice(i, 1);
+        }
+      }
+      
       // Отображение сообщения о проигрыше
       if (isGameOver) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1685,6 +1711,12 @@
       for (let i = obstacles.length - 1; i >= 0; i--) {
         scene.remove(obstacles[i]);
         obstacles.splice(i, 1);
+      }
+      
+      // Очищаем сцену от старых теней труб
+      for (let i = pipeShadows.length - 1; i >= 0; i--) {
+        scene.remove(pipeShadows[i].mesh);
+        pipeShadows.splice(i, 1);
       }
       
       // Создаём новое начальное препятствие
