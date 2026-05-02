@@ -1701,11 +1701,14 @@
       
       // Сбрасываем позиции облаков относительно птицы (логика как у гор)
       const birdZ = birdGroup.position.z;
-      clouds.forEach(cloud => {
+      clouds.forEach((cloud, index) => {
         cloud.visible = true; // Принудительно показываем облака
-        if (cloud.position.z < birdZ - 20) {
-          cloud.position.z = birdZ + 50 + Math.random() * 60;
-        }
+        // Сбрасываем к начальным позициям как при старте игры
+        cloud.position.set(
+          (Math.random() - 0.5) * 45,
+          20 + Math.random() * 10,
+          index * cloudSpacing - 50
+        );
       });
       
       // Сбрасываем позиции гор на горизонте относительно птицы
