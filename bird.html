@@ -454,13 +454,29 @@
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 200);
     
-    // Настройки видов камеры
+    // Базовое значение aspect ratio для расчётов
+    const baseAspectRatio = 16 / 9;
+    
+    // Настройки видов камеры с базовыми расстояниями
     const viewModes = {
       rear: { name: 'rear', offsetX: 0, offsetY: 2.8, offsetZ: -6.5 },      // вид сзади (текущий)
       side: { name: 'side', offsetX: -25, offsetY: 2.8, offsetZ: 0 },         // вид сбоку (ещё более отдалённый)
       firstPerson: { name: 'firstPerson', offsetX: 0, offsetY: 0.5, offsetZ: 1.05 } // вид от первого лица (на уровне клюва)
     };
     let currentViewMode = 'rear';
+    
+    // Функция для вычисления позиции камеры с учётом aspect ratio
+    function getCameraPosition(birdPos, viewMode) {
+      const aspectRatio = camera.aspect;
+      // Корректируем Z-смещение на основе aspect ratio для сохранения визуального расстояния
+      const aspectCorrection = aspectRatio / baseAspectRatio;
+      
+      return {
+        x: birdPos.z * 0 + viewMode.offsetX,
+        y: birdPos.y + viewMode.offsetY,
+        z: birdPos.z + viewMode.offsetZ * aspectCorrection
+      };
+    }
     
     camera.position.set(0, 4.3, -6.5);
     camera.lookAt(0, 1.5, 0);
@@ -965,11 +981,8 @@
         
         // Сразу устанавливаем камеру в правильную позицию для выбранного вида
         const viewMode = viewModes[currentViewMode];
-        camera.position.set(
-          birdGroup.position.z * 0 + viewMode.offsetX,
-          birdGroup.position.y + viewMode.offsetY,
-          birdGroup.position.z + viewMode.offsetZ
-        );
+        const camPos = getCameraPosition(birdGroup.position, viewMode);
+        camera.position.set(camPos.x, camPos.y, camPos.z);
         if (currentViewMode === 'firstPerson') {
           camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.5, birdGroup.position.z + 5);
         } else {
@@ -1132,11 +1145,8 @@
         // Для вида от первого лица камера на клюве и полностью повторяет движения птицы
         if (currentViewMode === 'firstPerson') {
           // Позиция камеры: позиция птички + смещение к клюву
-          camera.position.set(
-            birdGroup.position.x + viewMode.offsetX,
-            birdGroup.position.y + viewMode.offsetY,
-            birdGroup.position.z + viewMode.offsetZ
-          );
+          const camPos = getCameraPosition(birdGroup.position, viewMode);
+          camera.position.set(camPos.x, camPos.y, camPos.z);
           
           // Направление взгляда: берём направление вперёд птички и применяем её повороты
           const lookAtDistance = 10;
@@ -1145,9 +1155,10 @@
           const lookAtZ = birdGroup.position.z + Math.cos(birdGroup.rotation.y) * lookAtDistance;
           camera.lookAt(lookAtX, lookAtY, lookAtZ);
         } else {
-          const targetCamX = birdGroup.position.z * 0 + viewMode.offsetX;
-          const targetCamY = birdGroup.position.y + viewMode.offsetY;
-          const targetCamZ = birdGroup.position.z + viewMode.offsetZ;
+          const targetCamPos = getCameraPosition(birdGroup.position, viewMode);
+          const targetCamX = targetCamPos.x;
+          const targetCamY = targetCamPos.y;
+          const targetCamZ = targetCamPos.z;
           
           camera.position.x += (targetCamX - camera.position.x) * Math.min(cameraLerpSpeed * delta, 1);
           camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
