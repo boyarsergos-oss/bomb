@@ -860,6 +860,13 @@
     let bestScore = parseInt(localStorage.getItem('bestScore')) || 0; // Лучший счёт (сохраняется в localStorage)
     let gameStarted = false; // Игра ещё не началась (ждём выбора вида)
     
+    // Функция для выполнения прыжка
+    function doFlap() {
+      if (gameStarted && !isGameOver) {
+        birdVelocityY = flapVelocity;
+      }
+    }
+    
     // Элементы UI для экрана проигрыша
     const gameOverPanel = document.getElementById('game-over-panel');
     const finalScoreEl = document.getElementById('final-score');
@@ -913,9 +920,7 @@
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        if (gameStarted && !isGameOver) {
-          birdVelocityY = flapVelocity;
-        }
+        doFlap();
       }
       // Переключение видов камеры на клавишу V
       if (e.code === 'KeyV' && gameStarted && !isGameOver) {
@@ -938,19 +943,14 @@
     // ==================== СЕНСОРНОЕ УПРАВЛЕНИЕ ДЛЯ МОБИЛЬНЫХ ====================
     // Обработка тапа по экрану для прыжка (аналог пробела)
     document.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      if (gameStarted && !isGameOver) {
-        birdVelocityY = flapVelocity;
-      }
-    }, { passive: false });
+      doFlap();
+    }, { passive: true });
 
     // Обработка клика мышкой для ПК (альтернатива пробелу)
-    document.addEventListener('click', (e) => {
+    document.addEventListener('mousedown', (e) => {
       // Игнорируем клики по кнопкам интерфейса
       if (e.target.closest('button')) return;
-      if (gameStarted && !isGameOver) {
-        birdVelocityY = flapVelocity;
-      }
+      doFlap();
     });
 
     // ==================== АНИМАЦИЯ ====================
