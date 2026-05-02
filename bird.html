@@ -1130,6 +1130,16 @@
                     document.getElementById('info').style.display = 'none';
                     document.getElementById('hint').style.display = 'none';
                   });
+                  
+                  // Показываем меню обратно когда игрок перестает вращать камеру
+                  controls.addEventListener('end', () => {
+                    if (isGameOver) {
+                      gameOverPanel.style.display = 'block';
+                      deathHintEl.style.display = 'block';
+                      document.getElementById('info').style.display = 'block';
+                      document.getElementById('hint').style.display = 'block';
+                    }
+                  });
                 }
                 controls.enabled = true;
                 controls.target.copy(birdGroup.position);
