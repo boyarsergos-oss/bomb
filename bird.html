@@ -61,6 +61,7 @@
     };
     let currentViewMode = 'rear';
     
+    // Начальная позиция камеры (будет обновлена после объявления groundLevel и birdRadius)
     camera.position.set(0, 4.3, -6.5);
     camera.lookAt(0, 1.5, 0);
     
@@ -285,15 +286,19 @@
       return obstacleGroup;
     }
     
-    // Создаём первое препятствие
-    const firstObstacle = createObstacle(obstacleSpawnInterval);
+    // Создаём первое препятствие на достаточном расстоянии от старта
+    const firstObstacle = createObstacle(obstacleSpawnInterval * 2);
     firstObstacle.passed = false;
     obstacles.push(firstObstacle);
     scene.add(firstObstacle);
 
+    // Обновляем позицию камеры для правильного старта с земли
+    camera.position.set(0, groundLevel + birdRadius + 2.8, -6.5);
+    camera.lookAt(0, groundLevel + birdRadius + 1.5, 0);
+
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
     const birdGroup = new THREE.Group();
-    birdGroup.position.set(0, 1.5, 0);
+    birdGroup.position.set(0, groundLevel + birdRadius, 0);
     
     // Тело
     const bodyGeometry = new THREE.SphereGeometry(0.9, 32, 32);
@@ -516,12 +521,20 @@
     let isGameOver = false; // Флаг окончания игры
     let score = 0; // Счёт пролетевших труб
     let gameStarted = true; // Игра началась сразу
+    let isOnGround = true; // Птичка начинается на земле
 
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
         if (gameStarted && !isGameOver) {
-          birdVelocityY = flapVelocity;
+          if (isOnGround) {
+            // Первый прыжок с земли
+            birdVelocityY = flapVelocity;
+            isOnGround = false;
+          } else {
+            // Обычный рывок в воздухе
+            birdVelocityY = flapVelocity;
+          }
         }
       }
       // Переключение видов камеры на клавишу V
@@ -546,9 +559,11 @@
       const delta = Math.min(clock.getDelta(), 0.1);
       
       if (gameStarted && !isGameOver) {
-        // Движение птички вперёд (по положительной оси Z)
-        distanceTraveled += forwardSpeed * delta;
-        birdGroup.position.z = distanceTraveled;
+        // Движение птички вперёд (по положительной оси Z) - только если не на земле
+        if (!isOnGround) {
+          distanceTraveled += forwardSpeed * delta;
+          birdGroup.position.z = distanceTraveled;
+        }
         
         birdVelocityY += gravity * delta;
         if (birdVelocityY < maxFallSpeed) birdVelocityY = maxFallSpeed;
@@ -558,6 +573,7 @@
         if (birdGroup.position.y <= minY) {
           birdGroup.position.y = minY;
           birdVelocityY = 0;
+          isOnGround = true;
         }
         if (birdGroup.position.y > 20.0) {
           birdGroup.position.y = 20.0;
