@@ -1435,22 +1435,22 @@
       
       // Перемещение гор на горизонте (бесконечный эффект)
       mountainsLeft.forEach(mountain => {
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 300) {
           mountain.position.z += numMountains * mountainSpacing;
         }
       });
       mountainsRight.forEach(mountain => {
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 300) {
           mountain.position.z += numMountains * mountainSpacing;
         }
       });
       mountainsLeftFar.forEach(mountain => {
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 300) {
           mountain.position.z += numMountains * mountainSpacing;
         }
       });
       mountainsRightFar.forEach(mountain => {
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 300) {
           mountain.position.z += numMountains * mountainSpacing;
         }
       });
@@ -1659,25 +1659,25 @@
       // Сбрасываем позиции гор на горизонте относительно птицы
       mountainsLeft.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем горы
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 300) {
           mountain.position.z = birdZ + 150 + Math.random() * numMountains * mountainSpacing;
         }
       });
       mountainsRight.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем горы
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 300) {
           mountain.position.z = birdZ + 150 + Math.random() * numMountains * mountainSpacing;
         }
       });
       mountainsLeftFar.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем дальние горы
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 300) {
           mountain.position.z = birdZ + 150 + Math.random() * numMountains * mountainSpacing;
         }
       });
       mountainsRightFar.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем дальние горы
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 300) {
           mountain.position.z = birdZ + 150 + Math.random() * numMountains * mountainSpacing;
         }
       });
