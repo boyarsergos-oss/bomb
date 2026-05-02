@@ -587,8 +587,9 @@
         flatShading: true
       });
       const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
-      // Опускаем горы ниже, чтобы они спавнились под землёй и выглядывали сверху
-      mountain.position.set(x, -8.0 + height / 2, z);
+      // Опускаем горы глубоко под землю, чтобы не было видно пустоты
+      // Земля на уровне -4.0, поэтому ставим основание гор значительно ниже
+      mountain.position.set(x, -15.0 + height / 2, z);
       mountain.castShadow = false;
       mountain.receiveShadow = false;
       return mountain;
