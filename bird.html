@@ -1710,27 +1710,19 @@
       // Сбрасываем позиции гор на горизонте относительно птицы
       mountainsLeft.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем горы
-        if (mountain.position.z < birdZ - 150) {
-          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
-        }
+        mountain.position.z = birdZ + 30 + Math.random() * numMountains * mountainSpacing;
       });
       mountainsRight.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем горы
-        if (mountain.position.z < birdZ - 150) {
-          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
-        }
+        mountain.position.z = birdZ + 30 + Math.random() * numMountains * mountainSpacing;
       });
       mountainsLeftFar.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем дальние горы
-        if (mountain.position.z < birdZ - 150) {
-          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
-        }
+        mountain.position.z = birdZ + 30 + Math.random() * numMountains * mountainSpacing;
       });
       mountainsRightFar.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем дальние горы
-        if (mountain.position.z < birdZ - 150) {
-          mountain.position.z = birdZ + 50 + Math.random() * numMountains * mountainSpacing;
-        }
+        mountain.position.z = birdZ + 30 + Math.random() * numMountains * mountainSpacing;
       });
       
       // Сбрасываем позиции травинок относительно птицы
