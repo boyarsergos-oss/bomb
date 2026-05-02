@@ -1056,11 +1056,14 @@
       return cloudGroup;
     }
     
-    for (let i = 0; i < 30; i++) {
+    // Создаём облака вокруг стартовой позиции птицы (логика как у гор)
+    const cloudSpacing = 8; // Расстояние между облаками
+    const numClouds = 30; // Количество облаков
+    for (let i = 0; i < numClouds; i++) {
       const cloud = createCloud(
         (Math.random() - 0.5) * 45,
         20 + Math.random() * 10, // Облака всегда выше 20 единиц (ещё выше в небе)
-        (Math.random() - 0.5) * 80 - 20
+        i * cloudSpacing - 50 // Облака начинаются перед птицей и тянутся назад
       );
       clouds.push(cloud);
       scene.add(cloud);
@@ -1471,10 +1474,10 @@
         }
       });
       
-      // Перемещение облаков (теперь летим в плюс Z, поэтому объекты, которые остались сзади (меньше birdZ), телепортируются вперед)
+      // Перемещение облаков (логика как у гор - регенерация впереди птицы)
       clouds.forEach(cloud => {
         if (cloud.position.z < birdZ - 20) {
-          cloud.position.z += cycleDistance;
+          cloud.position.z = birdZ + 50 + Math.random() * 60;
         }
       });
       
@@ -1696,12 +1699,12 @@
         segment.visible = true; // Принудительно показываем землю
       });
       
-      // Сбрасываем позиции облаков относительно птицы
+      // Сбрасываем позиции облаков относительно птицы (логика как у гор)
       const birdZ = birdGroup.position.z;
       clouds.forEach(cloud => {
         cloud.visible = true; // Принудительно показываем облака
         if (cloud.position.z < birdZ - 20) {
-          cloud.position.z = birdZ + 20 + Math.random() * 60;
+          cloud.position.z = birdZ + 50 + Math.random() * 60;
         }
       });
       
