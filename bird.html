@@ -488,11 +488,9 @@
     camera.position.set(0, 4.3, -6.5);
     camera.lookAt(0, 1.5, 0);
     
-    // Вычисляем середину между полом и потолком для начальной позиции птицы
-    const startY = (groundLevel + 20.0) / 2; // Середина между полом (-4.0) и потолком (20.0)
-    
     // Контролы для вращения камеры (включаются только при смерти)
     let controls = null;
+    let startY; // Будет вычислено после объявления groundLevel
 
     const renderer = new THREE.WebGLRenderer({ 
       antialias: true,
@@ -565,6 +563,9 @@
     // Уровень земли и радиус птички (должны быть объявлены до createObstacle)
     const groundLevel = -4.0;
     const birdRadius = 0.9;
+    
+    // Вычисляем середину между полом и потолком для начальной позиции птицы
+    startY = (groundLevel + 20.0) / 2; // Середина между полом (-4.0) и потолком (20.0)
     
     // Параметры для спавна препятствий
     const obstacleSpawnInterval = 15; // Расстояние между препятствиями
