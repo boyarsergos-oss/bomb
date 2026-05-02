@@ -564,6 +564,7 @@
     const grassBlades = [];
     const clouds = [];
     const obstacles = []; // Массив препятствий (труб)
+    const mountains = []; // Массив гор
     
     // Уровень земли и радиус птички (должны быть объявлены до createObstacle)
     const groundLevel = -4.0;
@@ -596,6 +597,33 @@
       blade.receiveShadow = true;
       grassBlades.push(blade);
       scene.add(blade);
+    }
+
+    // ==================== ГОРЫ (СИЛУЭТЫ НА ГОРИЗОНТЕ) ====================
+    function createMountain(x, z, height, width) {
+      const mountainGeometry = new THREE.ConeGeometry(width, height, 4);
+      const mountainMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x5a6e7c, 
+        roughness: 0.9,
+        metalness: 0.1
+      });
+      const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+      mountain.position.set(x, groundLevel + height / 2, z);
+      mountain.castShadow = false;
+      mountain.receiveShadow = false;
+      return mountain;
+    }
+    
+    // Создаём силуэты гор на горизонте
+    for (let i = 0; i < 40; i++) {
+      const mountain = createMountain(
+        (Math.random() - 0.5) * 150, // Широкий диапазон по X
+        -80 - Math.random() * 100,   // Далеко на горизонте (отрицательный Z)
+        15 + Math.random() * 25,     // Высота горы
+        8 + Math.random() * 12       // Ширина основания
+      );
+      mountains.push(mountain);
+      scene.add(mountain);
     }
 
     // Функция создания пары труб (препятствия)
@@ -1340,6 +1368,13 @@
         }
       });
       
+      // Перемещение гор (двигаются вместе с птицей, создавая эффект бесконечного горизонта)
+      mountains.forEach(mountain => {
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z += cycleDistance;
+        }
+      });
+      
       // Перемещение травинок
       grassBlades.forEach(blade => {
         if (blade.position.z < birdZ - 20) {
@@ -1538,6 +1573,14 @@
         cloud.visible = true; // Принудительно показываем облака
         if (cloud.position.z < birdZ - 20) {
           cloud.position.z = birdZ + 20 + Math.random() * 60;
+        }
+      });
+      
+      // Сбрасываем позиции гор относительно птицы
+      mountains.forEach(mountain => {
+        mountain.visible = true; // Принудительно показываем горы
+        if (mountain.position.z < birdZ - 50) {
+          mountain.position.z = birdZ + 50 + Math.random() * 100;
         }
       });
       
