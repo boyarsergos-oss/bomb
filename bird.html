@@ -462,6 +462,22 @@
     };
     let currentViewMode = 'rear';
     
+    // Проверка портретной ориентации
+    function isPortraitOrientation() {
+      return window.innerHeight > window.innerWidth;
+    }
+    
+    // Получение смещения камеры с учётом ориентации
+    function getCameraOffset(viewMode) {
+      const baseOffset = { ...viewModes[viewMode] };
+      // В портретной ориентации отдаляем камеру для вида сзади
+      if (viewMode === 'rear' && isPortraitOrientation()) {
+        baseOffset.offsetZ = -9.0; // Более отдалённая камера в портрете
+        baseOffset.offsetY = 3.5;  // Чуть выше камера
+      }
+      return baseOffset;
+    }
+    
     camera.position.set(0, 4.3, -6.5);
     camera.lookAt(0, 1.5, 0);
     
@@ -964,7 +980,7 @@
         document.getElementById('info').textContent = '🐥 КРУГЛАЯ ПТИЧКА • ' + viewNames[currentViewMode];
         
         // Сразу устанавливаем камеру в правильную позицию для выбранного вида
-        const viewMode = viewModes[currentViewMode];
+        const viewMode = getCameraOffset(currentViewMode);
         camera.position.set(
           birdGroup.position.z * 0 + viewMode.offsetX,
           birdGroup.position.y + viewMode.offsetY,
@@ -1128,7 +1144,7 @@
       
       // Камера следует за птичкой (только если контролы не активны)
       if (!controls || !controls.enabled) {
-        const viewMode = viewModes[currentViewMode];
+        const viewMode = getCameraOffset(currentViewMode);
         // Для вида от первого лица камера на клюве и полностью повторяет движения птицы
         if (currentViewMode === 'firstPerson') {
           // Позиция камеры: позиция птички + смещение к клюву
@@ -1271,6 +1287,16 @@
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
       labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      
+      // При смене ориентации обновляем позицию камеры для вида сзади
+      if (currentViewMode === 'rear' && (!controls || !controls.enabled)) {
+        const viewMode = getCameraOffset(currentViewMode);
+        const targetCamX = birdGroup.position.z * 0 + viewMode.offsetX;
+        const targetCamY = birdGroup.position.y + viewMode.offsetY;
+        const targetCamZ = birdGroup.position.z + viewMode.offsetZ;
+        camera.position.set(targetCamX, targetCamY, targetCamZ);
+        camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z);
+      }
     });
     
     // Функция перезапуска игры
