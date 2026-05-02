@@ -488,6 +488,9 @@
     camera.position.set(0, 4.3, -6.5);
     camera.lookAt(0, 1.5, 0);
     
+    // Вычисляем середину между полом и потолком для начальной позиции птицы
+    const startY = (groundLevel + 20.0) / 2; // Середина между полом (-4.0) и потолком (20.0)
+    
     // Контролы для вращения камеры (включаются только при смерти)
     let controls = null;
 
@@ -717,7 +720,7 @@
 
     // ==================== СОЗДАНИЕ КРУГЛОЙ ПТИЧКИ ====================
     const birdGroup = new THREE.Group();
-    birdGroup.position.set(0, 1.5, 0);
+    birdGroup.position.set(0, startY, 0);
     
     // Тело
     const bodyGeometry = new THREE.SphereGeometry(0.9, 32, 32);
@@ -1456,7 +1459,7 @@
       lastTimeChangeScore = 0;
       currentTimeIndex = 0; // Индекс дня (day)
       distanceTraveled = 0;
-      birdGroup.position.set(0, 0, 0);
+      birdGroup.position.set(0, startY, 0);
       birdVelocityY = 0;
       birdGroup.rotation.set(0, 0, 0);
       
