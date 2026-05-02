@@ -957,6 +957,9 @@
     const changeViewBtn = document.getElementById('change-view-btn');
     const deathHintEl = document.getElementById('death-hint');
     
+    // Флаг: начал ли игрок вращение камеры после смерти
+    let hasStartedCameraRotation = false;
+    
     // Обработчик кнопки "Продолжить"
     continueBtn.addEventListener('click', () => {
       restartGame();
@@ -1121,6 +1124,7 @@
                   
                   // Скрываем все меню когда игрок начинает вращать камеру
                   controls.addEventListener('start', () => {
+                    hasStartedCameraRotation = true;
                     gameOverPanel.style.display = 'none';
                     deathHintEl.style.display = 'none';
                     document.getElementById('info').style.display = 'none';
@@ -1254,12 +1258,18 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // Показываем панель проигрыша с кнопкой и лучшим счётом
-        gameOverPanel.style.display = 'block';
+        // Но не показываем, если игрок уже начал вращать камеру
+        if (!hasStartedCameraRotation) {
+          gameOverPanel.style.display = 'block';
+        }
         finalScoreEl.textContent = score;
         bestScoreEl.textContent = bestScore;
         
         // Показываем подсказку про управление камерой
-        deathHintEl.style.display = 'block';
+        // Но не показываем, если игрок уже начал вращать камеру
+        if (!hasStartedCameraRotation) {
+          deathHintEl.style.display = 'block';
+        }
       } else {
         // Скрываем подсказку когда игра активна
         deathHintEl.style.display = 'none';
@@ -1346,6 +1356,9 @@
       deathHintEl.style.display = 'none';
       document.getElementById('info').style.display = 'block';
       document.getElementById('hint').style.display = 'block';
+      
+      // Сбрасываем флаг вращения камеры для следующей смерти
+      hasStartedCameraRotation = false;
     }
 
     animate();
