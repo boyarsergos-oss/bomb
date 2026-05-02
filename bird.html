@@ -517,20 +517,20 @@
     sunLight.position.set(10, 20, 5);
     sunLight.castShadow = true;
     sunLight.receiveShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.mapSize.width = 4096;
+    sunLight.shadow.mapSize.height = 4096;
     sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 150;
-    sunLight.shadow.camera.left = -30;
-    sunLight.shadow.camera.right = 30;
-    sunLight.shadow.camera.top = 30;
-    sunLight.shadow.camera.bottom = -30;
+    sunLight.shadow.camera.far = 200;
+    sunLight.shadow.camera.left = -50;
+    sunLight.shadow.camera.right = 50;
+    sunLight.shadow.camera.top = 50;
+    sunLight.shadow.camera.bottom = -50;
     sunLight.shadow.bias = -0.0005;
     scene.add(sunLight);
     
     // Добавляем target для DirectionalLight (нужен для корректной работы теней)
     sunLight.target = new THREE.Object3D();
-    sunLight.target.position.set(0, 0, 0);
+    sunLight.target.position.set(0, 0, 10);
     scene.add(sunLight.target);
     
     const fillLight = new THREE.DirectionalLight(0xccddff, 0.6);
