@@ -448,7 +448,6 @@
     // ==================== НАСТРОЙКИ СЦЕНЫ ====================
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa0d8ef);
-    scene.fog = new THREE.FogExp2(0xa0d8ef, 0.015);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 200);
     
@@ -1005,9 +1004,8 @@
       currentTimeIndex = (currentTimeIndex + 1) % timeOfDayOrder.length;
       const settings = timeOfDaySettings[timeOfDayOrder[currentTimeIndex]];
       
-      // Меняем цвет фона и тумана
+      // Меняем цвет фона
       scene.background.setHex(settings.background);
-      scene.fog.color.setHex(settings.fog);
       
       // Меняем освещение
       ambientLight.intensity = settings.ambientLight;
@@ -1553,7 +1551,6 @@
       // Устанавливаем дневное время суток при рестарте
       const daySettings = timeOfDaySettings['day'];
       scene.background.setHex(daySettings.background);
-      scene.fog.color.setHex(daySettings.fog);
       ambientLight.intensity = daySettings.ambientLight;
       sunLight.color.setHex(daySettings.sunLightColor);
       sunLight.intensity = daySettings.sunLightIntensity;
