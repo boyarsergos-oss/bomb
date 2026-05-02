@@ -1402,7 +1402,8 @@
           camera.position.x += (targetCamX - camera.position.x) * Math.min(cameraLerpSpeed * delta, 1);
           camera.position.y += (targetCamY - camera.position.y) * Math.min(cameraLerpSpeed * delta, 1);
           camera.position.z += (targetCamZ - camera.position.z) * Math.min(cameraLerpSpeed * delta, 1);
-          camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z);
+          // Камера смотрит немного вперёд по направлению движения птицы
+          camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z + 8);
         }
       } else if (controls && controls.enabled) {
         // Если контролы активны, просто обновляем их target и сами контролы
@@ -1606,7 +1607,8 @@
         const targetCamY = birdGroup.position.y + viewMode.offsetY;
         const targetCamZ = birdGroup.position.z + viewMode.offsetZ;
         camera.position.set(targetCamX, targetCamY, targetCamZ);
-        camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z);
+        // Камера смотрит немного вперёд по направлению движения птицы
+        camera.lookAt(birdGroup.position.x, birdGroup.position.y + 0.6, birdGroup.position.z + 8);
       }
     });
     
