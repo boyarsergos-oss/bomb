@@ -1437,7 +1437,7 @@
       isGameOver = false;
       score = 0;
       lastTimeChangeScore = 0;
-      currentTimeIndex = 0;
+      currentTimeIndex = 0; // Индекс дня (day)
       distanceTraveled = 0;
       birdGroup.position.set(0, 0, 0);
       birdVelocityY = 0;
@@ -1460,9 +1460,18 @@
       obstacles.push(firstObstacle);
       scene.add(firstObstacle);
       
-      // Возвращаем время суток к дневному при рестарте
-      changeTimeOfDay(); // сброс до дневного (первый вызов после инициализации)
-      currentTimeIndex = -1; // чтобы первый вызов changeTimeOfDay() установил day
+      // Устанавливаем дневное время суток при рестарте
+      const daySettings = timeOfDaySettings['day'];
+      scene.background.setHex(daySettings.background);
+      scene.fog.color.setHex(daySettings.fog);
+      ambientLight.intensity = daySettings.ambientLight;
+      sunLight.color.setHex(daySettings.sunLightColor);
+      sunLight.intensity = daySettings.sunLightIntensity;
+      fillLight.color.setHex(daySettings.fillLightColor);
+      fillLight.intensity = daySettings.fillLightIntensity;
+      groundSegments.forEach(segment => {
+        segment.material.color.setHex(daySettings.groundColor);
+      });
       
       // Скрываем панель проигрыша и показываем подсказки
       gameOverPanel.style.display = 'none';
