@@ -617,10 +617,10 @@
     // Создаём силуэты гор на горизонте
     for (let i = 0; i < 40; i++) {
       const mountain = createMountain(
-        (Math.random() - 0.5) * 150, // Широкий диапазон по X
-        -80 - Math.random() * 100,   // Далеко на горизонте (отрицательный Z)
-        15 + Math.random() * 25,     // Высота горы
-        8 + Math.random() * 12       // Ширина основания
+        (Math.random() - 0.5) * 200, // Широкий диапазон по X
+        -200 - Math.random() * 150,   // Очень далеко на горизонте (отрицательный Z)
+        30 + Math.random() * 50,     // Высота горы (больше для дальнего плана)
+        20 + Math.random() * 25       // Ширина основания (пропорционально высоте)
       );
       mountains.push(mountain);
       scene.add(mountain);
@@ -1370,7 +1370,7 @@
       
       // Перемещение гор (двигаются вместе с птицей, создавая эффект бесконечного горизонта)
       mountains.forEach(mountain => {
-        if (mountain.position.z < birdZ - 50) {
+        if (mountain.position.z < birdZ - 100) {
           mountain.position.z += cycleDistance;
         }
       });
@@ -1579,8 +1579,8 @@
       // Сбрасываем позиции гор относительно птицы
       mountains.forEach(mountain => {
         mountain.visible = true; // Принудительно показываем горы
-        if (mountain.position.z < birdZ - 50) {
-          mountain.position.z = birdZ + 50 + Math.random() * 100;
+        if (mountain.position.z < birdZ - 100) {
+          mountain.position.z = birdZ + 100 + Math.random() * 150;
         }
       });
       
