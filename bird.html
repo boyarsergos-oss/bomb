@@ -263,6 +263,97 @@
       #view-selector {
         max-width: clamp(350px, 60vw, 550px);
       }
+      
+      #game-over-panel {
+        max-width: clamp(350px, 60vw, 550px);
+      }
+    }
+    
+    /* Мобильные устройства для game-over-panel */
+    @media (max-width: 480px) and (orientation: portrait) {
+      #game-over-panel {
+        padding: clamp(15px, 3vh, 20px) clamp(20px, 4vw, 25px);
+        min-width: clamp(260px, 55vw, 300px);
+      }
+      
+      #game-over-panel h2 {
+        font-size: clamp(18px, 3.5vh, 22px);
+      }
+      
+      #continue-btn {
+        padding: clamp(10px, 2vh, 14px) clamp(16px, 3vw, 22px);
+        font-size: clamp(14px, 2vh, 16px);
+      }
+    }
+    
+    /* Планшеты и большие телефоны для game-over-panel */
+    @media (min-width: 481px) and (max-width: 768px) {
+      #game-over-panel {
+        padding: clamp(20px, 4vh, 30px) clamp(25px, 5vw, 40px);
+        min-width: clamp(280px, 60vw, 350px);
+      }
+    }
+    
+    /* Мобильные устройства (ландшафтная ориентация) для game-over-panel */
+    @media (max-height: 500px) and (orientation: landscape) {
+      #game-over-panel {
+        padding: clamp(12px, 2.5vh, 18px) clamp(20px, 4vw, 28px);
+        min-width: clamp(280px, 55vw, 320px);
+      }
+      
+      #game-over-panel h2 {
+        font-size: clamp(16px, 2.5vh, 20px);
+        margin-bottom: clamp(10px, 2vh, 14px);
+      }
+      
+      #continue-btn {
+        padding: clamp(8px, 1.5vh, 12px) clamp(14px, 3vw, 22px);
+        font-size: clamp(13px, 1.8vh, 15px);
+      }
+      
+      #game-over-panel .score-display,
+      #game-over-panel .best-score {
+        font-size: clamp(12px, 1.5vh, 14px);
+      }
+    }
+    
+    /* Маленькие экраны (< 360px) для game-over-panel */
+    @media (max-width: 360px) {
+      #game-over-panel {
+        padding: clamp(12px, 2.5vh, 18px) clamp(15px, 3vw, 20px);
+        min-width: clamp(240px, 50vw, 280px);
+      }
+      
+      #game-over-panel h2 {
+        font-size: clamp(16px, 2.5vh, 20px);
+      }
+      
+      #continue-btn {
+        padding: clamp(8px, 1.5vh, 12px) clamp(12px, 2.5vw, 18px);
+        font-size: clamp(13px, 1.8vh, 15px);
+      }
+    }
+    
+    /* Большие экраны (> 1920px) для game-over-panel */
+    @media (min-width: 1920px) {
+      #game-over-panel {
+        padding: clamp(30px, 5vh, 45px) clamp(40px, 6vw, 60px);
+        min-width: clamp(400px, 55vw, 500px);
+      }
+      
+      #game-over-panel h2 {
+        font-size: clamp(24px, 4vh, 32px);
+      }
+      
+      #continue-btn {
+        font-size: clamp(16px, 2.5vh, 20px);
+        padding: clamp(12px, 2.5vh, 16px) clamp(22px, 4vw, 32px);
+      }
+      
+      #game-over-panel .score-display,
+      #game-over-panel .best-score {
+        font-size: clamp(16px, 2vh, 22px);
+      }
     }
   </style>
 </head>
