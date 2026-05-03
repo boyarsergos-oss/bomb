@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Игра - Уровень 1</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        #winMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: rgba(0, 150, 0, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            font-size: 24px;
+            text-align: center;
+            display: none;
+            z-index: 100;
+        }
+        #winMessage h1 {
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        #winMessage button {
+            padding: 10px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            background: #fff;
+            border: none;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        #winMessage button:hover {
+            background: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>Управление:</h3>
+        <p>W / Стрелка вверх - Вперёд</p>
+        <p>S / Стрелка вниз - Назад</p>
+        <p>A / Стрелка влево - Влево</p>
+        <p>D / Стрелка вправо - Вправо</p>
+        <p>Пробел - Прыжок</p>
+        <p>Цель: Доберитесь до зелёной зоны!</p>
+    </div>
+    
+    <div id="winMessage">
+        <h1>🎉 Победа!</h1>
+        <p>Вы достигли выхода!</p>
+        <button onclick="location.reload()">Играть снова</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Основные переменные
+        let scene, camera, renderer;
+        let player;
+        let keys = {};
+        let playerVelocity = new THREE.Vector3();
+        let isGrounded = false;
+        let gameWon = false;
+
+        // Параметры игрока
+        const playerSpeed = 0.3;
+        const jumpForce = 0.5;
+        const gravity = 0.02;
+
+        // Инициализация сцены
+        function init() {
+            // Создание сцены
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Небесно-голубой
+            scene.fog = new THREE.Fog(0x87CEEB, 50, 150);
+
+            // Камера
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            // Рендерер
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Освещение
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 50, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.left = -50;
+            directionalLight.shadow.camera.right = 50;
+            directionalLight.shadow.camera.top = 50;
+            directionalLight.shadow.camera.bottom = -50;
+            scene.add(directionalLight);
+
+            // Создание уровня
+            createLevel();
+
+            // Обработчики событий
+            window.addEventListener('keydown', (e) => keys[e.code] = true);
+            window.addEventListener('keyup', (e) => keys[e.code] = false);
+            window.addEventListener('resize', onWindowResize);
+
+            // Запуск игрового цикла
+            animate();
+        }
+
+        function createLevel() {
+            // Пол
+            const floorGeometry = new THREE.PlaneGeometry(100, 100);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3a7d3a,
+                roughness: 0.8
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Игрок (куб)
+            const playerGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+            player = new THREE.Mesh(playerGeometry, playerMaterial);
+            player.position.set(0, 0.5, 0);
+            player.castShadow = true;
+            scene.add(player);
+
+            // Препятствия
+            createObstacle(5, 0.5, -5, 2, 1, 2, 0x8B4513);
+            createObstacle(-8, 0.5, -3, 3, 1, 3, 0x8B4513);
+            createObstacle(10, 0.5, 5, 2, 1, 2, 0x8B4513);
+            createObstacle(-5, 0.5, 8, 4, 1, 2, 0x8B4513);
+            createObstacle(3, 1, -10, 2, 2, 2, 0x696969);
+            createObstacle(-10, 0.5, -10, 3, 1, 3, 0x8B4513);
+
+            // Выход (зелёная зона)
+            const exitGeometry = new THREE.PlaneGeometry(5, 5);
+            const exitMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.5,
+                transparent: true,
+                opacity: 0.7
+            });
+            const exit = new THREE.Mesh(exitGeometry, exitMaterial);
+            exit.rotation.x = -Math.PI / 2;
+            exit.position.set(0, 0.01, -25);
+            exit.name = "exit";
+            scene.add(exit);
+
+            // Флаг на выходе
+            const flagPoleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 3, 8);
+            const flagPoleMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const flagPole = new THREE.Mesh(flagPoleGeometry, flagPoleMaterial);
+            flagPole.position.set(0, 1.5, -25);
+            flagPole.castShadow = true;
+            scene.add(flagPole);
+
+            const flagGeometry = new THREE.BoxGeometry(1.5, 1, 0.1);
+            const flagMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+            const flag = new THREE.Mesh(flagGeometry, flagMaterial);
+            flag.position.set(0.75, 2.5, -25);
+            flag.castShadow = true;
+            scene.add(flag);
+        }
+
+        function createObstacle(x, y, z, width, height, depth, color) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshStandardMaterial({ color: color });
+            const obstacle = new THREE.Mesh(geometry, material);
+            obstacle.position.set(x, y, z);
+            obstacle.castShadow = true;
+            obstacle.receiveShadow = true;
+            scene.add(obstacle);
+            
+            // Добавляем коллайдер
+            obstacle.userData = {
+                isObstacle: true,
+                bounds: new THREE.Box3().setFromObject(obstacle)
+            };
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function checkCollision(newPos) {
+            const playerBox = new THREE.Box3();
+            const size = 0.5;
+            playerBox.setFromCenterAndSize(newPos, new THREE.Vector3(size, 1, size));
+
+            for (let obj of scene.children) {
+                if (obj.userData.isObstacle) {
+                    if (playerBox.intersectsBox(obj.userData.bounds)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function updatePlayer() {
+            if (gameWon) return;
+
+            // Движение вперёд/назад
+            if (keys['KeyW'] || keys['ArrowUp']) {
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                forward.y = 0;
+                forward.normalize();
+                player.position.add(forward.multiplyScalar(playerSpeed));
+            }
+            if (keys['KeyS'] || keys['ArrowDown']) {
+                const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+                backward.y = 0;
+                backward.normalize();
+                player.position.add(backward.multiplyScalar(playerSpeed));
+            }
+
+            // Движение влево/вправо
+            if (keys['KeyA'] || keys['ArrowLeft']) {
+                const left = new THREE.Vector3(-1, 0, 0).applyQuaternion(camera.quaternion);
+                left.y = 0;
+                left.normalize();
+                player.position.add(left.multiplyScalar(playerSpeed));
+            }
+            if (keys['KeyD'] || keys['ArrowRight']) {
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                right.y = 0;
+                right.normalize();
+                player.position.add(right.multiplyScalar(playerSpeed));
+            }
+
+            // Прыжок
+            if ((keys['Space']) && isGrounded) {
+                playerVelocity.y = jumpForce;
+                isGrounded = false;
+            }
+
+            // Гравитация
+            playerVelocity.y -= gravity;
+            player.position.y += playerVelocity.y;
+
+            // Проверка столкновения с полом
+            if (player.position.y <= 0.5) {
+                player.position.y = 0.5;
+                playerVelocity.y = 0;
+                isGrounded = true;
+            }
+
+            // Ограничение уровня
+            player.position.x = Math.max(-49, Math.min(49, player.position.x));
+            player.position.z = Math.max(-49, Math.min(49, player.position.z));
+
+            // Камера следует за игроком
+            const cameraOffset = new THREE.Vector3(0, 5, 8);
+            camera.position.lerp(player.position.clone().add(cameraOffset), 0.1);
+            camera.lookAt(player.position);
+
+            // Проверка победы
+            const distanceToExit = player.position.distanceTo(new THREE.Vector3(0, 0, -25));
+            if (distanceToExit < 3 && !gameWon) {
+                gameWon = true;
+                document.getElementById('winMessage').style.display = 'block';
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePlayer();
+            renderer.render(scene, camera);
+        }
+
+        // Запуск игры
+        init();
+    </script>
+</body>
+</html>
