@@ -539,11 +539,11 @@
             
             // Create boundary walls for each level
             const boundary = levelData.boundarySize;
-            const wallHeight = levelData.startHeight + 10;
+            const wallHeight = 8; // Lower walls so they don't block view
             const wallThickness = 2;
             const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
             
-            // Create 4 walls around the level
+            // Create 4 walls around the level - positioned at ground level (y=0 to y=wallHeight)
             const wallConfigs = [
                 // Left wall
                 { x: -boundary - wallThickness/2, y: wallHeight/2, z: 0, w: wallThickness, d: (boundary * 2) + wallThickness * 2 },
