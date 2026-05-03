@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Isometric Game - Level 1</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+        
+        #instructions {
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        #win-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 200, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 200;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        #win-message h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        
+        #win-message button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: white;
+            color: #00aa00;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        #win-message button:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <div id="ui">
+        <div id="instructions">
+            <h1>🎮 Уровень 1</h1>
+            <p>Доберитесь до зелёного выхода!</p>
+            <p><strong>Управление:</strong> Кликните в любом месте, чтобы персонаж побежал туда.</p>
+        </div>
+    </div>
+    
+    <div id="win-message">
+        <h2>🎉 Победа!</h2>
+        <p>Вы достигли выхода!</p>
+        <button onclick="resetGame()">Играть снова</button>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        
+        // Camera - Isometric view
+        const aspect = window.innerWidth / window.innerHeight;
+        const d = 20;
+        const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
+        
+        // Isometric angle
+        camera.position.set(20, 20, 20);
+        camera.lookAt(scene.position);
+        
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('game-container').appendChild(renderer.domElement);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        // Ground
+        const groundGeometry = new THREE.PlaneGeometry(40, 40);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x3a7d3a,
+            roughness: 0.8
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+        
+        // Grid helper for isometric feel
+        const gridHelper = new THREE.GridHelper(40, 40, 0x000000, 0x000000);
+        gridHelper.position.y = 0.01;
+        gridHelper.material.opacity = 0.2;
+        gridHelper.material.transparent = true;
+        scene.add(gridHelper);
+        
+        // Player
+        const playerGeometry = new THREE.BoxGeometry(1, 2, 1);
+        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff4444 });
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.y = 1;
+        player.castShadow = true;
+        scene.add(player);
+        
+        // Exit zone
+        const exitGeometry = new THREE.BoxGeometry(3, 0.5, 3);
+        const exitMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x00ff00,
+            emissive: 0x00aa00,
+            emissiveIntensity: 0.5
+        });
+        const exitZone = new THREE.Mesh(exitGeometry, exitMaterial);
+        exitZone.position.set(15, 0.25, 15);
+        exitZone.receiveShadow = true;
+        scene.add(exitZone);
+        
+        // Exit marker (pyramid)
+        const markerGeometry = new THREE.ConeGeometry(1, 3, 4);
+        const markerMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffff00,
+            emissive: 0xffaa00,
+            emissiveIntensity: 0.5
+        });
+        const exitMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+        exitMarker.position.set(15, 2, 15);
+        exitMarker.castShadow = true;
+        scene.add(exitMarker);
+        
+        // Some obstacles/decorations
+        function createObstacle(x, z, height, color) {
+            const geometry = new THREE.BoxGeometry(2, height, 2);
+            const material = new THREE.MeshStandardMaterial({ color: color });
+            const obstacle = new THREE.Mesh(geometry, material);
+            obstacle.position.set(x, height/2, z);
+            obstacle.castShadow = true;
+            obstacle.receiveShadow = true;
+            scene.add(obstacle);
+            return obstacle;
+        }
+        
+        createObstacle(-5, -5, 3, 0x8b4513);
+        createObstacle(5, -10, 4, 0x696969);
+        createObstacle(-10, 5, 2, 0x8b4513);
+        createObstacle(0, 10, 5, 0x696969);
+        createObstacle(10, 0, 3, 0x8b4513);
+        
+        // Target position for player movement
+        let targetPosition = new THREE.Vector3(0, 1, 0);
+        let isMoving = false;
+        const moveSpeed = 0.15;
+        
+        // Raycaster for click detection
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        
+        // Mouse click handler
+        function onMouseClick(event) {
+            if (gameWon) return;
+            
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            
+            const intersection = new THREE.Vector3();
+            raycaster.ray.intersectPlane(groundPlane, intersection);
+            
+            if (intersection) {
+                // Clamp to ground bounds
+                intersection.x = Math.max(-20, Math.min(20, intersection.x));
+                intersection.z = Math.max(-20, Math.min(20, intersection.z));
+                
+                targetPosition.set(intersection.x, 1, intersection.z);
+                isMoving = true;
+                
+                // Create click indicator
+                createClickIndicator(intersection);
+            }
+        }
+        
+        // Click indicator
+        function createClickIndicator(position) {
+            const geometry = new THREE.RingGeometry(0.3, 0.5, 32);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.8
+            });
+            const indicator = new THREE.Mesh(geometry, material);
+            indicator.rotation.x = -Math.PI / 2;
+            indicator.position.copy(position);
+            indicator.position.y = 0.1;
+            scene.add(indicator);
+            
+            // Animate and remove
+            let scale = 1;
+            function animateIndicator() {
+                scale += 0.1;
+                indicator.scale.set(scale, scale, scale);
+                indicator.material.opacity -= 0.05;
+                
+                if (indicator.material.opacity > 0) {
+                    requestAnimationFrame(animateIndicator);
+                } else {
+                    scene.remove(indicator);
+                    geometry.dispose();
+                    material.dispose();
+                }
+            }
+            animateIndicator();
+        }
+        
+        window.addEventListener('click', onMouseClick);
+        
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.left = -d * aspect;
+            camera.right = d * aspect;
+            camera.top = d;
+            camera.bottom = -d;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Win state
+        let gameWon = false;
+        
+        // Check win condition
+        function checkWin() {
+            const distance = player.position.distanceTo(exitZone.position);
+            if (distance < 2 && !gameWon) {
+                gameWon = true;
+                document.getElementById('win-message').style.display = 'block';
+            }
+        }
+        
+        // Reset game
+        window.resetGame = function() {
+            player.position.set(0, 1, 0);
+            targetPosition.set(0, 1, 0);
+            isMoving = false;
+            gameWon = false;
+            document.getElementById('win-message').style.display = 'none';
+        };
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Move player towards target
+            if (isMoving) {
+                const direction = new THREE.Vector3().subVectors(targetPosition, player.position);
+                const distance = direction.length();
+                
+                if (distance < 0.1) {
+                    isMoving = false;
+                    player.position.copy(targetPosition);
+                } else {
+                    direction.normalize();
+                    player.position.add(direction.multiplyScalar(moveSpeed));
+                    
+                    // Rotate player to face movement direction
+                    const angle = Math.atan2(direction.x, direction.z);
+                    player.rotation.y = angle;
+                }
+            }
+            
+            // Animate exit marker
+            exitMarker.rotation.y += 0.02;
+            exitMarker.position.y = 2 + Math.sin(Date.now() * 0.003) * 0.3;
+            
+            // Check win
+            checkWin();
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
