@@ -212,6 +212,8 @@
         let isMovingLeft = false;
         let isMovingRight = false;
         
+        let gameInitialized = false;
+        
         // Level designs
         const levels = [
             {
@@ -310,41 +312,48 @@
         ];
         
         function init() {
-            // Scene
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 20, 100);
-            
-            // Camera
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            
-            // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            document.getElementById('game-container').appendChild(renderer.domElement);
-            
-            // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-            
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(50, 100, 50);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.camera.left = -50;
-            directionalLight.shadow.camera.right = 50;
-            directionalLight.shadow.camera.top = 50;
-            directionalLight.shadow.camera.bottom = -50;
-            scene.add(directionalLight);
-            
-            // Create player
-            createPlayer();
-            
-            // Event listeners
-            setupEventListeners();
-            
-            // Start animation loop
-            animate();
+            try {
+                // Scene
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x87ceeb);
+                scene.fog = new THREE.Fog(0x87ceeb, 20, 100);
+                
+                // Camera
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                
+                // Renderer
+                renderer = new THREE.WebGLRenderer({ antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                document.getElementById('game-container').appendChild(renderer.domElement);
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(50, 100, 50);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.camera.left = -50;
+                directionalLight.shadow.camera.right = 50;
+                directionalLight.shadow.camera.top = 50;
+                directionalLight.shadow.camera.bottom = -50;
+                scene.add(directionalLight);
+                
+                // Create player
+                createPlayer();
+                
+                // Event listeners
+                setupEventListeners();
+                
+                gameInitialized = true;
+                
+                // Start animation loop
+                animate();
+            } catch (error) {
+                console.error('Ошибка инициализации:', error);
+                alert('Ошибка загрузки игры: ' + error.message);
+            }
         }
         
         function createPlayer() {
@@ -535,6 +544,10 @@
         }
         
         function startGame() {
+            if (!gameInitialized) {
+                alert('Ошибка: Three.js не загрузился. Проверьте подключение к интернету.');
+                return;
+            }
             document.getElementById('start-screen').classList.add('hidden');
             currentLevel = 1;
             lives = 3;
