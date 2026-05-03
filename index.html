@@ -205,6 +205,7 @@
         let platforms = [];
         let obstacles = [];
         let sawBlades = [];
+        let walls = [];
         let goalPlatform = null;
         
         // Touch controls
@@ -526,13 +527,42 @@
             platforms.forEach(p => scene.remove(p.mesh));
             obstacles.forEach(o => scene.remove(o.mesh));
             sawBlades.forEach(s => scene.remove(s.mesh));
+            walls.forEach(w => scene.remove(w.mesh));
             if (goalPlatform) scene.remove(goalPlatform.mesh);
             
             platforms = [];
             obstacles = [];
             sawBlades = [];
+            walls = [];
             
             const levelData = levels[levelNum - 1];
+            
+            // Create boundary walls for each level
+            const boundary = levelData.boundarySize;
+            const wallHeight = levelData.startHeight + 10;
+            const wallThickness = 2;
+            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+            
+            // Create 4 walls around the level
+            const wallConfigs = [
+                // Left wall
+                { x: -boundary - wallThickness/2, y: wallHeight/2, z: 0, w: wallThickness, d: (boundary * 2) + wallThickness * 2 },
+                // Right wall
+                { x: boundary + wallThickness/2, y: wallHeight/2, z: 0, w: wallThickness, d: (boundary * 2) + wallThickness * 2 },
+                // Front wall
+                { x: 0, y: wallHeight/2, z: -boundary - wallThickness/2, w: (boundary * 2) + wallThickness * 2, d: wallThickness },
+                // Back wall
+                { x: 0, y: wallHeight/2, z: boundary + wallThickness/2, w: (boundary * 2) + wallThickness * 2, d: wallThickness }
+            ];
+            
+            wallConfigs.forEach(config => {
+                const geometry = new THREE.BoxGeometry(config.w, wallHeight, config.d);
+                const mesh = new THREE.Mesh(geometry, wallMaterial);
+                mesh.position.set(config.x, config.y, config.z);
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                walls.push({ mesh });
+            });
             
             // Create platforms
             levelData.platforms.forEach(plat => {
@@ -859,13 +889,29 @@
             player.position.y += playerVelocity.y;
             player.position.z += playerVelocity.z;
             
-            // Boundary checks - use level-specific boundary
+            // Wall collision detection
             const levelData = levels[currentLevel - 1];
             const boundary = levelData ? levelData.boundarySize : 15;
-            if (player.position.x > boundary) player.position.x = boundary;
-            if (player.position.x < -boundary) player.position.x = -boundary;
-            if (player.position.z > boundary) player.position.z = boundary;
-            if (player.position.z < -boundary) player.position.z = -boundary;
+            const wallThickness = 2;
+            const playerSize = 0.5;
+            
+            // Check collision with walls (prevent going through)
+            if (player.position.x > boundary - playerSize) {
+                player.position.x = boundary - playerSize;
+                playerVelocity.x = 0;
+            }
+            if (player.position.x < -boundary + playerSize) {
+                player.position.x = -boundary + playerSize;
+                playerVelocity.x = 0;
+            }
+            if (player.position.z > boundary - playerSize) {
+                player.position.z = boundary - playerSize;
+                playerVelocity.z = 0;
+            }
+            if (player.position.z < -boundary + playerSize) {
+                player.position.z = -boundary + playerSize;
+                playerVelocity.z = 0;
+            }
             
             // Rotate saw blades
             sawBlades.forEach(saw => {
