@@ -149,20 +149,19 @@
     <script type="module">
         import * as THREE from 'three';
         
-        // Scene setup with fog for depth
+        // Scene setup
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.Fog(0x87ceeb, 30, 80);
         
-        // Camera - Better isometric angle
+        // Camera - Closer to player
         const aspect = window.innerWidth / window.innerHeight;
-        const d = 25;
+        const d = 12;
         const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
         
         // Classic isometric angle (30 degrees from horizontal)
         const isoAngle = Math.PI / 6;
-        const camHeight = 30 * Math.sin(isoAngle);
-        const camDist = 30 * Math.cos(isoAngle);
+        const camHeight = 15 * Math.sin(isoAngle);
+        const camDist = 15 * Math.cos(isoAngle);
         camera.position.set(camDist, camHeight, camDist);
         camera.lookAt(0, 0, 0);
         
@@ -468,107 +467,6 @@
         
         const exitPortal = createExitPortal(18, 18);
         scene.add(exitPortal);
-        
-        // Create beautiful trees
-        function createTree(x, z) {
-            const tree = new THREE.Group();
-            
-            // Trunk
-            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 8);
-            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-            trunk.position.y = 0.75;
-            trunk.castShadow = true;
-            trunk.receiveShadow = true;
-            tree.add(trunk);
-            
-            // Leaves (multiple cones for fuller look)
-            const leavesMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
-            
-            for (let i = 0; i < 3; i++) {
-                const leavesGeo = new THREE.ConeGeometry(1.2 - i * 0.2, 1.5, 8);
-                const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-                leaves.position.y = 1.8 + i * 0.5;
-                leaves.castShadow = true;
-                leaves.receiveShadow = true;
-                tree.add(leaves);
-            }
-            
-            tree.position.set(x, 0, z);
-            return tree;
-        }
-        
-        // Create rocks
-        function createRock(x, z, scale) {
-            const rockGeo = new THREE.DodecahedronGeometry(scale, 0);
-            const rockMat = new THREE.MeshStandardMaterial({ 
-                color: 0x696969,
-                roughness: 0.9
-            });
-            const rock = new THREE.Mesh(rockGeo, rockMat);
-            rock.position.set(x, scale * 0.5, z);
-            rock.rotation.set(Math.random(), Math.random(), Math.random());
-            rock.castShadow = true;
-            rock.receiveShadow = true;
-            scene.add(rock);
-        }
-        
-        // Create flowers
-        function createFlower(x, z) {
-            const flower = new THREE.Group();
-            
-            const stemGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.4);
-            const stemMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
-            const stem = new THREE.Mesh(stemGeo, stemMat);
-            stem.position.y = 0.2;
-            flower.add(stem);
-            
-            const colors = [0xff6b6b, 0xffd93d, 0xff6b9d, 0xc44dff, 0x6bffd9];
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            
-            const petalGeo = new THREE.SphereGeometry(0.15, 8, 8);
-            const petalMat = new THREE.MeshStandardMaterial({ 
-                color: color,
-                emissive: color,
-                emissiveIntensity: 0.3
-            });
-            const petal = new THREE.Mesh(petalGeo, petalMat);
-            petal.position.y = 0.4;
-            flower.add(petal);
-            
-            flower.position.set(x, 0, z);
-            flower.rotation.y = Math.random() * Math.PI * 2;
-            scene.add(flower);
-        }
-        
-        // Add decorative elements
-        const treePositions = [
-            [-12, -15], [-8, -18], [-15, -10], [-18, -5], [-14, 8],
-            [-16, 12], [12, -16], [16, -12], [14, 20], [18, 15],
-            [-5, 20], [-10, 18], [8, -20], [15, -8]
-        ];
-        
-        treePositions.forEach(([x, z]) => {
-            scene.add(createTree(x, z));
-        });
-        
-        // Add rocks
-        for (let i = 0; i < 15; i++) {
-            const x = (Math.random() - 0.5) * 50;
-            const z = (Math.random() - 0.5) * 50;
-            if (Math.abs(x) > 5 || Math.abs(z) > 5) {
-                createRock(x, z, 0.3 + Math.random() * 0.5);
-            }
-        }
-        
-        // Add flowers
-        for (let i = 0; i < 40; i++) {
-            const x = (Math.random() - 0.5) * 55;
-            const z = (Math.random() - 0.5) * 55;
-            if (Math.abs(x) > 3 || Math.abs(z) > 3) {
-                createFlower(x, z);
-            }
-        }
         
         // Movement system
         let targetPosition = new THREE.Vector3(0, 0, 0);
