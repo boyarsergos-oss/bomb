@@ -2,713 +2,335 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Physics Puzzle 3D - 10 Уровней</title>
+    <title>PHYSICS PUZZLE MASTER 3D</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            overflow: hidden; 
+            background: #000;
+            font-family: 'Segoe UI', Arial, sans-serif;
         }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        #game-container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
-        
-        #ui-overlay {
+        #ui {
             position: absolute;
             top: 20px;
             left: 20px;
+            color: #fff;
             z-index: 100;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 0 0 10px rgba(0,255,255,0.8);
         }
-        
-        #level-info {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        
-        #objective {
-            font-size: 16px;
-            background: rgba(0,0,0,0.3);
-            padding: 10px;
-            border-radius: 8px;
-            max-width: 300px;
-        }
-        
-        #controls-hint {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            z-index: 100;
-            color: white;
-            font-size: 14px;
-            background: rgba(0,0,0,0.3);
-            padding: 10px;
-            border-radius: 8px;
-        }
-        
-        #win-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 200;
-            flex-direction: column;
-            color: white;
-        }
-        
-        #win-screen h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-            animation: pulse 1s infinite;
-        }
-        
-        #next-level-btn {
-            padding: 15px 40px;
-            font-size: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 25px;
-            color: white;
-            cursor: pointer;
-            transition: transform 0.3s;
-        }
-        
-        #next-level-btn:hover {
-            transform: scale(1.1);
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-        
-        #loading {
+        #level { font-size: 32px; font-weight: bold; color: #0ff; }
+        #moves { font-size: 20px; margin-top: 10px; color: #ff0; }
+        #message {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: white;
-            font-size: 24px;
-            z-index: 300;
+            font-size: 48px;
+            color: #0f0;
+            text-shadow: 0 0 20px #0f0;
+            display: none;
+            z-index: 100;
+            text-align: center;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #aaa;
+            font-size: 14px;
+            z-index: 100;
+        }
+        #restart {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #f00, #f90);
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            z-index: 100;
+            box-shadow: 0 0 15px rgba(255,100,0,0.5);
+        }
+        #restart:hover { transform: scale(1.1); }
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: explode 1s ease-out forwards;
+        }
+        @keyframes explode {
+            to { transform: translate(var(--tx), var(--ty)); opacity: 0; }
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="loading">Загрузка игры...</div>
-        <div id="ui-overlay" style="display: none;">
-            <div id="level-info">Уровень 1</div>
-            <div id="objective">Цель: Забросьте зеленый шар в красную зону!</div>
-        </div>
-        <div id="controls-hint" style="display: none;">
-            ЛКМ: Толкнуть объект | ПКМ: Вращать камеру | Колесо: Зум
-        </div>
-        <div id="win-screen">
-            <h1>🎉 Уровень пройден! 🎉</h1>
-            <button id="next-level-btn">Следующий уровень</button>
-        </div>
+    <div id="ui">
+        <div id="level">УРОВЕНЬ 1</div>
+        <div id="moves">Ходы: 0</div>
     </div>
+    <button id="restart">🔄 ЗАНОВО</button>
+    <div id="message">🎉 УРОВЕНЬ ПРОЙДЕН! 🎉</div>
+    <div id="controls">ЛКМ - толчок | ПКМ - камера | Колесо - зум</div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.19.0/dist/cannon-es.min.js"></script>
+    
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a1a);
+        scene.fog = new THREE.FogExp2(0x0a0a1a, 0.02);
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        const world = new CANNON.World();
+        world.gravity.set(0, -20, 0);
+        world.broadphase = new CANNON.SAPBroadphase(world);
+        
+        const groundMat = new CANNON.Material();
+        const ballMat = new CANNON.Material();
+        const wallMat = new CANNON.Material();
+        
+        const ballGroundContact = new CANNON.ContactMaterial(groundMat, ballMat, { friction: 0.3, restitution: 0.6 });
+        const ballWallContact = new CANNON.ContactMaterial(wallMat, ballMat, { friction: 0.2, restitution: 0.7 });
+        world.addContactMaterial(ballGroundContact);
+        world.addContactMaterial(ballWallContact);
 
-        // Глобальные переменные
-        let scene, camera, renderer, controls;
-        let objects = [];
-        let raycaster, mouse;
-        let currentLevel = 1;
-        let selectedObject = null;
-        let isDragging = false;
-        let dragPlane;
-        let targetZone;
-        let playerBall;
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(20, 30, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.left = -30;
+        dirLight.shadow.camera.right = 30;
+        dirLight.shadow.camera.top = 30;
+        dirLight.shadow.camera.bottom = -30;
+        scene.add(dirLight);
+
+        let ball, ballBody, goalZone, goalBody;
         let obstacles = [];
-        let platforms = [];
+        let currentLevel = 1;
+        let moves = 0;
+        let isComplete = false;
 
-        // Конфигурация уровней
         const levels = [
-            {
-                name: "Первые шаги",
-                objective: "Забросьте зеленый шар в красную зону!",
-                ballPosition: { x: 0, y: 2, z: 5 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 0, y: 0.5, z: -5 },
-                targetSize: { x: 4, y: 1, z: 4 },
-                platforms: [],
-                obstacles: [],
-                cameraPosition: { x: 0, y: 10, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Наклон",
-                objective: "Используйте наклонную платформу для достижения цели!",
-                ballPosition: { x: -3, y: 3, z: 5 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 3, y: 0.5, z: -5 },
-                targetSize: { x: 3, y: 1, z: 3 },
-                platforms: [
-                    { position: { x: 0, y: 1, z: 0 }, size: { x: 10, y: 0.5, z: 2 }, rotation: { x: 0.2, y: 0, z: 0 } }
-                ],
-                obstacles: [],
-                cameraPosition: { x: 0, y: 12, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Препятствие",
-                objective: "Обойдите стену и попадите в цель!",
-                ballPosition: { x: 0, y: 2, z: 6 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 0, y: 0.5, z: -6 },
-                targetSize: { x: 3, y: 1, z: 3 },
-                platforms: [],
-                obstacles: [
-                    { position: { x: 0, y: 1, z: 0 }, size: { x: 6, y: 2, z: 1 } }
-                ],
-                cameraPosition: { x: 0, y: 12, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Лабиринт",
-                objective: "Пройдите через лабиринт к цели!",
-                ballPosition: { x: -4, y: 2, z: 6 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 4, y: 0.5, z: -6 },
-                targetSize: { x: 2, y: 1, z: 2 },
-                platforms: [],
-                obstacles: [
-                    { position: { x: -2, y: 1, z: 3 }, size: { x: 1, y: 2, z: 6 } },
-                    { position: { x: 2, y: 1, z: -3 }, size: { x: 1, y: 2, z: 6 } },
-                    { position: { x: 0, y: 1, z: 0 }, size: { x: 5, y: 2, z: 1 } }
-                ],
-                cameraPosition: { x: 0, y: 15, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Прыжок",
-                objective: "Перепрыгните через пропасть!",
-                ballPosition: { x: 0, y: 2, z: 5 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 0, y: 0.5, z: -5 },
-                targetSize: { x: 3, y: 1, z: 3 },
-                platforms: [
-                    { position: { x: 0, y: 0.5, z: 0 }, size: { x: 3, y: 1, z: 3 }, rotation: { x: 0, y: 0, z: 0 } }
-                ],
-                obstacles: [],
-                cameraPosition: { x: 0, y: 12, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Движущиеся платформы",
-                objective: "Используйте движущиеся платформы!",
-                ballPosition: { x: -5, y: 3, z: 5 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 5, y: 0.5, z: -5 },
-                targetSize: { x: 2, y: 1, z: 2 },
-                platforms: [
-                    { position: { x: -2, y: 1.5, z: 2 }, size: { x: 3, y: 0.5, z: 3 }, moving: true, moveRange: 2, moveSpeed: 1, axis: 'x' },
-                    { position: { x: 2, y: 1.5, z: -2 }, size: { x: 3, y: 0.5, z: 3 }, moving: true, moveRange: 2, moveSpeed: 1.5, axis: 'z' }
-                ],
-                obstacles: [],
-                cameraPosition: { x: 0, y: 15, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Башня",
-                objective: "Разрушьте башню и доберитесь до цели!",
-                ballPosition: { x: 0, y: 2, z: 6 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 0, y: 0.5, z: -6 },
-                targetSize: { x: 3, y: 1, z: 3 },
-                platforms: [],
-                obstacles: [
-                    { position: { x: 0, y: 1, z: 0 }, size: { x: 2, y: 2, z: 2 } },
-                    { position: { x: 0, y: 3, z: 0 }, size: { x: 1.5, y: 1.5, z: 1.5 } },
-                    { position: { x: 0, y: 4.5, z: 0 }, size: { x: 1, y: 1, z: 1 } }
-                ],
-                cameraPosition: { x: 0, y: 12, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Тоннель",
-                objective: "Пройдите через узкий тоннель!",
-                ballPosition: { x: 0, y: 2, z: 7 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 0, y: 0.5, z: -7 },
-                targetSize: { x: 2, y: 1, z: 2 },
-                platforms: [],
-                obstacles: [
-                    { position: { x: -1.5, y: 1.5, z: 0 }, size: { x: 1, y: 3, z: 4 } },
-                    { position: { x: 1.5, y: 1.5, z: 0 }, size: { x: 1, y: 3, z: 4 } },
-                    { position: { x: 0, y: 3.5, z: 0 }, size: { x: 4, y: 1, z: 4 } }
-                ],
-                cameraPosition: { x: 0, y: 12, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Спираль",
-                objective: "Спуститесь по спирали к цели!",
-                ballPosition: { x: 0, y: 8, z: 0 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 0, y: 0.5, z: 0 },
-                targetSize: { x: 3, y: 1, z: 3 },
-                platforms: [
-                    { position: { x: 0, y: 4, z: 0 }, size: { x: 8, y: 0.5, z: 8 }, rotation: { x: 0.1, y: 0, z: 0 } }
-                ],
-                obstacles: [
-                    { position: { x: 3, y: 2, z: 0 }, size: { x: 1, y: 4, z: 1 } },
-                    { position: { x: -3, y: 6, z: 0 }, size: { x: 1, y: 4, z: 1 } }
-                ],
-                cameraPosition: { x: 0, y: 15, z: 15 },
-                gravity: -9.8
-            },
-            {
-                name: "Финальный вызов",
-                objective: "Преодолейте все препятствия и выиграйте!",
-                ballPosition: { x: -6, y: 4, z: 8 },
-                ballVelocity: { x: 0, y: 0, z: 0 },
-                targetPosition: { x: 6, y: 0.5, z: -8 },
-                targetSize: { x: 2, y: 1, z: 2 },
-                platforms: [
-                    { position: { x: -3, y: 2, z: 4 }, size: { x: 3, y: 0.5, z: 3 }, moving: true, moveRange: 2, moveSpeed: 2, axis: 'x' },
-                    { position: { x: 3, y: 2, z: -4 }, size: { x: 3, y: 0.5, z: 3 }, moving: true, moveRange: 2, moveSpeed: 2, axis: 'z' }
-                ],
-                obstacles: [
-                    { position: { x: 0, y: 1, z: 0 }, size: { x: 8, y: 2, z: 1 } },
-                    { position: { x: -4, y: 1, z: -4 }, size: { x: 1, y: 2, z: 4 } },
-                    { position: { x: 4, y: 1, z: 4 }, size: { x: 1, y: 2, z: 4 } }
-                ],
-                cameraPosition: { x: 0, y: 18, z: 20 },
-                gravity: -9.8
-            }
+            { setup: () => { createGround(20, 20); createBall(0, 3, 0); createGoal(0, 0.5, -8); createWalls([[-9, 1, 0, 1, 2, 18], [9, 1, 0, 1, 2, 18]]); } },
+            { setup: () => { createGround(25, 25); createBall(-8, 3, 8); createGoal(8, 0.5, -8); createWalls([[-3, 1, 5, 1, 2, 12], [3, 1, 5, 1, 2, 12], [-6, 1, -2, 6, 2, 1], [6, 1, -2, 6, 2, 1], [0, 1, 3, 1, 2, 6]]); } },
+            { setup: () => { createGround(30, 30); createBall(0, 5, 10); createGoal(0, 0.5, -10); for(let i=0;i<5;i++) createBox(0, 1+i*0.5, 5-i*2.5, 6, 1, 3); createWalls([[-14, 1, 0, 1, 2, 28], [14, 1, 0, 1, 2, 28]]); } },
+            { setup: () => { createGround(20, 30); createBall(0, 3, 12); createGoal(0, 0.5, -12); for(let i=0;i<8;i++) createRing(0, 3, 10-i*3, 4, 0.3); createWalls([[-9, 1, 0, 1, 2, 28], [9, 1, 0, 1, 2, 28]]); } },
+            { setup: () => { createGround(25, 25); createBall(0, 15, 0); createGoal(8, 0.5, 0); for(let i=0;i<5;i++) createBox(0, 2+i*2, 0, 8-i, 1, 8-i); createWalls([[-11, 1, 0, 1, 2, 25], [11, 1, 0, 1, 2, 25]]); } },
+            { setup: () => { createGround(30, 30); createBall(-10, 3, 10); createGoal(10, 0.5, -10); createWalls([[-5, 1, 5, 1, 2, 20], [5, 1, -5, 1, 2, 20], [0, 1, 8, 10, 2, 1], [0, 1, -8, 10, 2, 1]]); } },
+            { setup: () => { createGround(25, 30); createBall(0, 3, 12); createGoal(0, 0.5, -12); [[-4, 6], [4, 3], [-3, -3], [5, -8], [0, -10]].forEach(([x,z]) => createBox(x, 1.5, z, 3, 3, 3)); createWalls([[-11, 1, 0, 1, 2, 30], [11, 1, 0, 1, 2, 30]]); } },
+            { setup: () => { createGround(20, 35); createBall(0, 3, 15); createGoal(0, 0.5, -15); createWalls([[-9, 1, 0, 1, 2, 35], [9, 1, 0, 1, 2, 35], [-2, 1, 5, 1, 2, 10], [2, 1, -5, 1, 2, 10], [-3, 1, -2, 1, 2, 8], [3, 1, 2, 1, 2, 8]]); } },
+            { setup: () => { createGround(30, 30); createBall(10, 3, 10); createGoal(0, 0.5, 0); for(let i=0;i<12;i++) { const a=i*0.5, r=12-i; createBox(Math.cos(a)*r, 1.5, Math.sin(a)*r, 3, 3, 0.5); } createWalls([[-14, 1, 0, 1, 2, 30], [14, 1, 0, 1, 2, 30]]); } },
+            { setup: () => { createGround(35, 40); createBall(-12, 5, 15); createGoal(12, 0.5, -15); createWalls([[-16, 1, 0, 1, 2, 40], [16, 1, 0, 1, 2, 40], [-5, 1, 8, 1, 2, 10], [5, 1, -8, 1, 2, 10], [0, 1, 0, 8, 2, 1]]); for(let i=0;i<3;i++) createBox(-8+i*4, 1.5, 0, 2, 3, 2); for(let i=0;i<4;i++) createRing(8, 3, 10-i*3, 3, 0.3); } }
         ];
 
-        // Инициализация сцены
-        function init() {
-            const container = document.getElementById('game-container');
-            
-            // Сцена
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb);
-            scene.fog = new THREE.Fog(0x87ceeb, 20, 50);
-
-            // Камера
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 10, 15);
-
-            // Рендерер
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            container.appendChild(renderer.domElement);
-
-            // Контролы
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.maxPolarAngle = Math.PI / 2 - 0.1;
-
-            // Свет
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(10, 20, 10);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.mapSize.width = 2048;
-            directionalLight.shadow.mapSize.height = 2048;
-            directionalLight.shadow.camera.near = 0.5;
-            directionalLight.shadow.camera.far = 50;
-            directionalLight.shadow.camera.left = -15;
-            directionalLight.shadow.camera.right = 15;
-            directionalLight.shadow.camera.top = 15;
-            directionalLight.shadow.camera.bottom = -15;
-            scene.add(directionalLight);
-
-            // Raycaster для взаимодействия
-            raycaster = new THREE.Raycaster();
-            mouse = new THREE.Vector2();
-            dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-
-            // Пол
-            createFloor();
-
-            // Загрузка первого уровня
-            loadLevel(1);
-
-            // Обработчики событий
-            window.addEventListener('resize', onWindowResize);
-            window.addEventListener('mousedown', onMouseDown);
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
-            window.addEventListener('contextmenu', (e) => e.preventDefault());
-
-            // Кнопка следующего уровня
-            document.getElementById('next-level-btn').addEventListener('click', nextLevel);
-
-            // Скрытие загрузки
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('ui-overlay').style.display = 'block';
-            document.getElementById('controls-hint').style.display = 'block';
-
-            // Запуск анимации
-            animate();
+        function createGround(width, depth) {
+            const geometry = new THREE.PlaneGeometry(width, depth);
+            const material = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8, metalness: 0.2 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            const grid = new THREE.GridHelper(new THREE.PlaneGeometry(width, depth), 20, 0x00ffff, 0x004444);
+            grid.position.y = 0.01;
+            scene.add(grid);
+            const shape = new CANNON.Box(new CANNON.Vec3(width/2, 0.1, depth/2));
+            const body = new CANNON.Body({ mass: 0, material: groundMat });
+            body.addShape(shape);
+            body.position.set(0, -0.1, 0);
+            world.addBody(body);
         }
 
-        function createFloor() {
-            const floorGeometry = new THREE.PlaneGeometry(50, 50);
-            const floorMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x3a7d3a,
-                roughness: 0.8
-            });
-            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-            floor.rotation.x = -Math.PI / 2;
-            floor.receiveShadow = true;
-            scene.add(floor);
-            objects.push(floor);
+        function createBall(x, y, z) {
+            if(ball) { scene.remove(ball); world.removeBody(ballBody); }
+            const geometry = new THREE.SphereGeometry(1, 32, 32);
+            const material = new THREE.MeshStandardMaterial({ color: 0x00ff88, roughness: 0.3, metalness: 0.7, emissive: 0x00ff88, emissiveIntensity: 0.3 });
+            ball = new THREE.Mesh(geometry, material);
+            ball.castShadow = true;
+            scene.add(ball);
+            const shape = new CANNON.Sphere(1);
+            ballBody = new CANNON.Body({ mass: 5, material: ballMat });
+            ballBody.addShape(shape);
+            ballBody.position.set(x, y, z);
+            ballBody.linearDamping = 0.3;
+            ballBody.angularDamping = 0.3;
+            world.addBody(ballBody);
+        }
 
-            // Сетка на полу
-            const gridHelper = new THREE.GridHelper(50, 50, 0x000000, 0x000000);
-            gridHelper.position.y = 0.01;
-            gridHelper.material.opacity = 0.2;
-            gridHelper.material.transparent = true;
-            scene.add(gridHelper);
+        function createGoal(x, y, z) {
+            if(goalZone) { scene.remove(goalZone); world.removeBody(goalBody); }
+            const geometry = new THREE.CylinderGeometry(2, 2, 0.2, 32);
+            const material = new THREE.MeshStandardMaterial({ color: 0xff0044, emissive: 0xff0044, emissiveIntensity: 0.8, transparent: true, opacity: 0.7 });
+            goalZone = new THREE.Mesh(geometry, material);
+            goalZone.position.set(x, y, z);
+            goalZone.receiveShadow = true;
+            scene.add(goalZone);
+            const light = new THREE.PointLight(0xff0044, 2, 10);
+            light.position.set(x, y+2, z);
+            scene.add(light);
+            const shape = new CANNON.Cylinder(2, 2, 0.2, 16);
+            const q = new CANNON.Quaternion();
+            q.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
+            goalBody = new CANNON.Body({ mass: 0 });
+            goalBody.addShape(shape, new CANNON.Vec3(0,0,0), q);
+            goalBody.position.set(x, y, z);
+            world.addBody(goalBody);
+        }
+
+        function createBox(x, y, z, w, h, d) {
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            const material = new THREE.MeshStandardMaterial({ color: 0x4444ff, roughness: 0.5, metalness: 0.5, emissive: 0x2222aa, emissiveIntensity: 0.3 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            obstacles.push({ mesh, type: 'static' });
+            const shape = new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2));
+            const body = new CANNON.Body({ mass: 0, material: wallMat });
+            body.addShape(shape);
+            body.position.set(x, y, z);
+            world.addBody(body);
+            obstacles.push({ body, type: 'physics' });
+        }
+
+        function createWalls(wallData) { wallData.forEach(([x, y, z, w, h, d]) => createBox(x, y, z, w, h, d)); }
+
+        function createRing(x, y, z, radius, thickness) {
+            const geometry = new THREE.TorusGeometry(radius, thickness, 16, 32);
+            const material = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xffaa00, emissiveIntensity: 0.5, metalness: 0.8 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            scene.add(mesh);
+            obstacles.push({ mesh, type: 'static' });
         }
 
         function loadLevel(levelNum) {
-            // Очистка сцены от игровых объектов
-            objects.forEach(obj => {
-                if (obj !== objects[0] && obj !== objects[1]) { // Не удалять пол и сетку
-                    scene.remove(obj);
-                    if (obj.geometry) obj.geometry.dispose();
-                    if (obj.material) obj.material.dispose();
-                }
-            });
-            objects = objects.slice(0, 2);
+            obstacles.forEach(obj => { if(obj.mesh) scene.remove(obj.mesh); if(obj.body) world.removeBody(obj.body); });
             obstacles = [];
-            platforms = [];
-
-            const level = levels[levelNum - 1];
-
-            // Создание целевой зоны
-            const targetGeometry = new THREE.BoxGeometry(level.targetSize.x, level.targetSize.y, level.targetSize.z);
-            const targetMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0xff0000,
-                transparent: true,
-                opacity: 0.7,
-                emissive: 0xff0000,
-                emissiveIntensity: 0.3
-            });
-            targetZone = new THREE.Mesh(targetGeometry, targetMaterial);
-            targetZone.position.set(level.targetPosition.x, level.targetPosition.y, level.targetPosition.z);
-            targetZone.receiveShadow = true;
-            scene.add(targetZone);
-            objects.push(targetZone);
-
-            // Создание игрока (шара)
-            const ballGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-            const ballMaterial = new THREE.MeshStandardMaterial({ 
-                color: 0x00ff00,
-                roughness: 0.3,
-                metalness: 0.5
-            });
-            playerBall = new THREE.Mesh(ballGeometry, ballMaterial);
-            playerBall.position.set(level.ballPosition.x, level.ballPosition.y, level.ballPosition.z);
-            playerBall.castShadow = true;
-            playerBall.receiveShadow = true;
-            playerBall.velocity = new THREE.Vector3(
-                level.ballVelocity.x,
-                level.ballVelocity.y,
-                level.ballVelocity.z
-            );
-            playerBall.gravity = level.gravity;
-            playerBall.restitution = 0.7; // Коэффициент упругости
-            playerBall.friction = 0.98; // Трение
-            scene.add(playerBall);
-            objects.push(playerBall);
-
-            // Создание платформ
-            level.platforms.forEach(platformData => {
-                const geometry = new THREE.BoxGeometry(
-                    platformData.size.x,
-                    platformData.size.y,
-                    platformData.size.z
-                );
-                const material = new THREE.MeshStandardMaterial({ 
-                    color: 0x8b4513,
-                    roughness: 0.6
-                });
-                const platform = new THREE.Mesh(geometry, material);
-                platform.position.set(
-                    platformData.position.x,
-                    platformData.position.y,
-                    platformData.position.z
-                );
-                if (platformData.rotation) {
-                    platform.rotation.set(
-                        platformData.rotation.x || 0,
-                        platformData.rotation.y || 0,
-                        platformData.rotation.z || 0
-                    );
-                }
-                platform.castShadow = true;
-                platform.receiveShadow = true;
-                
-                if (platformData.moving) {
-                    platform.userData = {
-                        moving: true,
-                        originalPosition: platform.position.clone(),
-                        moveRange: platformData.moveRange,
-                        moveSpeed: platformData.moveSpeed,
-                        axis: platformData.axis,
-                        time: 0
-                    };
-                    platforms.push(platform);
-                }
-                
-                scene.add(platform);
-                objects.push(platform);
-            });
-
-            // Создание препятствий
-            level.obstacles.forEach(obstacleData => {
-                const geometry = new THREE.BoxGeometry(
-                    obstacleData.size.x,
-                    obstacleData.size.y,
-                    obstacleData.size.z
-                );
-                const material = new THREE.MeshStandardMaterial({ 
-                    color: 0x696969,
-                    roughness: 0.5
-                });
-                const obstacle = new THREE.Mesh(geometry, material);
-                obstacle.position.set(
-                    obstacleData.position.x,
-                    obstacleData.position.y,
-                    obstacleData.position.z
-                );
-                obstacle.castShadow = true;
-                obstacle.receiveShadow = true;
-                scene.add(obstacle);
-                objects.push(obstacle);
-                obstacles.push(obstacle);
-            });
-
-            // Установка камеры
-            camera.position.set(
-                level.cameraPosition.x,
-                level.cameraPosition.y,
-                level.cameraPosition.z
-            );
-            controls.update();
-
-            // Обновление UI
-            document.getElementById('level-info').textContent = `Уровень ${levelNum}: ${level.name}`;
-            document.getElementById('objective').textContent = level.objective;
-            document.getElementById('win-screen').style.display = 'none';
+            if(goalZone) scene.remove(goalZone);
+            if(ball) scene.remove(ball);
+            if(ballBody) world.removeBody(ballBody);
+            isComplete = false;
+            document.getElementById('message').style.display = 'none';
+            document.getElementById('level').textContent = `УРОВЕНЬ ${levelNum}`;
+            moves = 0;
+            updateMoves();
+            levels[levelNum - 1].setup();
+            camera.position.set(0, 20, 25);
+            camera.lookAt(0, 0, 0);
         }
 
-        function updatePhysics(deltaTime) {
-            if (!playerBall) return;
+        function updateMoves() { document.getElementById('moves').textContent = `Ходы: ${moves}`; }
 
-            // Применение гравитации
-            playerBall.velocity.y += playerBall.gravity * deltaTime;
-
-            // Применение трения
-            playerBall.velocity.x *= playerBall.friction;
-            playerBall.velocity.z *= playerBall.friction;
-
-            // Обновление позиции
-            playerBall.position.add(playerBall.velocity.clone().multiplyScalar(deltaTime));
-
-            // Проверка столкновений с полом
-            if (playerBall.position.y < 0.5) {
-                playerBall.position.y = 0.5;
-                playerBall.velocity.y = -playerBall.velocity.y * playerBall.restitution;
-                playerBall.velocity.x *= 0.95;
-                playerBall.velocity.z *= 0.95;
-            }
-
-            // Проверка столкновений с платформами и препятствиями
-            const ballBox = new THREE.Box3().setFromObject(playerBall);
-            
-            objects.forEach(obj => {
-                if (obj === playerBall || obj === objects[0] || obj === targetZone) return;
-
-                const objBox = new THREE.Box3().setFromObject(obj);
-                
-                if (ballBox.intersectsBox(objBox)) {
-                    // Простая обработка столкновений
-                    const normal = playerBall.position.clone().sub(obj.position).normalize();
-                    
-                    if (Math.abs(normal.y) > 0.7) {
-                        // Столкновение сверху/снизу
-                        playerBall.velocity.y = -playerBall.velocity.y * playerBall.restitution;
-                        if (normal.y > 0) {
-                            playerBall.position.y = obj.position.y + obj.geometry.parameters.height / 2 + 0.5;
-                        }
-                    } else {
-                        // Столкновение сбоку
-                        if (Math.abs(normal.x) > Math.abs(normal.z)) {
-                            playerBall.velocity.x = -playerBall.velocity.x * playerBall.restitution;
-                        } else {
-                            playerBall.velocity.z = -playerBall.velocity.z * playerBall.restitution;
-                        }
-                    }
-                }
-            });
-
-            // Обновление движущихся платформ
-            platforms.forEach(platform => {
-                if (platform.userData.moving) {
-                    platform.userData.time += deltaTime * platform.userData.moveSpeed;
-                    const offset = Math.sin(platform.userData.time) * platform.userData.moveRange;
-                    
-                    if (platform.userData.axis === 'x') {
-                        platform.position.x = platform.userData.originalPosition.x + offset;
-                    } else if (platform.userData.axis === 'z') {
-                        platform.position.z = platform.userData.originalPosition.z + offset;
-                    }
-                    
-                    // Если мяч на платформе, двигаем его вместе с платформой
-                    const ballBox = new THREE.Box3().setFromObject(playerBall);
-                    const platformBox = new THREE.Box3().setFromObject(platform);
-                    
-                    if (ballBox.intersectsBox(platformBox) && playerBall.velocity.y < 1) {
-                        if (platform.userData.axis === 'x') {
-                            playerBall.velocity.x += Math.cos(platform.userData.time) * platform.userData.moveRange * platform.userData.moveSpeed;
-                        } else if (platform.userData.axis === 'z') {
-                            playerBall.velocity.z += Math.cos(platform.userData.time) * platform.userData.moveRange * platform.userData.moveSpeed;
-                        }
-                    }
-                }
-            });
-
-            // Проверка победы
-            checkWin();
-
-            // Проверка проигрыша (мяч упал)
-            if (playerBall.position.y < -5) {
-                resetLevel();
+        function createParticles(color) {
+            for(let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.background = color;
+                particle.style.width = '10px';
+                particle.style.height = '10px';
+                particle.style.left = (window.innerWidth/2 + (Math.random()-0.5)*200) + 'px';
+                particle.style.top = (window.innerHeight/2 + (Math.random()-0.5)*200) + 'px';
+                particle.style.setProperty('--tx', (Math.random()-0.5)*300 + 'px');
+                particle.style.setProperty('--ty', (Math.random()-0.5)*300 + 'px');
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1000);
             }
         }
 
         function checkWin() {
-            const distance = playerBall.position.distanceTo(targetZone.position);
-            const combinedSize = 0.5 + Math.max(targetZone.geometry.parameters.width, targetZone.geometry.parameters.depth) / 2;
-            
-            if (distance < combinedSize * 0.8) {
-                document.getElementById('win-screen').style.display = 'flex';
+            if(isComplete) return;
+            const dx = ballBody.position.x - goalBody.position.x;
+            const dz = ballBody.position.z - goalBody.position.z;
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            if(dist < 1.5 && ballBody.position.y < 2) {
+                isComplete = true;
+                createParticles('#00ff88');
+                document.getElementById('message').textContent = '🎉 УРОВЕНЬ ПРОЙДЕН! 🎉';
+                document.getElementById('message').style.display = 'block';
+                setTimeout(() => {
+                    if(currentLevel < 10) { currentLevel++; loadLevel(currentLevel); }
+                    else { document.getElementById('message').textContent = '🏆 ВСЕ УРОВНИ ПРОЙДЕНЫ! 🏆'; document.getElementById('message').style.color = '#ffd700'; }
+                }, 2000);
             }
         }
 
-        function resetLevel() {
-            const level = levels[currentLevel - 1];
-            playerBall.position.set(level.ballPosition.x, level.ballPosition.y, level.ballPosition.z);
-            playerBall.velocity.set(0, 0, 0);
-        }
+        function checkFall() { if(ballBody.position.y < -5) loadLevel(currentLevel); }
 
-        function nextLevel() {
-            currentLevel++;
-            if (currentLevel > levels.length) {
-                alert('🎉 Поздравляем! Вы прошли все уровни! 🎉');
-                currentLevel = 1;
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraAngle = { x: 0, y: Math.PI/4 };
+        let cameraDistance = 25;
+
+        renderer.domElement.addEventListener('mousedown', (e) => { if(e.button === 0) isDragging = true; previousMousePosition = { x: e.clientX, y: e.clientY }; });
+        renderer.domElement.addEventListener('mouseup', (e) => {
+            if(e.button === 0 && isDragging && !isComplete) {
+                const deltaX = e.clientX - previousMousePosition.x;
+                const deltaY = e.clientY - previousMousePosition.y;
+                if(Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                    const force = 15;
+                    const direction = new CANNON.Vec3(-deltaX * 0.1, -deltaY * 0.05, -Math.sign(deltaX) * Math.abs(deltaX) * 0.1);
+                    direction.scale(force, direction);
+                    ballBody.applyImpulse(direction, ballBody.position);
+                    moves++;
+                    updateMoves();
+                }
             }
-            loadLevel(currentLevel);
-        }
-
-        function onMouseDown(event) {
-            if (event.button !== 0) return; // Только левая кнопка мыши
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(playerBall);
-
-            if (intersects.length > 0) {
-                isDragging = true;
-                selectedObject = playerBall;
-                controls.enabled = false;
-            }
-        }
-
-        function onMouseMove(event) {
-            if (!isDragging || !selectedObject) return;
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-            
-            const intersectionPoint = new THREE.Vector3();
-            raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
-
-            if (intersectionPoint) {
-                // Применяем силу к мячу в направлении движения мыши
-                const force = intersectionPoint.sub(selectedObject.position).multiplyScalar(5);
-                selectedObject.velocity.add(force);
-            }
-        }
-
-        function onMouseUp() {
             isDragging = false;
-            selectedObject = null;
-            controls.enabled = true;
+        });
+        renderer.domElement.addEventListener('mousemove', (e) => {
+            if(e.buttons === 2) {
+                cameraAngle.x -= (e.clientX - previousMousePosition.x) * 0.01;
+                cameraAngle.y = Math.max(0.1, Math.min(Math.PI/2 - 0.1, cameraAngle.y + (e.clientY - previousMousePosition.y) * 0.01));
+                updateCamera();
+            }
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        renderer.domElement.addEventListener('wheel', (e) => { cameraDistance = Math.max(10, Math.min(50, cameraDistance + e.deltaY * 0.05)); updateCamera(); });
+        renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+        function updateCamera() {
+            camera.position.x = Math.sin(cameraAngle.x) * Math.cos(cameraAngle.y) * cameraDistance;
+            camera.position.z = Math.cos(cameraAngle.x) * Math.cos(cameraAngle.y) * cameraDistance;
+            camera.position.y = Math.sin(cameraAngle.y) * cameraDistance + 5;
+            camera.lookAt(0, 2, 0);
         }
 
-        function onWindowResize() {
+        document.getElementById('restart').addEventListener('click', () => loadLevel(currentLevel));
+        updateCamera();
+        loadLevel(1);
+
+        const timeStep = 1 / 60;
+        function animate() {
+            requestAnimationFrame(animate);
+            world.step(timeStep);
+            if(ball && ballBody) { ball.position.copy(ballBody.position); ball.quaternion.copy(ballBody.quaternion); }
+            checkWin();
+            checkFall();
+            if(goalZone) goalZone.rotation.y += 0.02;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const deltaTime = 0.016; // Примерно 60 FPS
-
-            updatePhysics(deltaTime);
-            controls.update();
-
-            // Анимация целевой зоны
-            if (targetZone) {
-                targetZone.rotation.y += deltaTime * 0.5;
-                targetZone.scale.setScalar(1 + Math.sin(Date.now() * 0.003) * 0.05);
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        // Запуск игры после загрузки страницы
-        window.addEventListener('load', init);
+        });
     </script>
 </body>
 </html>
