@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Dropper 3D - 10 Levels</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        #level-indicator {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+        
+        #deaths {
+            color: #ff6b6b;
+        }
+        
+        #start-screen, #level-complete, #game-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #2d2d44 0%, #1a1a2e 100%);
+            border: 4px solid #4a4a6a;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            color: #fff;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(0,255,136,0.3);
+        }
+        
+        #start-screen h1, #level-complete h1, #game-complete h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0,255,136,0.5);
+        }
+        
+        #start-screen p, #level-complete p, #game-complete p {
+            font-size: 16px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            color: #1a1a2e;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0,255,136,0.6);
+        }
+        
+        #level-complete, #game-complete {
+            display: none;
+        }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #aaa;
+            font-size: 14px;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        .key {
+            background: #4a4a6a;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+        }
+        
+        #death-counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ff6b6b;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #level-title {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #00ff88;
+            text-shadow: 0 0 30px rgba(0,255,136,0.8);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="canvas-container"></div>
+        
+        <div id="ui-overlay">
+            <div id="hud">
+                <div id="level-indicator">Level 1</div>
+                <div id="deaths">Deaths: 0</div>
+            </div>
+            
+            <div id="death-counter">💀 0</div>
+            
+            <div id="level-title">LEVEL 1</div>
+            
+            <div id="controls-hint">
+                <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> - Движение | 
+                <span class="key">SPACE</span> - Прыжок | 
+                <span class="key">SHIFT</span> - Бег | 
+                Мышь - Обзор
+            </div>
+            
+            <div id="start-screen">
+                <h1>🎮 MINECRAFT DROPPER 3D</h1>
+                <p>Добро пожаловать в режим дроппера!</p>
+                <p>Падай вниз, избегая шипов и препятствий.</p>
+                <p>Достигни зеленой платформы внизу, чтобы пройти уровень.</p>
+                <p>📊 10 уникальных уровней с возрастающей сложностью</p>
+                <button class="btn" onclick="startGame()">НАЧАТЬ ИГРУ</button>
+            </div>
+            
+            <div id="level-complete">
+                <h1>✅ УРОВЕНЬ ПРОЙДЕН!</h1>
+                <p id="level-stats"></p>
+                <button class="btn" onclick="nextLevel()">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
+            </div>
+            
+            <div id="game-complete">
+                <h1>🏆 ПОЗДРАВЛЯЕМ!</h1>
+                <p>Ты прошел все 10 уровней!</p>
+                <p id="final-stats"></p>
+                <button class="btn" onclick="restartGame()">ИГРАТЬ СНОВА</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game state
+        let currentLevel = 1;
+        let deaths = 0;
+        let gameStarted = false;
+        let levelStartTime = 0;
+        
+        // Three.js variables
+        let scene, camera, renderer;
+        let player, playerVelocity;
+        let platforms = [];
+        let spikes = [];
+        let goalPlatform;
+        let isGrounded = false;
+        
+        // Input handling
+        const keys = {};
+        let mouseX = 0, mouseY = 0;
+        let yaw = 0, pitch = 0;
+        
+        // Level configurations
+        const levels = [
+            {
+                name: "Первый прыжок",
+                description: "Простое падение с одной платформой",
+                difficulty: 1,
+                setup: setupLevel1
+            },
+            {
+                name: "Двойной вызов",
+                description: "Две платформы с небольшим зазором",
+                difficulty: 2,
+                setup: setupLevel2
+            },
+            {
+                name: "Шипастый путь",
+                description: "Осторожно! Первые шипы!",
+                difficulty: 3,
+                setup: setupLevel3
+            },
+            {
+                name: "Лабиринт",
+                description: "Навигация через узкие проходы",
+                difficulty: 4,
+                setup: setupLevel4
+            },
+            {
+                name: "Прыгающая платформа",
+                description: "Точные прыжки между маленькими платформами",
+                difficulty: 5,
+                setup: setupLevel5
+            },
+            {
+                name: "Смертельный коридор",
+                description: "Шипы со всех сторон",
+                difficulty: 6,
+                setup: setupLevel6
+            },
+            {
+                name: "Винтовая лестница",
+                description: "Спуск по спирали",
+                difficulty: 7,
+                setup: setupLevel7
+            },
+            {
+                name: "Испытание точности",
+                description: "Очень маленькие платформы",
+                difficulty: 8,
+                setup: setupLevel8
+            },
+            {
+                name: "Финальный вызов",
+                description: "Комбинация всех препятствий",
+                difficulty: 9,
+                setup: setupLevel9
+            },
+            {
+                name: "НЕВОЗМОЖНОЕ?",
+                description: "Только для мастеров!",
+                difficulty: 10,
+                setup: setupLevel10
+            }
+        ];
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.Fog(0x87ceeb, 50, 200);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.left = -100;
+            directionalLight.shadow.camera.right = 100;
+            directionalLight.shadow.camera.top = 100;
+            directionalLight.shadow.camera.bottom = -100;
+            scene.add(directionalLight);
+            
+            // Player setup
+            createPlayer();
+            
+            // Event listeners
+            document.addEventListener('keydown', (e) => keys[e.code] = true);
+            document.addEventListener('keyup', (e) => keys[e.code] = false);
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('click', () => {
+                if (gameStarted) {
+                    document.body.requestPointerLock();
+                }
+            });
+            
+            window.addEventListener('resize', onWindowResize);
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function createPlayer() {
+            const geometry = new THREE.BoxGeometry(0.8, 1.8, 0.8);
+            const material = new THREE.MeshLambertMaterial({ color: 0xff6b35 });
+            player = new THREE.Mesh(geometry, material);
+            player.castShadow = true;
+            scene.add(player);
+            
+            playerVelocity = new THREE.Vector3(0, 0, 0);
+        }
+        
+        function createBlock(x, y, z, width, height, depth, color, type = 'platform') {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshLambertMaterial({ color: color });
+            const block = new THREE.Mesh(geometry, material);
+            block.position.set(x, y, z);
+            block.castShadow = true;
+            block.receiveShadow = true;
+            block.userData = { type: type };
+            scene.add(block);
+            
+            if (type === 'platform' || type === 'goal') {
+                platforms.push(block);
+            } else if (type === 'spike') {
+                spikes.push(block);
+            }
+            
+            return block;
+        }
+        
+        function createSpike(x, y, z, direction = 'up') {
+            const geometry = new THREE.ConeGeometry(0.3, 0.8, 4);
+            const material = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+            const spike = new THREE.Mesh(geometry, material);
+            spike.position.set(x, y, z);
+            spike.castShadow = true;
+            
+            if (direction === 'up') {
+                spike.rotation.x = 0;
+            } else if (direction === 'down') {
+                spike.rotation.x = Math.PI;
+            } else if (direction === 'left') {
+                spike.rotation.z = Math.PI / 2;
+            } else if (direction === 'right') {
+                spike.rotation.z = -Math.PI / 2;
+            }
+            
+            spike.userData = { type: 'spike' };
+            scene.add(spike);
+            spikes.push(spike);
+        }
+        
+        function clearLevel() {
+            // Remove all platforms and spikes
+            platforms.forEach(p => scene.remove(p));
+            spikes.forEach(s => scene.remove(s));
+            if (goalPlatform) scene.remove(goalPlatform);
+            
+            platforms = [];
+            spikes = [];
+            
+            // Reset player
+            player.position.set(0, 50, 0);
+            playerVelocity.set(0, 0, 0);
+            yaw = 0;
+            pitch = 0;
+        }
+        
+        function setupLevel1() {
+            // Simple drop with one intermediate platform
+            createBlock(0, 40, 0, 20, 2, 20, 0x8b4513); // Starting platform
+            createBlock(0, 20, 0, 15, 2, 15, 0x8b4513); // Middle platform
+            createBlock(0, 0, 0, 25, 2, 25, 0x00ff00, 'goal'); // Goal platform
+        }
+        
+        function setupLevel2() {
+            createBlock(0, 50, 0, 15, 2, 15, 0x8b4513);
+            createBlock(-10, 35, 0, 12, 2, 12, 0x8b4513);
+            createBlock(10, 20, 0, 12, 2, 12, 0x8b4513);
+            createBlock(0, 0, 0, 20, 2, 20, 0x00ff00, 'goal');
+        }
+        
+        function setupLevel3() {
+            createBlock(0, 50, 0, 15, 2, 15, 0x8b4513);
+            createBlock(0, 35, 0, 12, 2, 12, 0x8b4513);
+            createSpike(0, 36, 0, 'up');
+            createSpike(-2, 36, 0, 'up');
+            createSpike(2, 36, 0, 'up');
+            createBlock(0, 20, 0, 10, 2, 10, 0x8b4513);
+            createBlock(0, 0, 0, 18, 2, 18, 0x00ff00, 'goal');
+        }
+        
+        function setupLevel4() {
+            createBlock(0, 50, 0, 12, 2, 12, 0x8b4513);
+            createBlock(-8, 40, 0, 8, 2, 15, 0x8b4513);
+            createBlock(8, 30, 0, 8, 2, 15, 0x8b4513);
+            createBlock(-8, 20, 0, 8, 2, 15, 0x8b4513);
+            createSpike(-8, 41, -8, 'up');
+            createSpike(-8, 41, 8, 'up');
+            createSpike(8, 31, -8, 'up');
+            createSpike(8, 31, 8, 'up');
+            createBlock(0, 0, 0, 15, 2, 15, 0x00ff00, 'goal');
+        }
+        
+        function setupLevel5() {
+            createBlock(0, 50, 0, 10, 2, 10, 0x8b4513);
+            createBlock(-6, 42, 0, 6, 2, 6, 0x8b4513);
+            createBlock(6, 34, 0, 6, 2, 6, 0x8b4513);
+            createBlock(-6, 26, 0, 6, 2, 6, 0x8b4513);
+            createBlock(6, 18, 0, 6, 2, 6, 0x8b4513);
+            createSpike(-6, 43, 0, 'up');
+            createSpike(6, 35, 0, 'up');
+            createSpike(-6, 27, 0, 'up');
+            createSpike(6, 19, 0, 'up');
+            createBlock(0, 0, 0, 12, 2, 12, 0x00ff00, 'goal');
+        }
+        
+        function setupLevel6() {
+            createBlock(0, 50, 0, 8, 2, 8, 0x8b4513);
+            
+            // Corridor with spikes on sides
+            for (let i = 40; i > 0; i -= 8) {
+                createBlock(0, i, 0, 6, 2, 6, 0x8b4513);
+                createSpike(-4, i+1, 0, 'right');
+                createSpike(4, i+1, 0, 'left');
+            }
+            
+            createBlock(0, 0, 0, 10, 2, 10, 0x00ff00, 'goal');
+        }
+        
+        function setupLevel7() {
+            createBlock(0, 50, 0, 10, 2, 10, 0x8b4513);
+            
+            // Spiral pattern
+            const positions = [
+                {x: -8, y: 42, z: -8},
+                {x: 8, y: 34, z: -8},
+                {x: 8, y: 26, z: 8},
+                {x: -8, y: 18, z: 8},
+                {x: 0, y: 10, z: 0}
+            ];
+            
+            positions.forEach((pos, index) => {
+                createBlock(pos.x, pos.y, pos.z, 7, 2, 7, 0x8b4513);
+                if (index < positions.length - 1) {
+                    createSpike(pos.x, pos.y + 1, pos.z, 'up');
+                }
+            });
+            
+            createBlock(0, 0, 0, 12, 2, 12, 0x00ff00, 'goal');
+        }
+        
+        function setupLevel8() {
+            createBlock(0, 50, 0, 6, 2, 6, 0x8b4513);
+            
+            // Very small platforms
+            const positions = [
+                {x: -5, y: 42, z: 0},
+                {x: 5, y: 34, z: 0},
+                {x: 0, y: 26, z: -5},
+                {x: 0, y: 18, z: 5},
+                {x: -5, y: 10, z: -5},
+                {x: 5, y: 10, z: 5}
+            ];
+            
+            positions.forEach(pos => {
+                createBlock(pos.x, pos.y, pos.z, 4, 2, 4, 0x8b4513);
+                createSpike(pos.x, pos.y + 1, pos.z, 'up');
+            });
+            
+            createBlock(0, 0, 0, 8, 2, 8, 0x00ff00, 'goal');
+        }
+        
+        function setupLevel9() {
+            createBlock(0, 50, 0, 8, 2, 8, 0x8b4513);
+            
+            // Complex combination
+            createBlock(-8, 42, 0, 6, 2, 10, 0x8b4513);
+            createSpike(-8, 43, -6, 'up');
+            createSpike(-8, 43, 6, 'up');
+            
+            createBlock(8, 34, 0, 6, 2, 6, 0x8b4513);
+            createSpike(4, 35, 0, 'left');
+            createSpike(12, 35, 0, 'right');
+            
+            createBlock(0, 26, -8, 8, 2, 6, 0x8b4513);
+            createSpike(0, 27, -12, 'up');
+            createSpike(0, 27, -4, 'up');
+            
+            createBlock(0, 18, 8, 8, 2, 6, 0x8b4513);
+            createSpike(-6, 19, 8, 'right');
+            createSpike(6, 19, 8, 'left');
+            
+            createBlock(0, 10, 0, 6, 2, 6, 0x8b4513);
+            createSpike(0, 11, 0, 'up');
+            
+            createBlock(0, 0, 0, 10, 2, 10, 0x00ff00, 'goal');
+        }
+        
+        function setupLevel10() {
+            createBlock(0, 50, 0, 6, 2, 6, 0x8b4513);
+            
+            // Ultimate challenge - tiny platforms with many spikes
+            const pattern = [
+                {x: -4, y: 43, z: 0},
+                {x: 4, y: 36, z: 0},
+                {x: 0, y: 29, z: -4},
+                {x: 0, y: 22, z: 4},
+                {x: -4, y: 15, z: -4},
+                {x: 4, y: 15, z: 4},
+                {x: 0, y: 8, z: 0}
+            ];
+            
+            pattern.forEach((pos, index) => {
+                createBlock(pos.x, pos.y, pos.z, 3.5, 2, 3.5, 0x8b4513);
+                
+                // Add spikes around each platform
+                createSpike(pos.x, pos.y + 1, pos.z, 'up');
+                if (index < pattern.length - 1) {
+                    createSpike(pos.x - 2.5, pos.y + 1, pos.z, 'right');
+                    createSpike(pos.x + 2.5, pos.y + 1, pos.z, 'left');
+                    createSpike(pos.x, pos.y + 1, pos.z - 2.5, 'up');
+                    createSpike(pos.x, pos.y + 1, pos.z + 2.5, 'up');
+                }
+            });
+            
+            createBlock(0, 0, 0, 6, 2, 6, 0x00ff00, 'goal');
+        }
+        
+        function loadLevel(levelNum) {
+            clearLevel();
+            currentLevel = levelNum;
+            
+            const level = levels[levelNum - 1];
+            level.setup();
+            
+            // Update UI
+            document.getElementById('level-indicator').textContent = `Level ${levelNum}`;
+            document.getElementById('level-title').textContent = `LEVEL ${levelNum}`;
+            document.getElementById('level-title').style.opacity = '1';
+            
+            setTimeout(() => {
+                document.getElementById('level-title').style.opacity = '0';
+            }, 2000);
+            
+            levelStartTime = Date.now();
+        }
+        
+        function handleMouseMove(event) {
+            if (document.pointerLockElement === document.body && gameStarted) {
+                yaw -= event.movementX * 0.002;
+                pitch -= event.movementY * 0.002;
+                pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+            }
+        }
+        
+        function updatePlayer() {
+            if (!gameStarted) return;
+            
+            const speed = keys['ShiftLeft'] ? 0.15 : 0.08;
+            const jumpForce = 0.25;
+            const gravity = 0.012;
+            
+            // Get forward and right vectors based on camera rotation
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+            
+            const right = new THREE.Vector3(1, 0, 0);
+            right.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+            
+            // Movement input
+            if (keys['KeyW']) {
+                player.position.add(forward.clone().multiplyScalar(speed));
+            }
+            if (keys['KeyS']) {
+                player.position.add(forward.clone().multiplyScalar(-speed));
+            }
+            if (keys['KeyA']) {
+                player.position.add(right.clone().multiplyScalar(-speed));
+            }
+            if (keys['KeyD']) {
+                player.position.add(right.clone().multiplyScalar(speed));
+            }
+            
+            // Jumping
+            if (keys['Space'] && isGrounded) {
+                playerVelocity.y = jumpForce;
+                isGrounded = false;
+            }
+            
+            // Apply gravity
+            playerVelocity.y -= gravity;
+            player.position.y += playerVelocity.y;
+            
+            // Collision detection with platforms
+            isGrounded = false;
+            const playerBox = new THREE.Box3().setFromObject(player);
+            
+            for (const platform of platforms) {
+                const platformBox = new THREE.Box3().setFromObject(platform);
+                
+                if (playerBox.intersectsBox(platformBox)) {
+                    // Check if landing on top
+                    if (playerVelocity.y <= 0 && 
+                        player.position.y > platform.position.y + platform.geometry.parameters.height / 2) {
+                        player.position.y = platform.position.y + platform.geometry.parameters.height / 2 + 0.9;
+                        playerVelocity.y = 0;
+                        isGrounded = true;
+                        
+                        // Check if goal
+                        if (platform.userData.type === 'goal') {
+                            levelComplete();
+                        }
+                    }
+                }
+            }
+            
+            // Spike collision
+            for (const spike of spikes) {
+                const spikeBox = new THREE.Box3().setFromObject(spike);
+                const shrinkedPlayerBox = playerBox.clone();
+                shrinkedPlayerBox.expandByScalar(-0.2);
+                
+                if (shrinkedPlayerBox.intersectsBox(spikeBox)) {
+                    playerDie();
+                    break;
+                }
+            }
+            
+            // Fall death
+            if (player.position.y < -20) {
+                playerDie();
+            }
+            
+            // Update camera position
+            camera.position.copy(player.position);
+            camera.position.y += 1.6;
+            
+            // Apply rotation
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+        }
+        
+        function playerDie() {
+            deaths++;
+            document.getElementById('deaths').textContent = `Deaths: ${deaths}`;
+            document.getElementById('death-counter').textContent = `💀 ${deaths}`;
+            
+            // Reset player to start
+            player.position.set(0, 50, 0);
+            playerVelocity.set(0, 0, 0);
+            
+            // Screen shake effect
+            const originalFOV = camera.fov;
+            camera.fov = 90;
+            setTimeout(() => {
+                camera.fov = originalFOV;
+            }, 100);
+        }
+        
+        function levelComplete() {
+            gameStarted = false;
+            document.exitPointerLock();
+            
+            const timeTaken = ((Date.now() - levelStartTime) / 1000).toFixed(2);
+            
+            if (currentLevel < 10) {
+                document.getElementById('level-stats').innerHTML = `
+                    Уровень: ${currentLevel}<br>
+                    Время: ${timeTaken} сек<br>
+                    Смертей на уровне: ${deaths}
+                `;
+                document.getElementById('level-complete').style.display = 'block';
+            } else {
+                document.getElementById('final-stats').innerHTML = `
+                    Общее время: ${timeTaken} сек<br>
+                    Всего смертей: ${deaths}<br>
+                    Сложность пройдена: МАКСИМАЛЬНАЯ
+                `;
+                document.getElementById('game-complete').style.display = 'block';
+            }
+        }
+        
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            gameStarted = true;
+            loadLevel(1);
+            document.body.requestPointerLock();
+        }
+        
+        function nextLevel() {
+            document.getElementById('level-complete').style.display = 'none';
+            gameStarted = true;
+            loadLevel(currentLevel + 1);
+            document.body.requestPointerLock();
+        }
+        
+        function restartGame() {
+            document.getElementById('game-complete').style.display = 'none';
+            deaths = 0;
+            document.getElementById('deaths').textContent = 'Deaths: 0';
+            document.getElementById('death-counter').textContent = '💀 0';
+            gameStarted = true;
+            loadLevel(1);
+            document.body.requestPointerLock();
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePlayer();
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize game
+        init();
+    </script>
+</body>
+</html>
