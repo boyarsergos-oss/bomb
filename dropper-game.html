@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Dropper Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            text-align: center;
+        }
+
+        h1 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #gameCanvas {
+            border: 4px solid #4a4a4a;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .controls {
+            margin-top: 20px;
+            color: #fff;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 15px;
+            color: #fff;
+            font-size: 18px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 2px solid #4a4a4a;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 5px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+            border: 2px solid #3d8b40;
+        }
+
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .instructions {
+            color: #aaa;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            display: none;
+            z-index: 100;
+        }
+
+        .game-over h2 {
+            color: #ff6b6b;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎮 Minecraft Dropper 🎮</h1>
+        
+        <div class="stats">
+            <div class="stat-item">💎 Алмазы: <span id="score">0</span></div>
+            <div class="stat-item">❤️ Жизни: <span id="lives">3</span></div>
+            <div class="stat-item">⏱️ Время: <span id="timer">0</span>s</div>
+        </div>
+
+        <canvas id="gameCanvas" width="600" height="700"></canvas>
+
+        <div class="controls">
+            <button onclick="startGame()">▶️ Начать игру</button>
+            <button onclick="togglePause()">⏸️ Пауза</button>
+        </div>
+
+        <div class="instructions">
+            ← → или A/D - Движение | Пробел - Прыжок | Собирай алмазы, избегай лавы!
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <h2>💀 Игра Окончена!</h2>
+            <p>Собрано алмазов: <span id="finalScore">0</span></p>
+            <p>Время выживания: <span id="finalTime">0</span>s</p>
+            <button onclick="startGame()" style="margin-top: 20px;">🔄 Играть снова</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game state
+        let gameRunning = false;
+        let gamePaused = false;
+        let score = 0;
+        let lives = 3;
+        let gameTime = 0;
+        let lastTime = 0;
+        
+        // Player
+        const player = {
+            x: 300,
+            y: 50,
+            width: 30,
+            height: 50,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 5,
+            jumpForce: -12,
+            gravity: 0.5,
+            grounded: false,
+            color: '#4CAF50'
+        };
+        
+        // Platforms
+        let platforms = [];
+        let diamonds = [];
+        let lavaBlocks = [];
+        let particles = [];
+        
+        // Controls
+        const keys = {
+            left: false,
+            right: false,
+            jump: false
+        };
+        
+        // Initialize level
+        function initLevel() {
+            platforms = [];
+            diamonds = [];
+            lavaBlocks = [];
+            
+            // Ground platform
+            platforms.push({
+                x: 0,
+                y: 650,
+                width: 600,
+                height: 50,
+                type: 'grass'
+            });
+            
+            // Random platforms
+            for (let i = 0; i < 8; i++) {
+                const platform = {
+                    x: Math.random() * 500,
+                    y: 100 + i * 80,
+                    width: 80 + Math.random() * 60,
+                    height: 20,
+                    type: 'stone'
+                };
+                platforms.push(platform);
+                
+                // Add diamonds on some platforms
+                if (Math.random() > 0.3) {
+                    diamonds.push({
+                        x: platform.x + platform.width / 2 - 10,
+                        y: platform.y - 25,
+                        width: 20,
+                        height: 20,
+                        collected: false,
+                        rotation: 0
+                    });
+                }
+            }
+            
+            // Lava at bottom
+            for (let i = 0; i < 5; i++) {
+                lavaBlocks.push({
+                    x: Math.random() * 550,
+                    y: 620 + Math.random() * 30,
+                    width: 40,
+                    height: 30
+                });
+            }
+        }
+        
+        // Input handling
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+            if (e.key === ' ') {
+                keys.jump = true;
+                if (player.grounded && gameRunning && !gamePaused) {
+                    player.velocityY = player.jumpForce;
+                    player.grounded = false;
+                    createParticles(player.x + player.width/2, player.y + player.height, 5, '#fff');
+                }
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+            if (e.key === ' ') keys.jump = false;
+        });
+        
+        // Create particles
+        function createParticles(x, y, count, color) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    velocityX: (Math.random() - 0.5) * 4,
+                    velocityY: (Math.random() - 0.5) * 4,
+                    life: 1.0,
+                    color: color
+                });
+            }
+        }
+        
+        // Update game
+        function update(deltaTime) {
+            if (!gameRunning || gamePaused) return;
+            
+            // Update timer
+            gameTime += deltaTime / 1000;
+            document.getElementById('timer').textContent = Math.floor(gameTime);
+            
+            // Player movement
+            if (keys.left) player.velocityX = -player.speed;
+            else if (keys.right) player.velocityX = player.speed;
+            else player.velocityX *= 0.8;
+            
+            // Apply gravity
+            player.velocityY += player.gravity;
+            
+            // Update position
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+            
+            // Boundary checks
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+            
+            // Platform collision
+            player.grounded = false;
+            platforms.forEach(platform => {
+                if (player.x + player.width > platform.x && 
+                    player.x < platform.x + platform.width &&
+                    player.y + player.height > platform.y &&
+                    player.y + player.height < platform.y + platform.height + player.velocityY + 2 &&
+                    player.velocityY >= 0) {
+                    player.y = platform.y - player.height;
+                    player.velocityY = 0;
+                    player.grounded = true;
+                }
+            });
+            
+            // Diamond collection
+            diamonds.forEach(diamond => {
+                if (!diamond.collected &&
+                    player.x < diamond.x + diamond.width &&
+                    player.x + player.width > diamond.x &&
+                    player.y < diamond.y + diamond.height &&
+                    player.y + player.height > diamond.y) {
+                    diamond.collected = true;
+                    score += 10;
+                    document.getElementById('score').textContent = score;
+                    createParticles(diamond.x + 10, diamond.y + 10, 10, '#FFD700');
+                }
+                diamond.rotation += 0.05;
+            });
+            
+            // Lava collision
+            lavaBlocks.forEach(lava => {
+                if (player.x < lava.x + lava.width &&
+                    player.x + player.width > lava.x &&
+                    player.y < lava.y + lava.height &&
+                    player.y + player.height > lava.y) {
+                    lives--;
+                    document.getElementById('lives').textContent = lives;
+                    createParticles(player.x + player.width/2, player.y + player.height/2, 15, '#ff4500');
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    } else {
+                        // Reset player position
+                        player.x = 300;
+                        player.y = 50;
+                        player.velocityY = 0;
+                    }
+                }
+            });
+            
+            // Fall off screen
+            if (player.y > canvas.height) {
+                lives--;
+                document.getElementById('lives').textContent = lives;
+                if (lives <= 0) {
+                    gameOver();
+                } else {
+                    player.x = 300;
+                    player.y = 50;
+                    player.velocityY = 0;
+                }
+            }
+            
+            // Update particles
+            particles.forEach((particle, index) => {
+                particle.x += particle.velocityX;
+                particle.y += particle.velocityY;
+                particle.life -= 0.02;
+                if (particle.life <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+        }
+        
+        // Draw game
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(100, 80, 30, 0, Math.PI * 2);
+            ctx.arc(140, 80, 40, 0, Math.PI * 2);
+            ctx.arc(180, 80, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(400, 120, 25, 0, Math.PI * 2);
+            ctx.arc(435, 120, 35, 0, Math.PI * 2);
+            ctx.arc(470, 120, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw platforms
+            platforms.forEach(platform => {
+                if (platform.type === 'grass') {
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    ctx.fillStyle = '#228B22';
+                    ctx.fillRect(platform.x, platform.y, platform.width, 10);
+                } else {
+                    ctx.fillStyle = '#696969';
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    // Stone texture
+                    ctx.fillStyle = '#808080';
+                    for (let i = 0; i < 3; i++) {
+                        ctx.fillRect(platform.x + 10 + i * 25, platform.y + 5, 15, 8);
+                    }
+                }
+            });
+            
+            // Draw lava
+            lavaBlocks.forEach(lava => {
+                ctx.fillStyle = '#ff4500';
+                ctx.fillRect(lava.x, lava.y, lava.width, lava.height);
+                ctx.fillStyle = '#ff6347';
+                ctx.fillRect(lava.x + 5, lava.y + 5, lava.width - 10, lava.height - 10);
+            });
+            
+            // Draw diamonds
+            diamonds.forEach(diamond => {
+                if (!diamond.collected) {
+                    ctx.save();
+                    ctx.translate(diamond.x + 10, diamond.y + 10);
+                    ctx.rotate(diamond.rotation);
+                    ctx.fillStyle = '#00BFFF';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -10);
+                    ctx.lineTo(8, 0);
+                    ctx.lineTo(0, 10);
+                    ctx.lineTo(-8, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.fillStyle = '#E0FFFF';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -6);
+                    ctx.lineTo(4, 0);
+                    ctx.lineTo(0, 6);
+                    ctx.lineTo(-4, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            });
+            
+            // Draw player (Steve-like)
+            ctx.fillStyle = '#4CAF50'; // Shirt
+            ctx.fillRect(player.x, player.y + 20, player.width, 15);
+            ctx.fillStyle = '#FFE4C4'; // Head
+            ctx.fillRect(player.x + 5, player.y, 20, 20);
+            ctx.fillStyle = '#4169E1'; // Pants
+            ctx.fillRect(player.x, player.y + 35, player.width, 15);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x + 10, player.y + 8, 4, 4);
+            ctx.fillRect(player.x + 18, player.y + 8, 4, 4);
+            
+            // Draw particles
+            particles.forEach(particle => {
+                ctx.globalAlpha = particle.life;
+                ctx.fillStyle = particle.color;
+                ctx.fillRect(particle.x, particle.y, 4, 4);
+                ctx.globalAlpha = 1.0;
+            });
+        }
+        
+        // Game loop
+        function gameLoop(timestamp) {
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            update(deltaTime);
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start game
+        function startGame() {
+            gameRunning = true;
+            gamePaused = false;
+            score = 0;
+            lives = 3;
+            gameTime = 0;
+            particles = [];
+            
+            player.x = 300;
+            player.y = 50;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('timer').textContent = 0;
+            document.getElementById('gameOver').style.display = 'none';
+            
+            initLevel();
+        }
+        
+        // Toggle pause
+        function togglePause() {
+            if (gameRunning) {
+                gamePaused = !gamePaused;
+            }
+        }
+        
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalTime').textContent = Math.floor(gameTime);
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        // Start the game loop
+        initLevel();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
