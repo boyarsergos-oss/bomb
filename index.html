@@ -255,6 +255,7 @@
         let gameRunning = false;
         let blocks = [];
         let goalBlock = null;
+        let levelCompleted = false; // Prevent multiple completions
         
         // Input state
         const keys = {
@@ -413,6 +414,7 @@
         // Load level
         function loadLevel(levelNum) {
             currentLevel = levelNum;
+            levelCompleted = false; // Reset level completion flag
             document.getElementById('levelInfo').textContent = `Уровень: ${currentLevel} / ${totalLevels}`;
             
             // Clear existing blocks
@@ -468,6 +470,7 @@
             player.vz = 0;
             player.yaw = 0;
             player.pitch = 0;
+            player.onGround = false;
         }
         
         // Setup controls
@@ -589,12 +592,13 @@
         
         function retryLevel() {
             document.getElementById('deathScreen').classList.add('hidden');
-            loadLevel(currentLevel);
-            gameRunning = true;
+            restartLevel();
         }
         
         function restartGame() {
             document.getElementById('winScreen').classList.add('hidden');
+            currentLevel = 1;
+            levelCompleted = false;
             loadLevel(1);
             gameRunning = true;
         }
@@ -695,7 +699,8 @@
                     player.vy = 0;
                     player.onGround = true;
                     
-                    if (b.type === 'goal') {
+                    if (b.type === 'goal' && !levelCompleted) {
+                        levelCompleted = true;
                         levelComplete();
                     }
                 } else if (player.vy > 0 && player.y + player.height < b.y + b.h) {
@@ -738,6 +743,12 @@
         function playerDeath() {
             gameRunning = false;
             document.getElementById('deathScreen').classList.remove('hidden');
+        }
+        
+        function restartLevel() {
+            levelCompleted = false;
+            loadLevel(currentLevel);
+            gameRunning = true;
         }
         
         function animate() {
