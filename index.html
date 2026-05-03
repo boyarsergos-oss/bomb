@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Изометрическая 3D Игра</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background: #1a1a2e;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: #aaa;
+            font-size: 14px;
+        }
+        #winMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #4ade80;
+            font-size: 48px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">Уровень 1: Доберитесь до зелёной зоны!</div>
+    <div id="instructions">WASD или Стрелки для движения | Камера вращается мышью</div>
+    <div id="winMessage">🎉 ПОБЕДА! 🎉</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // Инициализация сцены
+        const canvas = document.getElementById('gameCanvas');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+
+        // Изометрическая камера (ортографическая проекция)
+        const aspect = window.innerWidth / window.innerHeight;
+        const d = 20;
+        const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
+        
+        // Изометрический угол камеры
+        camera.position.set(20, 20, 20);
+        camera.lookAt(scene.position);
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -20;
+        directionalLight.shadow.camera.right = 20;
+        directionalLight.shadow.camera.top = 20;
+        directionalLight.shadow.camera.bottom = -20;
+        scene.add(directionalLight);
+
+        // Создание уровня
+        const tileSize = 2;
+        const mapWidth = 20;
+        const mapHeight = 20;
+
+        // Материалы
+        const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x2d3436 });
+        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x636e72 });
+        const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x0984e3 });
+        const exitMaterial = new THREE.MeshStandardMaterial({ color: 0x00b894, emissive: 0x00b894, emissiveIntensity: 0.3 });
+
+        // Пол
+        const floorGeometry = new THREE.PlaneGeometry(mapWidth * tileSize, mapHeight * tileSize);
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.set((mapWidth * tileSize) / 2 - tileSize, 0, (mapHeight * tileSize) / 2 - tileSize);
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Сетка на полу для лучшего восприятия изометрии
+        const gridHelper = new THREE.GridHelper(
+            new THREE.PlaneGeometry(mapWidth * tileSize, mapHeight * tileSize),
+            tileSize,
+            0x444444,
+            0x444444
+        );
+        gridHelper.rotation.x = -Math.PI / 2;
+        gridHelper.position.set((mapWidth * tileSize) / 2 - tileSize, 0.01, (mapHeight * tileSize) / 2 - tileSize);
+        scene.add(gridHelper);
+
+        // Стены/препятствия
+        const walls = [];
+        const wallPositions = [
+            [5, 5], [5, 6], [5, 7], [5, 8],
+            [10, 3], [10, 4], [10, 5], [10, 6], [10, 7],
+            [15, 10], [15, 11], [15, 12],
+            [3, 12], [4, 12], [5, 12], [6, 12],
+            [12, 15], [13, 15], [14, 15]
+        ];
+
+        const wallGeometry = new THREE.BoxGeometry(tileSize, tileSize * 2, tileSize);
+        wallPositions.forEach(pos => {
+            const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+            wall.position.set(pos[0] * tileSize, tileSize, pos[1] * tileSize);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            scene.add(wall);
+            walls.push({
+                x: pos[0] * tileSize,
+                z: pos[1] * tileSize,
+                width: tileSize,
+                depth: tileSize
+            });
+        });
+
+        // Игрок
+        const playerGeometry = new THREE.BoxGeometry(tileSize * 0.8, tileSize * 0.8, tileSize * 0.8);
+        const player = new THREE.Mesh(playerGeometry, playerMaterial);
+        player.position.set(tileSize, tileSize * 0.4, tileSize);
+        player.castShadow = true;
+        scene.add(player);
+
+        // Выход
+        const exitGeometry = new THREE.BoxGeometry(tileSize, tileSize * 0.3, tileSize);
+        const exit = new THREE.Mesh(exitGeometry, exitMaterial);
+        exit.position.set((mapWidth - 2) * tileSize, tileSize * 0.15, (mapHeight - 2) * tileSize);
+        exit.receiveShadow = true;
+        scene.add(exit);
+
+        // Маркер выхода (светящийся столб)
+        const exitMarkerGeometry = new THREE.CylinderGeometry(0.3, 0.3, tileSize * 3, 8);
+        const exitMarkerMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x00b894, 
+            transparent: true, 
+            opacity: 0.5,
+            emissive: 0x00b894,
+            emissiveIntensity: 0.5
+        });
+        const exitMarker = new THREE.Mesh(exitMarkerGeometry, exitMarkerMaterial);
+        exitMarker.position.set((mapWidth - 2) * tileSize, tileSize * 1.5, (mapHeight - 2) * tileSize);
+        scene.add(exitMarker);
+
+        // Управление
+        const keys = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false
+        };
+
+        const speed = 0.15;
+        let gameWon = false;
+
+        // Обработчики событий клавиатуры
+        document.addEventListener('keydown', (e) => {
+            switch(e.code) {
+                case 'KeyW':
+                case 'ArrowUp':
+                    keys.forward = true;
+                    break;
+                case 'KeyS':
+                case 'ArrowDown':
+                    keys.backward = true;
+                    break;
+                case 'KeyA':
+                case 'ArrowLeft':
+                    keys.left = true;
+                    break;
+                case 'KeyD':
+                case 'ArrowRight':
+                    keys.right = true;
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch(e.code) {
+                case 'KeyW':
+                case 'ArrowUp':
+                    keys.forward = false;
+                    break;
+                case 'KeyS':
+                case 'ArrowDown':
+                    keys.backward = false;
+                    break;
+                case 'KeyA':
+                case 'ArrowLeft':
+                    keys.left = false;
+                    break;
+                case 'KeyD':
+                case 'ArrowRight':
+                    keys.right = false;
+                    break;
+            }
+        });
+
+        // Проверка столкновений
+        function checkCollision(newX, newZ) {
+            const playerHalfSize = tileSize * 0.4;
+            
+            for (const wall of walls) {
+                const wallHalfSize = wall.width / 2;
+                
+                if (newX + playerHalfSize > wall.x - wallHalfSize &&
+                    newX - playerHalfSize < wall.x + wallHalfSize &&
+                    newZ + playerHalfSize > wall.z - wallHalfSize &&
+                    newZ - playerHalfSize < wall.z + wallHalfSize) {
+                    return true;
+                }
+            }
+            
+            // Границы карты
+            if (newX < 0 || newX > (mapWidth - 1) * tileSize ||
+                newZ < 0 || newZ > (mapHeight - 1) * tileSize) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Проверка победы
+        function checkWin() {
+            const exitX = exit.position.x;
+            const exitZ = exit.position.z;
+            const distance = Math.sqrt(
+                Math.pow(player.position.x - exitX, 2) + 
+                Math.pow(player.position.z - exitZ, 2)
+            );
+            
+            if (distance < tileSize) {
+                gameWon = true;
+                document.getElementById('winMessage').style.display = 'block';
+            }
+        }
+
+        // Анимация
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!gameWon) {
+                // Движение игрока (изометрическое управление)
+                let moveX = 0;
+                let moveZ = 0;
+
+                if (keys.forward) {
+                    moveX -= speed;
+                    moveZ -= speed;
+                }
+                if (keys.backward) {
+                    moveX += speed;
+                    moveZ += speed;
+                }
+                if (keys.left) {
+                    moveX -= speed;
+                    moveZ += speed;
+                }
+                if (keys.right) {
+                    moveX += speed;
+                    moveZ -= speed;
+                }
+
+                // Нормализация диагонального движения
+                if (moveX !== 0 && moveZ !== 0) {
+                    const factor = 1 / Math.sqrt(2);
+                    moveX *= factor;
+                    moveZ *= factor;
+                }
+
+                // Применение движения с проверкой коллизий
+                if (!checkCollision(player.position.x + moveX, player.position.z)) {
+                    player.position.x += moveX;
+                }
+                if (!checkCollision(player.position.x, player.position.z + moveZ)) {
+                    player.position.z += moveZ;
+                }
+
+                // Небольшая анимация игрока при движении
+                if (moveX !== 0 || moveZ !== 0) {
+                    player.rotation.y += 0.1;
+                    player.position.y = tileSize * 0.4 + Math.sin(Date.now() * 0.01) * 0.1;
+                }
+
+                checkWin();
+            }
+
+            // Анимация маркера выхода
+            exitMarker.rotation.y += 0.02;
+            exitMarker.scale.y = 1 + Math.sin(Date.now() * 0.003) * 0.1;
+
+            renderer.render(scene, camera);
+        }
+
+        // Обработка изменения размера окна
+        window.addEventListener('resize', () => {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.left = -d * aspect;
+            camera.right = d * aspect;
+            camera.top = d;
+            camera.bottom = -d;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Запуск игры
+        animate();
+    </script>
+</body>
+</html>
