@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Minecraft Dropper - 3D First Person</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            background: #000;
+            touch-action: none;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        #level-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        
+        #death-counter {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ff6b6b;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            pointer-events: auto;
+        }
+        
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255,255,255,0.3);
+            border: 3px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            color: white;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 5px;
+            cursor: pointer;
+            user-select: none;
+            backdrop-filter: blur(5px);
+        }
+        
+        .control-btn:active {
+            background: rgba(255,255,255,0.6);
+        }
+        
+        #jump-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 90px;
+            height: 90px;
+            background: rgba(100,200,100,0.4);
+            pointer-events: auto;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+        
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.8);
+        }
+        
+        #crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 9px;
+            top: 0;
+        }
+        
+        #crosshair::after {
+            width: 20px;
+            height: 2px;
+            top: 9px;
+            left: 0;
+        }
+        
+        #start-screen, #win-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            z-index: 100;
+        }
+        
+        #win-screen {
+            display: none;
+        }
+        
+        h1 {
+            color: #4ecdc4;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+        
+        p {
+            color: white;
+            font-size: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 600px;
+            padding: 0 20px;
+        }
+        
+        .start-btn {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 20px 60px;
+            font-size: 28px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 5px 15px rgba(78,205,196,0.4);
+        }
+        
+        .start-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        #mobile-hint {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            font-size: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="ui-overlay">
+            <div id="level-info">Level: 1/5</div>
+            <div id="death-counter">Deaths: 0</div>
+            <div id="crosshair"></div>
+            
+            <div id="controls">
+                <div class="control-btn" id="left-btn">◀</div>
+                <div class="control-btn" id="right-btn">▶</div>
+                <div class="control-btn" id="forward-btn">▲</div>
+                <div class="control-btn" id="back-btn">▼</div>
+            </div>
+            
+            <div class="control-btn" id="jump-btn">JUMP</div>
+            
+            <div id="mobile-hint">
+                Drag screen to look around<br>
+                Use buttons to move
+            </div>
+        </div>
+        
+        <div id="start-screen">
+            <h1>🎮 MINECRAFT DROPPER</h1>
+            <p>Fall through 5 challenging levels! Avoid the walls and reach the bottom safely.<br><br>
+            📱 Mobile Controls:<br>
+            • Drag screen to look around<br>
+            • Use arrow buttons to move<br>
+            • JUMP button to jump<br><br>
+            Don't touch the walls!</p>
+            <button class="start-btn" id="start-btn">START GAME</button>
+        </div>
+        
+        <div id="win-screen">
+            <h1>🏆 YOU WIN!</h1>
+            <p>Congratulations! You completed all 5 levels!<br><br>
+            Total Deaths: <span id="final-deaths">0</span></p>
+            <button class="start-btn" id="restart-btn">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game State
+        let currentLevel = 1;
+        let deaths = 0;
+        let isGameActive = false;
+        let isPaused = false;
+        
+        // Three.js variables
+        let scene, camera, renderer;
+        let playerVelocity = new THREE.Vector3(0, 0, 0);
+        let playerOnGround = false;
+        let canJump = true;
+        
+        // Player settings
+        const playerHeight = 1.8;
+        const playerWidth = 0.6;
+        const moveSpeed = 0.15;
+        const jumpForce = 0.25;
+        const gravity = 0.015;
+        
+        // Input state
+        const keys = {
+            forward: false,
+            back: false,
+            left: false,
+            right: false,
+            jump: false
+        };
+        
+        // Touch look control
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let yaw = 0;
+        let pitch = 0;
+        
+        // Level configurations
+        const levels = [
+            {
+                level: 1,
+                name: "The Beginning",
+                startY: 50,
+                platforms: [
+                    { x: 0, y: 50, z: 0, w: 10, d: 10 },
+                    { x: 0, y: 35, z: 0, w: 8, d: 8 },
+                    { x: 0, y: 20, z: 0, w: 6, d: 6 },
+                    { x: 0, y: 5, z: 0, w: 12, d: 12 },
+                    { x: 0, y: 0, z: 0, w: 20, d: 20, isGoal: true }
+                ],
+                walls: [
+                    { x: -6, y: 25, z: 0, w: 1, d: 12, h: 50 },
+                    { x: 6, y: 25, z: 0, w: 1, d: 12, h: 50 },
+                    { x: 0, y: 25, z: -6, w: 12, d: 1, h: 50 },
+                    { x: 0, y: 25, z: 6, w: 12, d: 1, h: 50 }
+                ],
+                color: 0x4ecdc4
+            },
+            {
+                level: 2,
+                name: "Narrow Passage",
+                startY: 60,
+                platforms: [
+                    { x: 0, y: 60, z: 0, w: 6, d: 6 },
+                    { x: 0, y: 45, z: 0, w: 5, d: 5 },
+                    { x: 0, y: 30, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 15, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 0, z: 0, w: 15, d: 15, isGoal: true }
+                ],
+                walls: [
+                    { x: -3, y: 30, z: 0, w: 0.5, d: 8, h: 60 },
+                    { x: 3, y: 30, z: 0, w: 0.5, d: 8, h: 60 },
+                    { x: 0, y: 30, z: -4, w: 6, d: 0.5, h: 60 },
+                    { x: 0, y: 30, z: 4, w: 6, d: 0.5, h: 60 }
+                ],
+                color: 0xff6b6b
+            },
+            {
+                level: 3,
+                name: "Zig Zag",
+                startY: 70,
+                platforms: [
+                    { x: 0, y: 70, z: 0, w: 5, d: 5 },
+                    { x: 8, y: 55, z: 0, w: 5, d: 5 },
+                    { x: -8, y: 40, z: 0, w: 5, d: 5 },
+                    { x: 8, y: 25, z: 0, w: 5, d: 5 },
+                    { x: 0, y: 10, z: 0, w: 5, d: 5 },
+                    { x: 0, y: 0, z: 0, w: 18, d: 18, isGoal: true }
+                ],
+                walls: [
+                    { x: -10, y: 35, z: 0, w: 0.5, d: 20, h: 70 },
+                    { x: 10, y: 35, z: 0, w: 0.5, d: 20, h: 70 },
+                    { x: 0, y: 35, z: -10, w: 20, d: 0.5, h: 70 },
+                    { x: 0, y: 35, z: 10, w: 20, d: 0.5, h: 70 }
+                ],
+                color: 0xffe66d
+            },
+            {
+                level: 4,
+                name: "Spiral Down",
+                startY: 80,
+                platforms: [
+                    { x: 0, y: 80, z: 0, w: 4, d: 4 },
+                    { x: 6, y: 65, z: 6, w: 4, d: 4 },
+                    { x: -6, y: 50, z: 6, w: 4, d: 4 },
+                    { x: -6, y: 35, z: -6, w: 4, d: 4 },
+                    { x: 6, y: 20, z: -6, w: 4, d: 4 },
+                    { x: 0, y: 0, z: 0, w: 20, d: 20, isGoal: true }
+                ],
+                walls: [
+                    { x: -9, y: 40, z: 0, w: 0.5, d: 20, h: 80 },
+                    { x: 9, y: 40, z: 0, w: 0.5, d: 20, h: 80 },
+                    { x: 0, y: 40, z: -9, w: 20, d: 0.5, h: 80 },
+                    { x: 0, y: 40, z: 9, w: 20, d: 0.5, h: 80 }
+                ],
+                color: 0x95e1d3
+            },
+            {
+                level: 5,
+                name: "Final Challenge",
+                startY: 90,
+                platforms: [
+                    { x: 0, y: 90, z: 0, w: 3, d: 3 },
+                    { x: 5, y: 75, z: 0, w: 3, d: 3 },
+                    { x: -5, y: 60, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 45, z: 5, w: 3, d: 3 },
+                    { x: 0, y: 30, z: -5, w: 3, d: 3 },
+                    { x: 7, y: 15, z: 7, w: 3, d: 3 },
+                    { x: -7, y: 8, z: -7, w: 3, d: 3 },
+                    { x: 0, y: 0, z: 0, w: 25, d: 25, isGoal: true }
+                ],
+                walls: [
+                    { x: -11, y: 45, z: 0, w: 0.5, d: 25, h: 90 },
+                    { x: 11, y: 45, z: 0, w: 0.5, d: 25, h: 90 },
+                    { x: 0, y: 45, z: -11, w: 25, d: 0.5, h: 90 },
+                    { x: 0, y: 45, z: 11, w: 25, d: 0.5, h: 90 }
+                ],
+                color: 0xd4fc79
+            }
+        ];
+        
+        let currentLevelData = null;
+        let platformMeshes = [];
+        let wallMeshes = [];
+        let goalMesh = null;
+        
+        // Initialize Three.js
+        function init() {
+            const canvas = document.getElementById('canvas');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.Fog(0x87ceeb, 50, 150);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Setup controls
+            setupControls();
+            
+            // Load first level
+            loadLevel(1);
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function setupControls() {
+            const canvas = document.getElementById('canvas');
+            
+            // Touch look control
+            canvas.addEventListener('touchstart', handleTouchStart);
+            canvas.addEventListener('touchmove', handleTouchMove);
+            canvas.addEventListener('touchend', handleTouchEnd);
+            
+            // Mouse look control (for desktop testing)
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            
+            // Button controls
+            document.getElementById('forward-btn').addEventListener('touchstart', (e) => { e.preventDefault(); keys.forward = true; });
+            document.getElementById('forward-btn').addEventListener('touchend', (e) => { e.preventDefault(); keys.forward = false; });
+            document.getElementById('forward-btn').addEventListener('mousedown', (e) => { keys.forward = true; });
+            document.getElementById('forward-btn').addEventListener('mouseup', (e) => { keys.forward = false; });
+            
+            document.getElementById('back-btn').addEventListener('touchstart', (e) => { e.preventDefault(); keys.back = true; });
+            document.getElementById('back-btn').addEventListener('touchend', (e) => { e.preventDefault(); keys.back = false; });
+            document.getElementById('back-btn').addEventListener('mousedown', (e) => { keys.back = true; });
+            document.getElementById('back-btn').addEventListener('mouseup', (e) => { keys.back = false; });
+            
+            document.getElementById('left-btn').addEventListener('touchstart', (e) => { e.preventDefault(); keys.left = true; });
+            document.getElementById('left-btn').addEventListener('touchend', (e) => { e.preventDefault(); keys.left = false; });
+            document.getElementById('left-btn').addEventListener('mousedown', (e) => { keys.left = true; });
+            document.getElementById('left-btn').addEventListener('mouseup', (e) => { keys.left = false; });
+            
+            document.getElementById('right-btn').addEventListener('touchstart', (e) => { e.preventDefault(); keys.right = true; });
+            document.getElementById('right-btn').addEventListener('touchend', (e) => { e.preventDefault(); keys.right = false; });
+            document.getElementById('right-btn').addEventListener('mousedown', (e) => { keys.right = true; });
+            document.getElementById('right-btn').addEventListener('mouseup', (e) => { keys.right = false; });
+            
+            document.getElementById('jump-btn').addEventListener('touchstart', (e) => { e.preventDefault(); keys.jump = true; });
+            document.getElementById('jump-btn').addEventListener('touchend', (e) => { e.preventDefault(); keys.jump = false; });
+            document.getElementById('jump-btn').addEventListener('mousedown', (e) => { keys.jump = true; });
+            document.getElementById('jump-btn').addEventListener('mouseup', (e) => { keys.jump = false; });
+            
+            // Keyboard controls (for desktop testing)
+            document.addEventListener('keydown', (e) => {
+                switch(e.code) {
+                    case 'KeyW': keys.forward = true; break;
+                    case 'KeyS': keys.back = true; break;
+                    case 'KeyA': keys.left = true; break;
+                    case 'KeyD': keys.right = true; break;
+                    case 'Space': keys.jump = true; break;
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                switch(e.code) {
+                    case 'KeyW': keys.forward = false; break;
+                    case 'KeyS': keys.back = false; break;
+                    case 'KeyA': keys.left = false; break;
+                    case 'KeyD': keys.right = false; break;
+                    case 'Space': keys.jump = false; break;
+                }
+            });
+        }
+        
+        function handleTouchStart(e) {
+            if (e.target.id === 'canvas') {
+                lastTouchX = e.touches[0].clientX;
+                lastTouchY = e.touches[0].clientY;
+            }
+        }
+        
+        function handleTouchMove(e) {
+            if (e.target.id === 'canvas' && !isPaused) {
+                const deltaX = e.touches[0].clientX - lastTouchX;
+                const deltaY = e.touches[0].clientY - lastTouchY;
+                
+                yaw -= deltaX * 0.005;
+                pitch -= deltaY * 0.005;
+                pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+                
+                lastTouchX = e.touches[0].clientX;
+                lastTouchY = e.touches[0].clientY;
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            // Reset touch state
+        }
+        
+        function handleMouseDown(e) {
+            if (e.target.id === 'canvas') {
+                lastTouchX = e.clientX;
+                lastTouchY = e.clientY;
+            }
+        }
+        
+        function handleMouseMove(e) {
+            if (e.target.id === 'canvas' && !isPaused && e.buttons === 1) {
+                const deltaX = e.clientX - lastTouchX;
+                const deltaY = e.clientY - lastTouchY;
+                
+                yaw -= deltaX * 0.005;
+                pitch -= deltaY * 0.005;
+                pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+                
+                lastTouchX = e.clientX;
+                lastTouchY = e.clientY;
+            }
+        }
+        
+        function handleMouseUp(e) {
+            // Reset mouse state
+        }
+        
+        function loadLevel(levelNum) {
+            // Clear previous level
+            platformMeshes.forEach(mesh => scene.remove(mesh));
+            wallMeshes.forEach(mesh => scene.remove(mesh));
+            if (goalMesh) scene.remove(goalMesh);
+            platformMeshes = [];
+            wallMeshes = [];
+            goalMesh = null;
+            
+            currentLevelData = levels[levelNum - 1];
+            
+            // Update UI
+            document.getElementById('level-info').textContent = `Level: ${levelNum}/5`;
+            document.getElementById('level-info').style.color = '#' + currentLevelData.color.toString(16).padStart(6, '0');
+            
+            // Create platforms
+            currentLevelData.platforms.forEach(platform => {
+                const geometry = new THREE.BoxGeometry(platform.w, 1, platform.d);
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: platform.isGoal ? 0x00ff00 : currentLevelData.color,
+                    transparent: true,
+                    opacity: platform.isGoal ? 0.8 : 1
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(platform.x, platform.y, platform.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                platformMeshes.push(mesh);
+                
+                if (platform.isGoal) {
+                    goalMesh = mesh;
+                }
+            });
+            
+            // Create walls
+            currentLevelData.walls.forEach(wall => {
+                const geometry = new THREE.BoxGeometry(wall.w, wall.h, wall.d);
+                const material = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(wall.x, wall.y, wall.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                wallMeshes.push(mesh);
+            });
+            
+            // Reset player position
+            resetPlayer();
+        }
+        
+        function resetPlayer() {
+            camera.position.set(0, currentLevelData.startY, 0);
+            playerVelocity.set(0, 0, 0);
+            yaw = 0;
+            pitch = 0;
+            playerOnGround = false;
+            canJump = true;
+        }
+        
+        function checkCollision(newPos) {
+            const playerBox = new THREE.Box3();
+            const min = new THREE.Vector3(newPos.x - playerWidth/2, newPos.y - playerHeight/2, newPos.z - playerWidth/2);
+            const max = new THREE.Vector3(newPos.x + playerWidth/2, newPos.y + playerHeight/2, newPos.z + playerWidth/2);
+            playerBox.set(min, max);
+            
+            // Check wall collisions
+            for (const wall of wallMeshes) {
+                const wallBox = new THREE.Box3().setFromObject(wall);
+                if (playerBox.intersectsBox(wallBox)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        
+        function checkPlatformCollision() {
+            const playerBox = new THREE.Box3();
+            const pos = camera.position;
+            const min = new THREE.Vector3(pos.x - playerWidth/2, pos.y - playerHeight/2, pos.z - playerWidth/2);
+            const max = new THREE.Vector3(pos.x + playerWidth/2, pos.y + playerHeight/2, pos.z + playerWidth/2);
+            playerBox.set(min, max);
+            
+            let onGround = false;
+            
+            for (const platform of platformMeshes) {
+                const platformBox = new THREE.Box3().setFromObject(platform);
+                
+                if (playerBox.intersectsBox(platformBox)) {
+                    // Check if landing on top
+                    const platformTop = platform.position.y + 0.5;
+                    const playerBottom = pos.y - playerHeight/2;
+                    
+                    if (playerBottom <= platformTop + 0.1 && playerBottom >= platformTop - 0.5 && playerVelocity.y <= 0) {
+                        onGround = true;
+                        playerVelocity.y = 0;
+                        camera.position.y = platformTop + playerHeight/2;
+                        
+                        // Check if goal
+                        if (platform === goalMesh) {
+                            setTimeout(() => {
+                                if (currentLevel < 5) {
+                                    currentLevel++;
+                                    loadLevel(currentLevel);
+                                } else {
+                                    winGame();
+                                }
+                            }, 100);
+                        }
+                    }
+                }
+            }
+            
+            return onGround;
+        }
+        
+        function updatePlayer() {
+            if (!isGameActive || isPaused) return;
+            
+            // Apply gravity
+            playerVelocity.y -= gravity;
+            
+            // Movement
+            const direction = new THREE.Vector3();
+            const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
+            const right = new THREE.Vector3(Math.sin(yaw - Math.PI/2), 0, Math.cos(yaw - Math.PI/2)).normalize();
+            
+            if (keys.forward) direction.add(forward);
+            if (keys.back) direction.sub(forward);
+            if (keys.right) direction.add(right);
+            if (keys.left) direction.sub(right);
+            
+            if (direction.length() > 0) {
+                direction.normalize();
+                
+                const newX = camera.position.x + direction.x * moveSpeed;
+                const newZ = camera.position.z + direction.z * moveSpeed;
+                
+                // Check horizontal collision
+                const testPos = new THREE.Vector3(newX, camera.position.y, newZ);
+                if (!checkCollision(testPos)) {
+                    camera.position.x = newX;
+                    camera.position.z = newZ;
+                }
+            }
+            
+            // Jump
+            if (keys.jump && playerOnGround && canJump) {
+                playerVelocity.y = jumpForce;
+                playerOnGround = false;
+                canJump = false;
+            }
+            
+            if (!keys.jump) {
+                canJump = true;
+            }
+            
+            // Apply vertical velocity
+            camera.position.y += playerVelocity.y;
+            
+            // Check platform collision
+            playerOnGround = checkPlatformCollision();
+            
+            // Check if fell off
+            if (camera.position.y < -10) {
+                die();
+            }
+            
+            // Update camera rotation
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+        }
+        
+        function die() {
+            deaths++;
+            document.getElementById('death-counter').textContent = `Deaths: ${deaths}`;
+            
+            // Flash red
+            scene.background = new THREE.Color(0xff0000);
+            setTimeout(() => {
+                scene.background = new THREE.Color(0x87ceeb);
+            }, 100);
+            
+            resetPlayer();
+        }
+        
+        function winGame() {
+            isGameActive = false;
+            isPaused = true;
+            document.getElementById('final-deaths').textContent = deaths;
+            document.getElementById('win-screen').style.display = 'flex';
+        }
+        
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            isGameActive = true;
+            isPaused = false;
+            currentLevel = 1;
+            deaths = 0;
+            document.getElementById('death-counter').textContent = 'Deaths: 0';
+            loadLevel(1);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePlayer();
+            renderer.render(scene, camera);
+        }
+        
+        // Event listeners for buttons
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('win-screen').style.display = 'none';
+            startGame();
+        });
+        
+        // Initialize game
+        init();
+    </script>
+</body>
+</html>
