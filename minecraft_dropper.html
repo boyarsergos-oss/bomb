@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Dropper 3D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        
+        #levelInfo {
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 3px solid #4a4a6a;
+        }
+        
+        #startScreen, #winScreen, #deathScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.9);
+            z-index: 200;
+            color: white;
+        }
+        
+        #startScreen h1, #winScreen h1, #deathScreen h1 {
+            font-size: 64px;
+            margin-bottom: 30px;
+            color: #4CAF50;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        }
+        
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 20px 60px;
+            font-size: 28px;
+            cursor: pointer;
+            border-radius: 10px;
+            margin: 10px;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            border: 3px solid #2E7D32;
+        }
+        
+        .btn:hover {
+            background: #66BB6A;
+            transform: scale(1.05);
+        }
+        
+        #instructions {
+            margin-top: 30px;
+            font-size: 20px;
+            text-align: center;
+            line-height: 1.6;
+            max-width: 600px;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+        
+        #timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 32px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        #deaths {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #ff6b6b;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="canvas"></canvas>
+        
+        <div id="ui">
+            <div id="levelInfo">
+                <div>Уровень: <span id="levelDisplay">1</span>/10</div>
+                <div style="font-size: 18px; margin-top: 10px;" id="levelName">Падение начинается</div>
+            </div>
+        </div>
+        
+        <div id="timer">Время: <span id="timeDisplay">0.0</span>s</div>
+        <div id="deaths">Смертей: <span id="deathDisplay">0</span></div>
+        
+        <div id="controls">
+            ← → : Движение | Пробел : Прыжок | R : Рестарт
+        </div>
+        
+        <div id="startScreen">
+            <h1>🎮 MINECRAFT DROPPER 3D</h1>
+            <button class="btn" onclick="startGame()">НАЧАТЬ ИГРУ</button>
+            <div id="instructions">
+                <p>🎯 Доберись до зелёной платформы внизу!</p>
+                <p>⚠️ Избегай шипов, лавы и опасных препятствий</p>
+                <p>🏆 10 уникальных уровней с возрастающей сложностью</p>
+                <p>💀 Смерть = рестарт уровня</p>
+            </div>
+        </div>
+        
+        <div id="deathScreen" class="hidden">
+            <h1 style="color: #ff6b6b;">💀 ТЫ ПОГИБ!</h1>
+            <button class="btn" onclick="restartLevel()">ПОПРОБОВАТЬ СНОВА</button>
+        </div>
+        
+        <div id="winScreen" class="hidden">
+            <h1>🏆 ПОБЕДА!</h1>
+            <div style="font-size: 28px; margin-bottom: 20px;">Ты прошёл все 10 уровней!</div>
+            <div style="font-size: 24px; margin-bottom: 30px;">
+                Общее время: <span id="finalTime">0</span>s<br>
+                Всего смертей: <span id="finalDeaths">0</span>
+            </div>
+            <button class="btn" onclick="restartGame()">ИГРАТЬ СНОВА</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game state
+        let scene, camera, renderer;
+        let player, playerVelocity;
+        let platforms = [];
+        let hazards = [];
+        let goal;
+        let currentLevel = 1;
+        let totalDeaths = 0;
+        let levelDeaths = 0;
+        let startTime;
+        let gameRunning = false;
+        let keys = {};
+        
+        // Level configurations
+        const levels = [
+            {
+                name: "Падение начинается",
+                description: "Простое введение",
+                playerStart: { x: 0, y: 15, z: 0 },
+                platforms: [
+                    { x: 0, y: 15, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -2, y: 12, z: 0, w: 2, h: 1, d: 2, color: 0x8B4513 },
+                    { x: 2, y: 9, z: 0, w: 2, h: 1, d: 2, color: 0x8B4513 },
+                    { x: -1, y: 6, z: 0, w: 2, h: 1, d: 2, color: 0x8B4513 },
+                    { x: 0, y: 3, z: 0, w: 2, h: 1, d: 2, color: 0x8B4513 },
+                    { x: 0, y: 0, z: 0, w: 6, h: 1, d: 6, color: 0x4CAF50 }
+                ],
+                hazards: []
+            },
+            {
+                name: "Первые шипы",
+                description: "Осторожно, шипы!",
+                playerStart: { x: 0, y: 18, z: 0 },
+                platforms: [
+                    { x: 0, y: 18, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -3, y: 14, z: 0, w: 2, h: 1, d: 2, color: 0x8B4513 },
+                    { x: 3, y: 10, z: 0, w: 2, h: 1, d: 2, color: 0x8B4513 },
+                    { x: 0, y: 6, z: 0, w: 2, h: 1, d: 2, color: 0x8B4513 },
+                    { x: 0, y: 0, z: 0, w: 6, h: 1, d: 6, color: 0x4CAF50 }
+                ],
+                hazards: [
+                    { x: 0, y: 0.5, z: 0, w: 6, h: 0.5, d: 6, type: 'spike' }
+                ]
+            },
+            {
+                name: "Зигзаг",
+                description: "Двигайся зигзагом",
+                playerStart: { x: 0, y: 20, z: 0 },
+                platforms: [
+                    { x: 0, y: 20, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -4, y: 16, z: 0, w: 2, h: 1, d: 2, color: 0xA0522D },
+                    { x: 4, y: 12, z: 0, w: 2, h: 1, d: 2, color: 0xA0522D },
+                    { x: -4, y: 8, z: 0, w: 2, h: 1, d: 2, color: 0xA0522D },
+                    { x: 4, y: 4, z: 0, w: 2, h: 1, d: 2, color: 0xA0522D },
+                    { x: 0, y: 0, z: 0, w: 6, h: 1, d: 6, color: 0x4CAF50 }
+                ],
+                hazards: []
+            },
+            {
+                name: "Лавовая река",
+                description: "Не упади в лаву!",
+                playerStart: { x: 0, y: 22, z: 0 },
+                platforms: [
+                    { x: 0, y: 22, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -2, y: 18, z: 0, w: 2, h: 1, d: 2, color: 0xCD853F },
+                    { x: 2, y: 14, z: 0, w: 2, h: 1, d: 2, color: 0xCD853F },
+                    { x: 0, y: 10, z: 0, w: 2, h: 1, d: 2, color: 0xCD853F },
+                    { x: -3, y: 6, z: 0, w: 2, h: 1, d: 2, color: 0xCD853F },
+                    { x: 3, y: 2, z: 0, w: 2, h: 1, d: 2, color: 0xCD853F },
+                    { x: 0, y: 0, z: 0, w: 6, h: 1, d: 6, color: 0x4CAF50 }
+                ],
+                hazards: [
+                    { x: 0, y: 0.5, z: 0, w: 10, h: 0.5, d: 10, type: 'lava' }
+                ]
+            },
+            {
+                name: "Узкие платформы",
+                description: "Точность важна",
+                playerStart: { x: 0, y: 25, z: 0 },
+                platforms: [
+                    { x: 0, y: 25, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -3, y: 20, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xD2691E },
+                    { x: 3, y: 15, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xD2691E },
+                    { x: 0, y: 10, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xD2691E },
+                    { x: -2, y: 5, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xD2691E },
+                    { x: 2, y: 2, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xD2691E },
+                    { x: 0, y: 0, z: 0, w: 5, h: 1, d: 5, color: 0x4CAF50 }
+                ],
+                hazards: [
+                    { x: 0, y: 0.5, z: 0, w: 12, h: 0.5, d: 12, type: 'spike' }
+                ]
+            },
+            {
+                name: "Шахматный порядок",
+                description: "Прыгай по диагонали",
+                playerStart: { x: 0, y: 28, z: 0 },
+                platforms: [
+                    { x: 0, y: 28, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -3, y: 23, z: -3, w: 2, h: 1, d: 2, color: 0xF4A460 },
+                    { x: 3, y: 18, z: 3, w: 2, h: 1, d: 2, color: 0xF4A460 },
+                    { x: -3, y: 13, z: -3, w: 2, h: 1, d: 2, color: 0xF4A460 },
+                    { x: 3, y: 8, z: 3, w: 2, h: 1, d: 2, color: 0xF4A460 },
+                    { x: 0, y: 3, z: 0, w: 2, h: 1, d: 2, color: 0xF4A460 },
+                    { x: 0, y: 0, z: 0, w: 5, h: 1, d: 5, color: 0x4CAF50 }
+                ],
+                hazards: []
+            },
+            {
+                name: "Опасная зона",
+                description: "Много шипов",
+                playerStart: { x: 0, y: 30, z: 0 },
+                platforms: [
+                    { x: 0, y: 30, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -4, y: 25, z: 0, w: 2, h: 1, d: 2, color: 0xDEB887 },
+                    { x: 4, y: 20, z: 0, w: 2, h: 1, d: 2, color: 0xDEB887 },
+                    { x: 0, y: 15, z: 0, w: 2, h: 1, d: 2, color: 0xDEB887 },
+                    { x: -3, y: 10, z: 0, w: 2, h: 1, d: 2, color: 0xDEB887 },
+                    { x: 3, y: 5, z: 0, w: 2, h: 1, d: 2, color: 0xDEB887 },
+                    { x: 0, y: 0, z: 0, w: 4, h: 1, d: 4, color: 0x4CAF50 }
+                ],
+                hazards: [
+                    { x: -6, y: 0.5, z: 0, w: 2, h: 0.5, d: 8, type: 'spike' },
+                    { x: 6, y: 0.5, z: 0, w: 2, h: 0.5, d: 8, type: 'spike' },
+                    { x: 0, y: 0.5, z: -6, w: 8, h: 0.5, d: 2, type: 'spike' },
+                    { x: 0, y: 0.5, z: 6, w: 8, h: 0.5, d: 2, type: 'spike' }
+                ]
+            },
+            {
+                name: "Лавовый лабиринт",
+                description: "Избегай лавы",
+                playerStart: { x: 0, y: 32, z: 0 },
+                platforms: [
+                    { x: 0, y: 32, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -3, y: 27, z: -2, w: 2, h: 1, d: 2, color: 0xFFD700 },
+                    { x: 3, y: 22, z: 2, w: 2, h: 1, d: 2, color: 0xFFD700 },
+                    { x: -3, y: 17, z: 2, w: 2, h: 1, d: 2, color: 0xFFD700 },
+                    { x: 3, y: 12, z: -2, w: 2, h: 1, d: 2, color: 0xFFD700 },
+                    { x: 0, y: 7, z: 0, w: 2, h: 1, d: 2, color: 0xFFD700 },
+                    { x: -2, y: 3, z: 0, w: 2, h: 1, d: 2, color: 0xFFD700 },
+                    { x: 2, y: 1, z: 0, w: 2, h: 1, d: 2, color: 0xFFD700 },
+                    { x: 0, y: 0, z: 0, w: 4, h: 1, d: 4, color: 0x4CAF50 }
+                ],
+                hazards: [
+                    { x: 0, y: 0.5, z: 0, w: 14, h: 0.5, d: 14, type: 'lava' }
+                ]
+            },
+            {
+                name: "Экстремальный спуск",
+                description: "Максимальная точность",
+                playerStart: { x: 0, y: 35, z: 0 },
+                platforms: [
+                    { x: 0, y: 35, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -2, y: 30, z: 0, w: 1.2, h: 1, d: 1.2, color: 0xFF6347 },
+                    { x: 2, y: 25, z: 0, w: 1.2, h: 1, d: 1.2, color: 0xFF6347 },
+                    { x: 0, y: 20, z: 0, w: 1.2, h: 1, d: 1.2, color: 0xFF6347 },
+                    { x: -3, y: 15, z: 0, w: 1.2, h: 1, d: 1.2, color: 0xFF6347 },
+                    { x: 3, y: 10, z: 0, w: 1.2, h: 1, d: 1.2, color: 0xFF6347 },
+                    { x: 0, y: 5, z: 0, w: 1.2, h: 1, d: 1.2, color: 0xFF6347 },
+                    { x: -1, y: 2, z: 0, w: 1.2, h: 1, d: 1.2, color: 0xFF6347 },
+                    { x: 1, y: 0.5, z: 0, w: 1.2, h: 1, d: 1.2, color: 0xFF6347 },
+                    { x: 0, y: 0, z: 0, w: 3, h: 1, d: 3, color: 0x4CAF50 }
+                ],
+                hazards: [
+                    { x: 0, y: 0.5, z: 0, w: 16, h: 0.5, d: 16, type: 'spike' }
+                ]
+            },
+            {
+                name: "Финальное испытание",
+                description: "Все опасности вместе!",
+                playerStart: { x: 0, y: 40, z: 0 },
+                platforms: [
+                    { x: 0, y: 40, z: 0, w: 3, h: 1, d: 3, color: 0x8B4513 },
+                    { x: -3, y: 35, z: -3, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: 3, y: 30, z: 3, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: -3, y: 25, z: 3, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: 3, y: 20, z: -3, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: 0, y: 15, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: -4, y: 10, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: 4, y: 6, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: 0, y: 3, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: -2, y: 1, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: 2, y: 0.5, z: 0, w: 1.5, h: 1, d: 1.5, color: 0xFF4500 },
+                    { x: 0, y: 0, z: 0, w: 3, h: 1, d: 3, color: 0x4CAF50 }
+                ],
+                hazards: [
+                    { x: 0, y: 0.5, z: 0, w: 18, h: 0.5, d: 18, type: 'lava' },
+                    { x: -8, y: 0.5, z: 0, w: 1, h: 0.5, d: 16, type: 'spike' },
+                    { x: 8, y: 0.5, z: 0, w: 1, h: 0.5, d: 16, type: 'spike' }
+                ]
+            }
+        ];
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            
+            // Camera - side view
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 25);
+            camera.lookAt(0, 10, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Player
+            createPlayer();
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('keydown', (e) => keys[e.code] = true);
+            document.addEventListener('keyup', (e) => keys[e.code] = false);
+            
+            animate();
+        }
+
+        function createPlayer() {
+            if (player) {
+                scene.remove(player);
+            }
+            
+            const geometry = new THREE.BoxGeometry(1, 1.8, 1);
+            const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+            player = new THREE.Mesh(geometry, material);
+            player.castShadow = true;
+            scene.add(player);
+            
+            playerVelocity = new THREE.Vector3(0, 0, 0);
+        }
+
+        function loadLevel(levelNum) {
+            // Clear existing objects
+            platforms.forEach(p => scene.remove(p.mesh));
+            hazards.forEach(h => scene.remove(h.mesh));
+            if (goal) scene.remove(goal);
+            
+            platforms = [];
+            hazards = [];
+            
+            const level = levels[levelNum - 1];
+            
+            // Create platforms
+            level.platforms.forEach(plat => {
+                const geometry = new THREE.BoxGeometry(plat.w, plat.h, plat.d);
+                const material = new THREE.MeshLambertMaterial({ color: plat.color });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(plat.x, plat.y, plat.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                
+                platforms.push({
+                    mesh: mesh,
+                    x: plat.x,
+                    y: plat.y,
+                    z: plat.z,
+                    w: plat.w,
+                    h: plat.h,
+                    d: plat.d
+                });
+            });
+            
+            // Create hazards
+            level.hazards.forEach(hazard => {
+                const geometry = new THREE.BoxGeometry(hazard.w, hazard.h, hazard.d);
+                const color = hazard.type === 'lava' ? 0xff4500 : 0x808080;
+                const material = new THREE.MeshLambertMaterial({ 
+                    color: color,
+                    emissive: hazard.type === 'lava' ? 0xff4500 : 0x000000,
+                    emissiveIntensity: hazard.type === 'lava' ? 0.5 : 0
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(hazard.x, hazard.y, hazard.z);
+                scene.add(mesh);
+                
+                hazards.push({
+                    mesh: mesh,
+                    x: hazard.x,
+                    y: hazard.y,
+                    z: hazard.z,
+                    w: hazard.w,
+                    h: hazard.h,
+                    d: hazard.d,
+                    type: hazard.type
+                });
+            });
+            
+            // Create goal
+            const goalGeometry = new THREE.BoxGeometry(3, 0.5, 3);
+            const goalMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.5
+            });
+            goal = new THREE.Mesh(goalGeometry, goalMaterial);
+            const goalPlat = level.platforms[level.platforms.length - 1];
+            goal.position.set(goalPlat.x, goalPlat.y + 0.75, goalPlat.z);
+            scene.add(goal);
+            
+            // Set player position
+            player.position.set(level.playerStart.x, level.playerStart.y, level.playerStart.z);
+            playerVelocity.set(0, 0, 0);
+            
+            // Update UI
+            document.getElementById('levelDisplay').textContent = levelNum;
+            document.getElementById('levelName').textContent = level.name;
+            
+            // Reset camera
+            camera.position.set(0, level.playerStart.y, 25);
+            camera.lookAt(0, level.playerStart.y, 0);
+        }
+
+        function checkCollision(newPos) {
+            const playerBox = {
+                x: newPos.x,
+                y: newPos.y,
+                z: newPos.z,
+                w: 1,
+                h: 1.8,
+                d: 1
+            };
+            
+            // Check platform collisions
+            for (let plat of platforms) {
+                if (boxCollision(playerBox, plat)) {
+                    return { type: 'platform', object: plat };
+                }
+            }
+            
+            // Check hazard collisions
+            for (let hazard of hazards) {
+                if (boxCollision(playerBox, hazard)) {
+                    return { type: 'hazard', object: hazard };
+                }
+            }
+            
+            return null;
+        }
+
+        function boxCollision(a, b) {
+            return Math.abs(a.x - b.x) < (a.w + b.w) / 2 &&
+                   Math.abs(a.y - b.y) < (a.h + b.h) / 2 &&
+                   Math.abs(a.z - b.z) < (a.d + b.d) / 2;
+        }
+
+        function updatePhysics() {
+            if (!gameRunning) return;
+            
+            const gravity = -0.015;
+            const moveSpeed = 0.15;
+            const jumpForce = 0.35;
+            
+            // Horizontal movement
+            if (keys['ArrowLeft'] || keys['KeyA']) {
+                playerVelocity.x = -moveSpeed;
+            } else if (keys['ArrowRight'] || keys['KeyD']) {
+                playerVelocity.x = moveSpeed;
+            } else {
+                playerVelocity.x *= 0.8;
+            }
+            
+            // Jumping
+            if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && playerVelocity.y === 0) {
+                playerVelocity.y = jumpForce;
+            }
+            
+            // Apply gravity
+            playerVelocity.y += gravity;
+            
+            // Calculate new position
+            const newPos = player.position.clone().add(playerVelocity);
+            
+            // Check collisions
+            const collision = checkCollision(newPos);
+            
+            if (collision) {
+                if (collision.type === 'hazard') {
+                    die();
+                    return;
+                }
+                
+                if (collision.type === 'platform') {
+                    const plat = collision.object;
+                    
+                    // Landing on top
+                    if (playerVelocity.y < 0 && 
+                        player.position.y > plat.y + plat.h / 2 &&
+                        newPos.y <= plat.y + plat.h / 2 + 0.1) {
+                        player.position.y = plat.y + plat.h / 2 + 0.9;
+                        playerVelocity.y = 0;
+                    }
+                    // Hitting from below
+                    else if (playerVelocity.y > 0 && 
+                             player.position.y < plat.y - plat.h / 2 &&
+                             newPos.y >= plat.y - plat.h / 2 - 0.1) {
+                        player.position.y = plat.y - plat.h / 2 - 0.9;
+                        playerVelocity.y = 0;
+                    }
+                    // Side collision
+                    else {
+                        if (Math.abs(player.position.x - plat.x) > Math.abs(player.position.y - plat.y)) {
+                            playerVelocity.x = 0;
+                        } else {
+                            playerVelocity.y = 0;
+                        }
+                    }
+                }
+            }
+            
+            // Apply movement
+            player.position.add(playerVelocity);
+            
+            // Fall death
+            if (player.position.y < -10) {
+                die();
+                return;
+            }
+            
+            // Check goal
+            const goalPlat = levels[currentLevel - 1].platforms[levels[currentLevel - 1].platforms.length - 1];
+            if (Math.abs(player.position.x - goalPlat.x) < 2 && 
+                Math.abs(player.position.y - goalPlat.y) < 1 &&
+                Math.abs(player.position.z - goalPlat.z) < 2) {
+                levelComplete();
+            }
+            
+            // Update camera
+            const targetY = player.position.y + 5;
+            camera.position.y += (targetY - camera.position.y) * 0.1;
+            camera.position.x = player.position.x;
+            camera.lookAt(player.position.x, player.position.y, 0);
+            
+            // Update timer
+            if (startTime) {
+                const elapsed = (Date.now() - startTime) / 1000;
+                document.getElementById('timeDisplay').textContent = elapsed.toFixed(1);
+            }
+        }
+
+        function die() {
+            gameRunning = false;
+            levelDeaths++;
+            totalDeaths++;
+            document.getElementById('deathDisplay').textContent = totalDeaths;
+            document.getElementById('deathScreen').classList.remove('hidden');
+        }
+
+        function levelComplete() {
+            if (currentLevel < 10) {
+                currentLevel++;
+                loadLevel(currentLevel);
+                startTime = Date.now();
+            } else {
+                gameRunning = false;
+                document.getElementById('finalTime').textContent = document.getElementById('timeDisplay').textContent;
+                document.getElementById('finalDeaths').textContent = totalDeaths;
+                document.getElementById('winScreen').classList.remove('hidden');
+            }
+        }
+
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            currentLevel = 1;
+            totalDeaths = 0;
+            levelDeaths = 0;
+            document.getElementById('deathDisplay').textContent = totalDeaths;
+            loadLevel(currentLevel);
+            gameRunning = true;
+            startTime = Date.now();
+        }
+
+        function restartLevel() {
+            document.getElementById('deathScreen').classList.add('hidden');
+            loadLevel(currentLevel);
+            gameRunning = true;
+            startTime = Date.now();
+        }
+
+        function restartGame() {
+            document.getElementById('winScreen').classList.add('hidden');
+            startGame();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePhysics();
+            renderer.render(scene, camera);
+        }
+
+        // Initialize game
+        init();
+    </script>
+</body>
+</html>
