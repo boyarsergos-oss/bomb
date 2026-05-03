@@ -185,7 +185,7 @@
     
     <div id="victory-screen" class="hidden">
         <h1>🏆 ПОБЕДА!</h1>
-        <p>Ты прошел все 5 уровней!<br>Молодец, чемпион!</p>
+        <p>Ты прошел все 10 уровней!<br>Молодец, настоящий чемпион!</p>
         <button class="btn" id="play-again-btn">Играть снова</button>
     </div>
 
@@ -204,6 +204,7 @@
         let scene, camera, renderer, player;
         let platforms = [];
         let obstacles = [];
+        let sawBlades = [];
         let goalPlatform = null;
         
         // Touch controls
@@ -219,6 +220,7 @@
             {
                 // Level 1 - Simple introduction
                 startHeight: 40,
+                boundarySize: 12,
                 platforms: [
                     { x: 0, y: 35, z: 0, w: 8, d: 8 },
                     { x: -3, y: 28, z: 0, w: 6, d: 6 },
@@ -227,11 +229,13 @@
                     { x: 0, y: 7, z: 0, w: 6, d: 6 },
                     { x: 0, y: 0, z: 0, w: 12, d: 12, isGoal: true }
                 ],
-                obstacles: []
+                obstacles: [],
+                theme: 'simple'
             },
             {
-                // Level 2 - Moving platforms concept
+                // Level 2 - Saw blades introduction
                 startHeight: 45,
+                boundarySize: 12,
                 platforms: [
                     { x: 0, y: 40, z: 0, w: 6, d: 6 },
                     { x: -5, y: 33, z: 0, w: 5, d: 5 },
@@ -242,13 +246,15 @@
                     { x: 0, y: 0, z: 0, w: 10, d: 10, isGoal: true }
                 ],
                 obstacles: [
-                    { x: -2, y: 26, z: 0, w: 2, d: 2, h: 2 },
-                    { x: 2, y: 12, z: 0, w: 2, d: 2, h: 2 }
-                ]
+                    { x: -2, y: 26, z: 0, w: 2, h: 2, type: 'saw' },
+                    { x: 2, y: 12, z: 0, w: 2, h: 2, type: 'saw' }
+                ],
+                theme: 'saws'
             },
             {
-                // Level 3 - Narrower platforms
+                // Level 3 - Narrower platforms with rotating saws
                 startHeight: 50,
+                boundarySize: 11,
                 platforms: [
                     { x: 0, y: 45, z: 0, w: 5, d: 5 },
                     { x: -4, y: 38, z: 0, w: 4, d: 4 },
@@ -260,14 +266,16 @@
                     { x: 0, y: 0, z: 0, w: 8, d: 8, isGoal: true }
                 ],
                 obstacles: [
-                    { x: -1, y: 38, z: 0, w: 1.5, d: 1.5, h: 2 },
-                    { x: 1, y: 24, z: 0, w: 1.5, d: 1.5, h: 2 },
-                    { x: 0, y: 10, z: 0, w: 1.5, d: 1.5, h: 2 }
-                ]
+                    { x: -1, y: 38, z: 0, w: 1.5, h: 2, type: 'saw', rotate: true },
+                    { x: 1, y: 24, z: 0, w: 1.5, h: 2, type: 'saw', rotate: true },
+                    { x: 0, y: 10, z: 0, w: 1.5, h: 2, type: 'saw', rotate: true }
+                ],
+                theme: 'saws'
             },
             {
-                // Level 4 - Complex layout
+                // Level 4 - Complex layout with spike traps
                 startHeight: 55,
+                boundarySize: 11,
                 platforms: [
                     { x: 0, y: 50, z: 0, w: 4, d: 4 },
                     { x: -6, y: 43, z: 0, w: 4, d: 4 },
@@ -279,15 +287,17 @@
                     { x: 0, y: 0, z: 0, w: 7, d: 7, isGoal: true }
                 ],
                 obstacles: [
-                    { x: -3, y: 43, z: 0, w: 2, d: 2, h: 3 },
-                    { x: 3, y: 36, z: 0, w: 2, d: 2, h: 3 },
-                    { x: -2, y: 22, z: 0, w: 2, d: 2, h: 3 },
-                    { x: 2, y: 15, z: 0, w: 2, d: 2, h: 3 }
-                ]
+                    { x: -3, y: 43, z: 0, w: 2, h: 3, type: 'saw' },
+                    { x: 3, y: 36, z: 0, w: 2, h: 3, type: 'saw' },
+                    { x: -2, y: 22, z: 0, w: 2, h: 3, type: 'saw', rotate: true },
+                    { x: 2, y: 15, z: 0, w: 2, h: 3, type: 'saw', rotate: true }
+                ],
+                theme: 'saws'
             },
             {
-                // Level 5 - Final challenge
+                // Level 5 - Final challenge of first set
                 startHeight: 60,
+                boundarySize: 10,
                 platforms: [
                     { x: 0, y: 55, z: 0, w: 4, d: 4 },
                     { x: -5, y: 48, z: 0, w: 3, d: 3 },
@@ -300,14 +310,161 @@
                     { x: 0, y: 0, z: 0, w: 6, d: 6, isGoal: true }
                 ],
                 obstacles: [
-                    { x: -2, y: 48, z: 0, w: 1.5, d: 1.5, h: 4 },
-                    { x: 2, y: 41, z: 0, w: 1.5, d: 1.5, h: 4 },
-                    { x: 0, y: 34, z: 0, w: 1.5, d: 1.5, h: 4 },
-                    { x: -1, y: 27, z: 0, w: 1.5, d: 1.5, h: 4 },
-                    { x: 1, y: 20, z: 0, w: 1.5, d: 1.5, h: 4 },
-                    { x: -2, y: 13, z: 0, w: 1.5, d: 1.5, h: 4 },
-                    { x: 2, y: 6, z: 0, w: 1.5, d: 1.5, h: 4 }
-                ]
+                    { x: -2, y: 48, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 2, y: 41, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 0, y: 34, z: 0, w: 1.5, h: 4, type: 'saw' },
+                    { x: -1, y: 27, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 1, y: 20, z: 0, w: 1.5, h: 4, type: 'saw' },
+                    { x: -2, y: 13, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 2, y: 6, z: 0, w: 1.5, h: 4, type: 'saw' }
+                ],
+                theme: 'saws'
+            },
+            {
+                // Level 6 - The Wall: narrow corridor with walls on sides
+                startHeight: 65,
+                boundarySize: 6,
+                platforms: [
+                    { x: 0, y: 60, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 53, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 46, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 39, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 32, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 25, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 18, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 11, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 4, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 0, z: 0, w: 6, d: 6, isGoal: true }
+                ],
+                obstacles: [
+                    { x: 0, y: 46, z: 0, w: 2, h: 2, type: 'saw', rotate: true },
+                    { x: 0, y: 32, z: 0, w: 2, h: 2, type: 'saw', rotate: true },
+                    { x: 0, y: 18, z: 0, w: 2, h: 2, type: 'saw', rotate: true }
+                ],
+                theme: 'corridor'
+            },
+            {
+                // Level 7 - Zigzag descent with saw barriers
+                startHeight: 70,
+                boundarySize: 10,
+                platforms: [
+                    { x: 0, y: 65, z: 0, w: 4, d: 4 },
+                    { x: -4, y: 58, z: 0, w: 4, d: 4 },
+                    { x: 4, y: 51, z: 0, w: 4, d: 4 },
+                    { x: -4, y: 44, z: 0, w: 4, d: 4 },
+                    { x: 4, y: 37, z: 0, w: 4, d: 4 },
+                    { x: -4, y: 30, z: 0, w: 4, d: 4 },
+                    { x: 4, y: 23, z: 0, w: 4, d: 4 },
+                    { x: -4, y: 16, z: 0, w: 4, d: 4 },
+                    { x: 4, y: 9, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 0, z: 0, w: 8, d: 8, isGoal: true }
+                ],
+                obstacles: [
+                    { x: -2, y: 58, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: 2, y: 51, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: -2, y: 44, z: 0, w: 1.5, h: 3, type: 'saw' },
+                    { x: 2, y: 37, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: -2, y: 30, z: 0, w: 1.5, h: 3, type: 'saw' },
+                    { x: 2, y: 23, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: -2, y: 16, z: 0, w: 1.5, h: 3, type: 'saw' },
+                    { x: 2, y: 9, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true }
+                ],
+                theme: 'zigzag'
+            },
+            {
+                // Level 8 - Spiral descent with spinning saws
+                startHeight: 75,
+                boundarySize: 9,
+                platforms: [
+                    { x: 0, y: 70, z: 0, w: 4, d: 4 },
+                    { x: 3, y: 63, z: 2, w: 3, d: 3 },
+                    { x: 3, y: 56, z: -2, w: 3, d: 3 },
+                    { x: 0, y: 49, z: -4, w: 3, d: 3 },
+                    { x: -3, y: 42, z: -2, w: 3, d: 3 },
+                    { x: -3, y: 35, z: 2, w: 3, d: 3 },
+                    { x: 0, y: 28, z: 4, w: 3, d: 3 },
+                    { x: 3, y: 21, z: 2, w: 3, d: 3 },
+                    { x: 0, y: 14, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 7, z: 0, w: 5, d: 5 },
+                    { x: 0, y: 0, z: 0, w: 8, d: 8, isGoal: true }
+                ],
+                obstacles: [
+                    { x: 3, y: 63, z: 0, w: 1.5, h: 2.5, type: 'saw', rotate: true },
+                    { x: 3, y: 56, z: 0, w: 1.5, h: 2.5, type: 'saw', rotate: true },
+                    { x: 0, y: 49, z: -2, w: 1.5, h: 2.5, type: 'saw', rotate: true },
+                    { x: -3, y: 42, z: 0, w: 1.5, h: 2.5, type: 'saw', rotate: true },
+                    { x: -3, y: 35, z: 0, w: 1.5, h: 2.5, type: 'saw', rotate: true },
+                    { x: 0, y: 28, z: 2, w: 1.5, h: 2.5, type: 'saw', rotate: true },
+                    { x: 3, y: 21, z: 0, w: 1.5, h: 2.5, type: 'saw', rotate: true }
+                ],
+                theme: 'spiral'
+            },
+            {
+                // Level 9 - Gauntlet: dense saw field
+                startHeight: 80,
+                boundarySize: 8,
+                platforms: [
+                    { x: 0, y: 75, z: 0, w: 3, d: 3 },
+                    { x: -2, y: 68, z: 0, w: 3, d: 3 },
+                    { x: 2, y: 61, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 54, z: 0, w: 3, d: 3 },
+                    { x: -2, y: 47, z: 0, w: 3, d: 3 },
+                    { x: 2, y: 40, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 33, z: 0, w: 3, d: 3 },
+                    { x: -2, y: 26, z: 0, w: 3, d: 3 },
+                    { x: 2, y: 19, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 12, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 5, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 0, z: 0, w: 7, d: 7, isGoal: true }
+                ],
+                obstacles: [
+                    { x: 0, y: 68, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: 0, y: 61, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: -1, y: 54, z: 0, w: 1.5, h: 3, type: 'saw' },
+                    { x: 1, y: 54, z: 0, w: 1.5, h: 3, type: 'saw' },
+                    { x: 0, y: 47, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: 0, y: 40, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: -1, y: 33, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: 1, y: 33, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: 0, y: 26, z: 0, w: 1.5, h: 3, type: 'saw' },
+                    { x: 0, y: 19, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true },
+                    { x: 0, y: 12, z: 0, w: 1.5, h: 3, type: 'saw', rotate: true }
+                ],
+                theme: 'gauntlet'
+            },
+            {
+                // Level 10 - Ultimate Challenge: everything combined
+                startHeight: 85,
+                boundarySize: 7,
+                platforms: [
+                    { x: 0, y: 80, z: 0, w: 3, d: 3 },
+                    { x: -3, y: 73, z: 0, w: 2.5, d: 2.5 },
+                    { x: 3, y: 66, z: 0, w: 2.5, d: 2.5 },
+                    { x: 0, y: 59, z: 0, w: 2.5, d: 2.5 },
+                    { x: -2.5, y: 52, z: 0, w: 2.5, d: 2.5 },
+                    { x: 2.5, y: 45, z: 0, w: 2.5, d: 2.5 },
+                    { x: 0, y: 38, z: 0, w: 2.5, d: 2.5 },
+                    { x: -2, y: 31, z: 0, w: 2.5, d: 2.5 },
+                    { x: 2, y: 24, z: 0, w: 2.5, d: 2.5 },
+                    { x: 0, y: 17, z: 0, w: 2.5, d: 2.5 },
+                    { x: 0, y: 10, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 3, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 0, z: 0, w: 6, d: 6, isGoal: true }
+                ],
+                obstacles: [
+                    { x: -1.5, y: 73, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 1.5, y: 66, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 0, y: 59, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: -1, y: 52, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 1, y: 45, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 0, y: 38, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: -1, y: 31, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 1, y: 24, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 0, y: 17, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 0, y: 10, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true },
+                    { x: 0, y: 3, z: 0, w: 1.5, h: 4, type: 'saw', rotate: true }
+                ],
+                theme: 'ultimate'
             }
         ];
         
@@ -368,10 +525,12 @@
             // Clear existing objects
             platforms.forEach(p => scene.remove(p.mesh));
             obstacles.forEach(o => scene.remove(o.mesh));
+            sawBlades.forEach(s => scene.remove(s.mesh));
             if (goalPlatform) scene.remove(goalPlatform.mesh);
             
             platforms = [];
             obstacles = [];
+            sawBlades = [];
             
             const levelData = levels[levelNum - 1];
             
@@ -399,16 +558,30 @@
                 }
             });
             
-            // Create obstacles
+            // Create obstacles (saw blades)
             levelData.obstacles.forEach(obs => {
-                const geometry = new THREE.BoxGeometry(obs.w, obs.h, obs.d);
-                const material = new THREE.MeshLambertMaterial({ color: 0x555555 });
-                const mesh = new THREE.Mesh(geometry, material);
-                mesh.position.set(obs.x, obs.y + obs.h/2, obs.z);
-                mesh.castShadow = true;
-                mesh.receiveShadow = true;
-                scene.add(mesh);
-                obstacles.push({ mesh, ...obs });
+                // Create saw blade geometry (cylinder with teeth effect)
+                const sawGeometry = new THREE.CylinderGeometry(obs.w/2, obs.w/2, obs.h, 16);
+                const sawMaterial = new THREE.MeshLambertMaterial({ color: 0x888888, metalness: 0.8 });
+                const sawMesh = new THREE.Mesh(sawGeometry, sawMaterial);
+                sawMesh.position.set(obs.x, obs.y + obs.h/2, obs.z);
+                sawMesh.castShadow = true;
+                sawMesh.receiveShadow = true;
+                
+                // Add teeth around the edge
+                const teethGeometry = new THREE.TorusGeometry(obs.w/2 + 0.1, 0.15, 8, 12);
+                const teethMaterial = new THREE.MeshLambertMaterial({ color: 0xff4444 });
+                const teethMesh = new THREE.Mesh(teethGeometry, teethMaterial);
+                teethMesh.rotation.x = Math.PI / 2;
+                sawMesh.add(teethMesh);
+                
+                scene.add(sawMesh);
+                obstacles.push({ mesh: sawMesh, ...obs });
+                
+                // Track rotating saws
+                if (obs.rotate) {
+                    sawBlades.push(sawMesh);
+                }
             });
             
             // Position player
@@ -686,12 +859,19 @@
             player.position.y += playerVelocity.y;
             player.position.z += playerVelocity.z;
             
-            // Boundary checks
-            const boundary = 15;
+            // Boundary checks - use level-specific boundary
+            const levelData = levels[currentLevel - 1];
+            const boundary = levelData ? levelData.boundarySize : 15;
             if (player.position.x > boundary) player.position.x = boundary;
             if (player.position.x < -boundary) player.position.x = -boundary;
             if (player.position.z > boundary) player.position.z = boundary;
             if (player.position.z < -boundary) player.position.z = -boundary;
+            
+            // Rotate saw blades
+            sawBlades.forEach(saw => {
+                saw.rotation.y += 0.1;
+                saw.rotation.z += 0.05;
+            });
             
             // Check collisions
             checkCollisions();
