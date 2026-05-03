@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Clone Puzzle Platformer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            border: 2px solid #1a1a2e;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.1);
+        }
+
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #0ff;
+            font-size: 16px;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            pointer-events: none;
+        }
+
+        #restartBtn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #0ff, #0088aa);
+            border: none;
+            border-radius: 5px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+            transition: all 0.3s;
+        }
+
+        #restartBtn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+        }
+
+        #message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0ff;
+            font-size: 24px;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: #666;
+            font-size: 12px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="ui">Level: <span id="levelDisplay">1</span>/10 | Clones: <span id="cloneDisplay">0</span>/3</div>
+        <div id="message"></div>
+        <button id="restartBtn">RESTART (R)</button>
+        <div id="controls">WASD/Arrows: Move | Space: Jump | R: Restart</div>
+    </div>
+
+    <script>
+        // ============================================
+        // AUDIO SYSTEM
+        // ============================================
+        class AudioSystem {
+            constructor() {
+                this.ctx = null;
+                this.initialized = false;
+            }
+
+            init() {
+                if (!this.initialized) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.initialized = true;
+                }
+            }
+
+            playJump() {
+                if (!this.ctx) return;
+                const oscillator = this.ctx.createOscillator();
+                const gainNode = this.ctx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.ctx.destination);
+                
+                oscillator.frequency.setValueAtTime(400, this.ctx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                
+                oscillator.start(this.ctx.currentTime);
+                oscillator.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playWin() {
+                if (!this.ctx) return;
+                const notes = [523, 659, 784, 1047];
+                notes.forEach((freq, i) => {
+                    const oscillator = this.ctx.createOscillator();
+                    const gainNode = this.ctx.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.ctx.destination);
+                    
+                    oscillator.frequency.value = freq;
+                    gainNode.gain.setValueAtTime(0.3, this.ctx.currentTime + i * 0.1);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + i * 0.1 + 0.3);
+                    
+                    oscillator.start(this.ctx.currentTime + i * 0.1);
+                    oscillator.stop(this.ctx.currentTime + i * 0.1 + 0.3);
+                });
+            }
+
+            playDeath() {
+                if (!this.ctx) return;
+                const oscillator = this.ctx.createOscillator();
+                const gainNode = this.ctx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.ctx.destination);
+                
+                oscillator.frequency.setValueAtTime(300, this.ctx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                
+                oscillator.start(this.ctx.currentTime);
+                oscillator.stop(this.ctx.currentTime + 0.3);
+            }
+        }
+
+        // ============================================
+        // INPUT HANDLER
+        // ============================================
+        class InputHandler {
+            constructor() {
+                this.keys = {
+                    left: false,
+                    right: false,
+                    jump: false,
+                    restart: false
+                };
+                
+                document.addEventListener('keydown', (e) => this.handleKey(e, true));
+                document.addEventListener('keyup', (e) => this.handleKey(e, false));
+                
+                document.getElementById('restartBtn').addEventListener('click', () => {
+                    game.restartLevel();
+                });
+            }
+
+            handleKey(e, isPressed) {
+                switch(e.code) {
+                    case 'KeyA':
+                    case 'ArrowLeft':
+                        this.keys.left = isPressed;
+                        break;
+                    case 'KeyD':
+                    case 'ArrowRight':
+                        this.keys.right = isPressed;
+                        break;
+                    case 'KeyW':
+                    case 'ArrowUp':
+                    case 'Space':
+                        this.keys.jump = isPressed;
+                        if (isPressed) audio.init();
+                        break;
+                    case 'KeyR':
+                        if (isPressed && !this.keys.restart) {
+                            game.restartLevel();
+                        }
+                        this.keys.restart = isPressed;
+                        break;
+                }
+            }
+
+            reset() {
+                Object.keys(this.keys).forEach(key => this.keys[key] = false);
+            }
+        }
+
+        // ============================================
+        // CLONE CLASS
+        // ============================================
+        class Clone {
+            constructor(recordedFrames, color) {
+                this.recordedFrames = recordedFrames;
+                this.frameIndex = 0;
+                this.color = color;
+                this.x = 0;
+                this.y = 0;
+                this.width = 30;
+                this.height = 30;
+                this.active = true;
+            }
+
+            update() {
+                if (this.frameIndex < this.recordedFrames.length) {
+                    const frame = this.recordedFrames[this.frameIndex];
+                    this.x = frame.x;
+                    this.y = frame.y;
+                    this.frameIndex++;
+                } else {
+                    this.active = false;
+                }
+            }
+
+            draw(ctx, cameraX, cameraY) {
+                if (!this.active) return;
+                
+                ctx.save();
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = 0.7;
+                ctx.fillRect(
+                    this.x - cameraX,
+                    this.y - cameraY,
+                    this.width,
+                    this.height
+                );
+                
+                // Eyes
+                ctx.fillStyle = '#fff';
+                ctx.shadowBlur = 0;
+                ctx.fillRect(this.x - cameraX + 6, this.y - cameraY + 8, 6, 6);
+                ctx.fillRect(this.x - cameraX + 18, this.y - cameraY + 8, 6, 6);
+                ctx.restore();
+            }
+
+            getBounds() {
+                return {
+                    x: this.x,
+                    y: this.y,
+                    width: this.width,
+                    height: this.height
+                };
+            }
+        }
+
+        // ============================================
+        // PLAYER CLASS
+        // ============================================
+        class Player {
+            constructor(x, y) {
+                this.startX = x;
+                this.startY = y;
+                this.reset();
+                this.width = 30;
+                this.height = 30;
+                this.color = '#00ffff';
+            }
+
+            reset() {
+                this.x = this.startX;
+                this.y = this.startY;
+                this.vx = 0;
+                this.vy = 0;
+                this.onGround = false;
+                this.alive = true;
+            }
+
+            update(input, tiles, objects, tileSize) {
+                if (!this.alive) return;
+
+                const speed = 5;
+                const jumpForce = -12;
+                const gravity = 0.6;
+
+                // Horizontal movement
+                if (input.keys.left) {
+                    this.vx = -speed;
+                } else if (input.keys.right) {
+                    this.vx = speed;
+                } else {
+                    this.vx *= 0.8;
+                }
+
+                // Jump
+                if (input.keys.jump && this.onGround) {
+                    this.vy = jumpForce;
+                    this.onGround = false;
+                    audio.playJump();
+                }
+
+                // Gravity
+                this.vy += gravity;
+
+                // Apply velocity
+                this.x += this.vx;
+                this.checkCollision(tiles, objects, tileSize, 'x');
+                this.y += this.vy;
+                this.checkCollision(tiles, objects, tileSize, 'y');
+
+                // Check bounds
+                if (this.y > tiles.length * tileSize + 100) {
+                    this.alive = false;
+                    audio.playDeath();
+                }
+            }
+
+            checkCollision(tiles, objects, tileSize, axis) {
+                const left = Math.floor(this.x / tileSize);
+                const right = Math.floor((this.x + this.width - 1) / tileSize);
+                const top = Math.floor(this.y / tileSize);
+                const bottom = Math.floor((this.y + this.height - 1) / tileSize);
+
+                for (let row = top; row <= bottom; row++) {
+                    for (let col = left; col <= right; col++) {
+                        if (row >= 0 && row < tiles.length && col >= 0 && col < tiles[0].length) {
+                            const tile = tiles[row][col];
+                            
+                            // Wall collision
+                            if (tile === '#') {
+                                if (axis === 'x') {
+                                    if (this.vx > 0) {
+                                        this.x = col * tileSize - this.width;
+                                    } else if (this.vx < 0) {
+                                        this.x = (col + 1) * tileSize;
+                                    }
+                                    this.vx = 0;
+                                } else {
+                                    if (this.vy > 0) {
+                                        this.y = row * tileSize - this.height;
+                                        this.onGround = true;
+                                    } else if (this.vy < 0) {
+                                        this.y = (row + 1) * tileSize;
+                                    }
+                                    this.vy = 0;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Box collision
+                objects.forEach(obj => {
+                    if (obj.type === 'box' && obj.active) {
+                        if (this.checkRectCollision(this.getBounds(), obj.getBounds())) {
+                            if (axis === 'x') {
+                                if (this.vx > 0) {
+                                    // Try to push box
+                                    if (obj.canMove(tiles, tileSize, 1, 0)) {
+                                        obj.x += this.vx;
+                                        this.x = obj.x - this.width;
+                                    } else {
+                                        this.x = obj.x - this.width;
+                                    }
+                                } else if (this.vx < 0) {
+                                    if (obj.canMove(tiles, tileSize, -1, 0)) {
+                                        obj.x += this.vx;
+                                        this.x = obj.x + obj.width;
+                                    } else {
+                                        this.x = obj.x + obj.width;
+                                    }
+                                }
+                                this.vx = 0;
+                            } else {
+                                if (this.vy > 0) {
+                                    this.y = obj.y - this.height;
+                                    this.onGround = true;
+                                    this.vy = 0;
+                                } else if (this.vy < 0) {
+                                    this.y = obj.y + obj.height;
+                                    this.vy = 0;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            checkRectCollision(a, b) {
+                return a.x < b.x + b.width &&
+                       a.x + a.width > b.x &&
+                       a.y < b.y + b.height &&
+                       a.y + a.height > b.y;
+            }
+
+            getBounds() {
+                return {
+                    x: this.x,
+                    y: this.y,
+                    width: this.width,
+                    height: this.height
+                };
+            }
+
+            draw(ctx, cameraX, cameraY) {
+                if (!this.alive) return;
+                
+                ctx.save();
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 20;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(
+                    this.x - cameraX,
+                    this.y - cameraY,
+                    this.width,
+                    this.height
+                );
+                
+                // Eyes
+                ctx.fillStyle = '#fff';
+                ctx.shadowBlur = 0;
+                ctx.fillRect(this.x - cameraX + 6, this.y - cameraY + 8, 6, 6);
+                ctx.fillRect(this.x - cameraX + 18, this.y - cameraY + 8, 6, 6);
+                ctx.restore();
+            }
+
+            recordFrame() {
+                return {
+                    x: this.x,
+                    y: this.y,
+                    left: input.keys.left,
+                    right: input.keys.right,
+                    jump: input.keys.jump
+                };
+            }
+        }
+
+        // ============================================
+        // GAME OBJECTS
+        // ============================================
+        class GameObject {
+            constructor(type, x, y, tileSize) {
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.width = tileSize;
+                this.height = tileSize;
+                this.active = true;
+                this.timer = 0;
+                this.toggleState = false;
+            }
+
+            getBounds() {
+                return {
+                    x: this.x,
+                    y: this.y,
+                    width: this.width,
+                    height: this.height
+                };
+            }
+
+            canMove(tiles, tileSize, dx, dy) {
+                const newX = this.x + dx * tileSize;
+                const newY = this.y + dy * tileSize;
+                const left = Math.floor(newX / tileSize);
+                const right = Math.floor((newX + this.width - 1) / tileSize);
+                const top = Math.floor(newY / tileSize);
+                const bottom = Math.floor((newY + this.height - 1) / tileSize);
+
+                for (let row = top; row <= bottom; row++) {
+                    for (let col = left; col <= right; col++) {
+                        if (row >= 0 && row < tiles.length && col >= 0 && col < tiles[0].length) {
+                            if (tiles[row][col] === '#') {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+            update(player, clones, tiles, tileSize) {
+                if (this.type === 'button') {
+                    this.active = this.isPressed(player, clones);
+                } else if (this.type === 'door') {
+                    // Door state is controlled by buttons
+                } else if (this.type === 'toggle') {
+                    // Toggle state persists
+                }
+            }
+
+            isPressed(player, clones) {
+                const playerBounds = player.getBounds();
+                const buttonBounds = this.getBounds();
+                
+                if (this.checkOverlap(playerBounds, buttonBounds)) {
+                    return true;
+                }
+                
+                for (let clone of clones) {
+                    if (clone.active && this.checkOverlap(clone.getBounds(), buttonBounds)) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+
+            checkOverlap(a, b) {
+                return a.x < b.x + b.width &&
+                       a.x + a.width > b.x &&
+                       a.y < b.y + b.height &&
+                       a.y + a.height > b.y;
+            }
+
+            draw(ctx, cameraX, cameraY) {
+                ctx.save();
+                
+                switch(this.type) {
+                    case 'button':
+                        ctx.shadowColor = '#ffff00';
+                        ctx.shadowBlur = 15;
+                        ctx.fillStyle = this.active ? '#ffff00' : '#888800';
+                        ctx.beginPath();
+                        ctx.arc(
+                            this.x - cameraX + this.width / 2,
+                            this.y - cameraY + this.height / 2,
+                            this.width / 2 - 4,
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                        break;
+                        
+                    case 'door':
+                        ctx.shadowColor = this.active ? '#00ff00' : '#ff0000';
+                        ctx.shadowBlur = 15;
+                        ctx.fillStyle = this.active ? '#00ff00' : '#ff0000';
+                        ctx.fillRect(
+                            this.x - cameraX + 5,
+                            this.y - cameraY,
+                            this.width - 10,
+                            this.height
+                        );
+                        break;
+                        
+                    case 'box':
+                        ctx.shadowColor = '#ff8800';
+                        ctx.shadowBlur = 10;
+                        ctx.fillStyle = '#ff8800';
+                        ctx.fillRect(
+                            this.x - cameraX + 2,
+                            this.y - cameraY + 2,
+                            this.width - 4,
+                            this.height - 4
+                        );
+                        ctx.strokeStyle = '#ffaa00';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(
+                            this.x - cameraX + 2,
+                            this.y - cameraY + 2,
+                            this.width - 4,
+                            this.height - 4
+                        );
+                        break;
+                        
+                    case 'laser':
+                        if (this.active) {
+                            ctx.shadowColor = '#ff0000';
+                            ctx.shadowBlur = 20;
+                            ctx.fillStyle = '#ff0000';
+                            ctx.fillRect(
+                                this.x - cameraX,
+                                this.y - cameraY + this.height / 2 - 2,
+                                this.width,
+                                4
+                            );
+                        }
+                        break;
+                        
+                    case 'toggle':
+                        ctx.shadowColor = this.toggleState ? '#00ff00' : '#ff00ff';
+                        ctx.shadowBlur = 15;
+                        ctx.fillStyle = this.toggleState ? '#00ff00' : '#ff00ff';
+                        ctx.fillRect(
+                            this.x - cameraX + 5,
+                            this.y - cameraY + 5,
+                            this.width - 10,
+                            this.height - 10
+                        );
+                        break;
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // ============================================
+        // LEVEL DATA
+        // ============================================
+        const levels = [
+            // Level 1
+            {
+                map: [
+                    "########",
+                    "#P..B.E#",
+                    "#......#",
+                    "########"
+                ],
+                hint: "Stand on the button with your clone"
+            },
+            // Level 2
+            {
+                map: [
+                    "##########",
+                    "#P..B..E.#",
+                    "#........#",
+                    "##########"
+                ],
+                hint: "Button has a timer!"
+            },
+            // Level 3
+            {
+                map: [
+                    "##########",
+                    "#P..B..E.#",
+                    "#..#B....#",
+                    "##########"
+                ],
+                hint: "You need 2 clones!"
+            },
+            // Level 4
+            {
+                map: [
+                    "############",
+                    "#P..B..D..E#",
+                    "#..........#",
+                    "############"
+                ],
+                hint: "Button opens the door"
+            },
+            // Level 5
+            {
+                map: [
+                    "##########",
+                    "#P..X.B.E#",
+                    "#........#",
+                    "##########"
+                ],
+                hint: "Push the box onto the button"
+            },
+            // Level 6
+            {
+                map: [
+                    "##########",
+                    "#P..B...E#",
+                    "#........#",
+                    "##########"
+                ],
+                hint: "Keep the button pressed!"
+            },
+            // Level 7
+            {
+                map: [
+                    "##########",
+                    "#P..T..E.#",
+                    "#........#",
+                    "##########"
+                ],
+                hint: "Toggle the switch"
+            },
+            // Level 8
+            {
+                map: [
+                    "##########",
+                    "#P..B....#",
+                    "#....D.E.#",
+                    "##########"
+                ],
+                hint: "Door opens with delay"
+            },
+            // Level 9
+            {
+                map: [
+                    "###########",
+                    "#P..B..L.E#",
+                    "###########"
+                ],
+                hint: "Disable the laser"
+            },
+            // Level 10
+            {
+                map: [
+                    "##########",
+                    "#P..B.D.E#",
+                    "#..B.....#",
+                    "##########"
+                ],
+                hint: "2 buttons, 2 doors!"
+            }
+        ];
+
+        // ============================================
+        // GAME CLASS
+        // ============================================
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.tileSize = 50;
+                this.currentLevel = 0;
+                this.player = null;
+                this.clones = [];
+                this.objects = [];
+                this.tiles = [];
+                this.recordedFrames = [];
+                this.isRecording = true;
+                this.cameraX = 0;
+                this.cameraY = 0;
+                this.targetCameraX = 0;
+                this.targetCameraY = 0;
+                this.doorTimers = {};
+                this.buttonTimers = {};
+                
+                this.loadLevel(0);
+            }
+
+            loadLevel(levelIndex) {
+                if (levelIndex >= levels.length) {
+                    this.showMessage("🎉 YOU WIN! 🎉");
+                    return;
+                }
+
+                this.currentLevel = levelIndex;
+                const levelData = levels[levelIndex];
+                const map = levelData.map;
+                
+                this.tiles = [];
+                this.objects = [];
+                this.clones = [];
+                this.recordedFrames = [];
+                this.isRecording = true;
+                this.doorTimers = {};
+                this.buttonTimers = {};
+
+                let playerStart = { x: 100, y: 100 };
+
+                for (let row = 0; row < map.length; row++) {
+                    this.tiles[row] = [];
+                    for (let col = 0; col < map[row].length; col++) {
+                        const char = map[row][col];
+                        const x = col * this.tileSize;
+                        const y = row * this.tileSize;
+
+                        switch(char) {
+                            case '#':
+                                this.tiles[row][col] = '#';
+                                break;
+                            case 'P':
+                                this.tiles[row][col] = '.';
+                                playerStart = { x, y };
+                                break;
+                            case '.':
+                                this.tiles[row][col] = '.';
+                                break;
+                            case 'E':
+                                this.tiles[row][col] = '.';
+                                this.objects.push(new GameObject('exit', x, y, this.tileSize));
+                                break;
+                            case 'B':
+                                this.tiles[row][col] = '.';
+                                this.objects.push(new GameObject('button', x, y, this.tileSize));
+                                break;
+                            case 'D':
+                                this.tiles[row][col] = '.';
+                                const door = new GameObject('door', x, y, this.tileSize);
+                                door.active = false;
+                                this.objects.push(door);
+                                break;
+                            case 'X':
+                                this.tiles[row][col] = '.';
+                                this.objects.push(new GameObject('box', x, y, this.tileSize));
+                                break;
+                            case 'L':
+                                this.tiles[row][col] = '.';
+                                const laser = new GameObject('laser', x, y, this.tileSize);
+                                laser.active = true;
+                                this.objects.push(laser);
+                                break;
+                            case 'T':
+                                this.tiles[row][col] = '.';
+                                this.objects.push(new GameObject('toggle', x, y, this.tileSize));
+                                break;
+                            default:
+                                this.tiles[row][col] = '.';
+                        }
+                    }
+                }
+
+                this.player = new Player(playerStart.x, playerStart.y);
+                this.updateUI();
+            }
+
+            restartLevel() {
+                if (this.clones.length >= 3) {
+                    this.clones.shift();
+                }
+
+                if (this.recordedFrames.length > 0) {
+                    const colors = ['#00ff00', '#ff00ff', '#0088ff'];
+                    const clone = new Clone(
+                        [...this.recordedFrames],
+                        colors[this.clones.length % 3]
+                    );
+                    clone.x = this.player.startX;
+                    clone.y = this.player.startY;
+                    this.clones.push(clone);
+                }
+
+                this.recordedFrames = [];
+                this.isRecording = true;
+                this.player.reset();
+                this.doorTimers = {};
+                this.buttonTimers = {};
+                
+                // Reset toggle states
+                this.objects.forEach(obj => {
+                    if (obj.type === 'toggle') {
+                        obj.toggleState = false;
+                    }
+                });
+
+                this.updateUI();
+            }
+
+            update() {
+                // Update player
+                if (this.player.alive) {
+                    this.player.update(input, this.tiles, this.objects, this.tileSize);
+                    
+                    if (this.isRecording) {
+                        this.recordedFrames.push(this.player.recordFrame());
+                    }
+                }
+
+                // Update clones
+                this.clones.forEach(clone => clone.update());
+
+                // Update objects
+                let allButtonsPressed = true;
+                let activeButtons = 0;
+                let totalButtons = 0;
+
+                this.objects.forEach(obj => {
+                    if (obj.type === 'button') {
+                        totalButtons++;
+                        if (obj.isPressed(this.player, this.clones)) {
+                            activeButtons++;
+                            this.buttonTimers[obj.y] = Date.now();
+                        }
+                        obj.update(this.player, this.clones, this.tiles, this.tileSize);
+                    } else if (obj.type === 'door') {
+                        // Check if door should be open based on buttons
+                        let doorOpen = false;
+                        this.objects.forEach(other => {
+                            if (other.type === 'button' && other.active) {
+                                doorOpen = true;
+                            }
+                            if (other.type === 'toggle' && other.toggleState) {
+                                doorOpen = true;
+                            }
+                        });
+                        
+                        // Special handling for timed buttons
+                        if (totalButtons > 0 && activeButtons < totalButtons) {
+                            // Check if button was recently pressed (for timed doors)
+                            Object.values(this.buttonTimers).forEach(time => {
+                                if (Date.now() - time < 2000) {
+                                    doorOpen = true;
+                                }
+                            });
+                        }
+                        
+                        obj.active = doorOpen;
+                    } else if (obj.type === 'laser') {
+                        // Laser is off if any button is pressed
+                        let laserOff = false;
+                        this.objects.forEach(other => {
+                            if (other.type === 'button' && other.active) {
+                                laserOff = true;
+                            }
+                            if (other.type === 'toggle' && other.toggleState) {
+                                laserOff = true;
+                            }
+                        });
+                        obj.active = !laserOff;
+                    } else if (obj.type === 'toggle') {
+                        // Check if player or clone is on toggle
+                        if (obj.isPressed(this.player, this.clones)) {
+                            // Only toggle once per press
+                            if (!obj.wasPressed) {
+                                obj.toggleState = !obj.toggleState;
+                                obj.wasPressed = true;
+                            }
+                        } else {
+                            obj.wasPressed = false;
+                        }
+                    }
+                });
+
+                // Check win condition
+                const exit = this.objects.find(obj => obj.type === 'exit');
+                if (exit && this.player.alive) {
+                    const playerBounds = this.player.getBounds();
+                    const exitBounds = exit.getBounds();
+                    if (this.player.checkRectCollision(playerBounds, exitBounds)) {
+                        audio.playWin();
+                        this.showMessage("Level Complete!");
+                        setTimeout(() => {
+                            this.loadLevel(this.currentLevel + 1);
+                        }, 1500);
+                        return;
+                    }
+                }
+
+                // Check death conditions
+                if (this.player.alive) {
+                    this.objects.forEach(obj => {
+                        if (obj.type === 'laser' && obj.active) {
+                            if (this.player.checkRectCollision(this.player.getBounds(), obj.getBounds())) {
+                                this.player.alive = false;
+                                audio.playDeath();
+                            }
+                        }
+                    });
+                }
+
+                // Update camera
+                if (this.player.alive) {
+                    this.targetCameraX = this.player.x - this.canvas.width / 2;
+                    this.targetCameraY = this.player.y - this.canvas.height / 2;
+                }
+                
+                this.cameraX += (this.targetCameraX - this.cameraX) * 0.1;
+                this.cameraY += (this.targetCameraY - this.cameraY) * 0.1;
+
+                // Clamp camera
+                const mapWidth = this.tiles[0].length * this.tileSize;
+                const mapHeight = this.tiles.length * this.tileSize;
+                this.cameraX = Math.max(0, Math.min(this.cameraX, mapWidth - this.canvas.width));
+                this.cameraY = Math.max(0, Math.min(this.cameraY, mapHeight - this.canvas.height));
+
+                this.updateUI();
+            }
+
+            draw() {
+                // Clear canvas
+                this.ctx.fillStyle = '#0a0a0f';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw tiles
+                for (let row = 0; row < this.tiles.length; row++) {
+                    for (let col = 0; col < this.tiles[row].length; col++) {
+                        const tile = this.tiles[row][col];
+                        const x = col * this.tileSize - this.cameraX;
+                        const y = row * this.tileSize - this.cameraY;
+
+                        if (tile === '#') {
+                            this.ctx.save();
+                            this.ctx.shadowColor = '#4444aa';
+                            this.ctx.shadowBlur = 10;
+                            this.ctx.fillStyle = '#1a1a3e';
+                            this.ctx.fillRect(x, y, this.tileSize, this.tileSize);
+                            this.ctx.strokeStyle = '#4444aa';
+                            this.ctx.lineWidth = 2;
+                            this.ctx.strokeRect(x, y, this.tileSize, this.tileSize);
+                            this.ctx.restore();
+                        }
+                    }
+                }
+
+                // Draw objects
+                this.objects.forEach(obj => obj.draw(this.ctx, this.cameraX, this.cameraY));
+
+                // Draw clones
+                this.clones.forEach(clone => clone.draw(this.ctx, this.cameraX, this.cameraY));
+
+                // Draw player
+                this.player.draw(this.ctx, this.cameraX, this.cameraY);
+            }
+
+            updateUI() {
+                document.getElementById('levelDisplay').textContent = this.currentLevel + 1;
+                document.getElementById('cloneDisplay').textContent = this.clones.length;
+            }
+
+            showMessage(text) {
+                const msg = document.getElementById('message');
+                msg.textContent = text;
+                msg.style.opacity = '1';
+                setTimeout(() => {
+                    msg.style.opacity = '0';
+                }, 2000);
+            }
+
+            gameLoop() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        const audio = new AudioSystem();
+        const input = new InputHandler();
+        const game = new Game();
+
+        // Start the game
+        game.gameLoop();
+    </script>
+</body>
+</html>
