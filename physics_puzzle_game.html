@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Puzzle 3D - 10 Уровней</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        #level-info {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        #objective {
+            font-size: 16px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 300px;
+        }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            font-size: 14px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        #win-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            flex-direction: column;
+            color: white;
+        }
+        
+        #win-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            animation: pulse 1s infinite;
+        }
+        
+        #next-level-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        #next-level-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 300;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading">Загрузка игры...</div>
+        <div id="ui-overlay" style="display: none;">
+            <div id="level-info">Уровень 1</div>
+            <div id="objective">Цель: Забросьте зеленый шар в красную зону!</div>
+        </div>
+        <div id="controls-hint" style="display: none;">
+            ЛКМ: Толкнуть объект | ПКМ: Вращать камеру | Колесо: Зум
+        </div>
+        <div id="win-screen">
+            <h1>🎉 Уровень пройден! 🎉</h1>
+            <button id="next-level-btn">Следующий уровень</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // Глобальные переменные
+        let scene, camera, renderer, controls;
+        let objects = [];
+        let raycaster, mouse;
+        let currentLevel = 1;
+        let selectedObject = null;
+        let isDragging = false;
+        let dragPlane;
+        let targetZone;
+        let playerBall;
+        let obstacles = [];
+        let platforms = [];
+
+        // Конфигурация уровней
+        const levels = [
+            {
+                name: "Первые шаги",
+                objective: "Забросьте зеленый шар в красную зону!",
+                ballPosition: { x: 0, y: 2, z: 5 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 0, y: 0.5, z: -5 },
+                targetSize: { x: 4, y: 1, z: 4 },
+                platforms: [],
+                obstacles: [],
+                cameraPosition: { x: 0, y: 10, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Наклон",
+                objective: "Используйте наклонную платформу для достижения цели!",
+                ballPosition: { x: -3, y: 3, z: 5 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 3, y: 0.5, z: -5 },
+                targetSize: { x: 3, y: 1, z: 3 },
+                platforms: [
+                    { position: { x: 0, y: 1, z: 0 }, size: { x: 10, y: 0.5, z: 2 }, rotation: { x: 0.2, y: 0, z: 0 } }
+                ],
+                obstacles: [],
+                cameraPosition: { x: 0, y: 12, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Препятствие",
+                objective: "Обойдите стену и попадите в цель!",
+                ballPosition: { x: 0, y: 2, z: 6 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 0, y: 0.5, z: -6 },
+                targetSize: { x: 3, y: 1, z: 3 },
+                platforms: [],
+                obstacles: [
+                    { position: { x: 0, y: 1, z: 0 }, size: { x: 6, y: 2, z: 1 } }
+                ],
+                cameraPosition: { x: 0, y: 12, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Лабиринт",
+                objective: "Пройдите через лабиринт к цели!",
+                ballPosition: { x: -4, y: 2, z: 6 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 4, y: 0.5, z: -6 },
+                targetSize: { x: 2, y: 1, z: 2 },
+                platforms: [],
+                obstacles: [
+                    { position: { x: -2, y: 1, z: 3 }, size: { x: 1, y: 2, z: 6 } },
+                    { position: { x: 2, y: 1, z: -3 }, size: { x: 1, y: 2, z: 6 } },
+                    { position: { x: 0, y: 1, z: 0 }, size: { x: 5, y: 2, z: 1 } }
+                ],
+                cameraPosition: { x: 0, y: 15, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Прыжок",
+                objective: "Перепрыгните через пропасть!",
+                ballPosition: { x: 0, y: 2, z: 5 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 0, y: 0.5, z: -5 },
+                targetSize: { x: 3, y: 1, z: 3 },
+                platforms: [
+                    { position: { x: 0, y: 0.5, z: 0 }, size: { x: 3, y: 1, z: 3 }, rotation: { x: 0, y: 0, z: 0 } }
+                ],
+                obstacles: [],
+                cameraPosition: { x: 0, y: 12, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Движущиеся платформы",
+                objective: "Используйте движущиеся платформы!",
+                ballPosition: { x: -5, y: 3, z: 5 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 5, y: 0.5, z: -5 },
+                targetSize: { x: 2, y: 1, z: 2 },
+                platforms: [
+                    { position: { x: -2, y: 1.5, z: 2 }, size: { x: 3, y: 0.5, z: 3 }, moving: true, moveRange: 2, moveSpeed: 1, axis: 'x' },
+                    { position: { x: 2, y: 1.5, z: -2 }, size: { x: 3, y: 0.5, z: 3 }, moving: true, moveRange: 2, moveSpeed: 1.5, axis: 'z' }
+                ],
+                obstacles: [],
+                cameraPosition: { x: 0, y: 15, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Башня",
+                objective: "Разрушьте башню и доберитесь до цели!",
+                ballPosition: { x: 0, y: 2, z: 6 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 0, y: 0.5, z: -6 },
+                targetSize: { x: 3, y: 1, z: 3 },
+                platforms: [],
+                obstacles: [
+                    { position: { x: 0, y: 1, z: 0 }, size: { x: 2, y: 2, z: 2 } },
+                    { position: { x: 0, y: 3, z: 0 }, size: { x: 1.5, y: 1.5, z: 1.5 } },
+                    { position: { x: 0, y: 4.5, z: 0 }, size: { x: 1, y: 1, z: 1 } }
+                ],
+                cameraPosition: { x: 0, y: 12, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Тоннель",
+                objective: "Пройдите через узкий тоннель!",
+                ballPosition: { x: 0, y: 2, z: 7 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 0, y: 0.5, z: -7 },
+                targetSize: { x: 2, y: 1, z: 2 },
+                platforms: [],
+                obstacles: [
+                    { position: { x: -1.5, y: 1.5, z: 0 }, size: { x: 1, y: 3, z: 4 } },
+                    { position: { x: 1.5, y: 1.5, z: 0 }, size: { x: 1, y: 3, z: 4 } },
+                    { position: { x: 0, y: 3.5, z: 0 }, size: { x: 4, y: 1, z: 4 } }
+                ],
+                cameraPosition: { x: 0, y: 12, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Спираль",
+                objective: "Спуститесь по спирали к цели!",
+                ballPosition: { x: 0, y: 8, z: 0 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 0, y: 0.5, z: 0 },
+                targetSize: { x: 3, y: 1, z: 3 },
+                platforms: [
+                    { position: { x: 0, y: 4, z: 0 }, size: { x: 8, y: 0.5, z: 8 }, rotation: { x: 0.1, y: 0, z: 0 } }
+                ],
+                obstacles: [
+                    { position: { x: 3, y: 2, z: 0 }, size: { x: 1, y: 4, z: 1 } },
+                    { position: { x: -3, y: 6, z: 0 }, size: { x: 1, y: 4, z: 1 } }
+                ],
+                cameraPosition: { x: 0, y: 15, z: 15 },
+                gravity: -9.8
+            },
+            {
+                name: "Финальный вызов",
+                objective: "Преодолейте все препятствия и выиграйте!",
+                ballPosition: { x: -6, y: 4, z: 8 },
+                ballVelocity: { x: 0, y: 0, z: 0 },
+                targetPosition: { x: 6, y: 0.5, z: -8 },
+                targetSize: { x: 2, y: 1, z: 2 },
+                platforms: [
+                    { position: { x: -3, y: 2, z: 4 }, size: { x: 3, y: 0.5, z: 3 }, moving: true, moveRange: 2, moveSpeed: 2, axis: 'x' },
+                    { position: { x: 3, y: 2, z: -4 }, size: { x: 3, y: 0.5, z: 3 }, moving: true, moveRange: 2, moveSpeed: 2, axis: 'z' }
+                ],
+                obstacles: [
+                    { position: { x: 0, y: 1, z: 0 }, size: { x: 8, y: 2, z: 1 } },
+                    { position: { x: -4, y: 1, z: -4 }, size: { x: 1, y: 2, z: 4 } },
+                    { position: { x: 4, y: 1, z: 4 }, size: { x: 1, y: 2, z: 4 } }
+                ],
+                cameraPosition: { x: 0, y: 18, z: 20 },
+                gravity: -9.8
+            }
+        ];
+
+        // Инициализация сцены
+        function init() {
+            const container = document.getElementById('game-container');
+            
+            // Сцена
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.Fog(0x87ceeb, 20, 50);
+
+            // Камера
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 15);
+
+            // Рендерер
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Контролы
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.1;
+
+            // Свет
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -15;
+            directionalLight.shadow.camera.right = 15;
+            directionalLight.shadow.camera.top = 15;
+            directionalLight.shadow.camera.bottom = -15;
+            scene.add(directionalLight);
+
+            // Raycaster для взаимодействия
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+            // Пол
+            createFloor();
+
+            // Загрузка первого уровня
+            loadLevel(1);
+
+            // Обработчики событий
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            // Кнопка следующего уровня
+            document.getElementById('next-level-btn').addEventListener('click', nextLevel);
+
+            // Скрытие загрузки
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('ui-overlay').style.display = 'block';
+            document.getElementById('controls-hint').style.display = 'block';
+
+            // Запуск анимации
+            animate();
+        }
+
+        function createFloor() {
+            const floorGeometry = new THREE.PlaneGeometry(50, 50);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3a7d3a,
+                roughness: 0.8
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+            objects.push(floor);
+
+            // Сетка на полу
+            const gridHelper = new THREE.GridHelper(50, 50, 0x000000, 0x000000);
+            gridHelper.position.y = 0.01;
+            gridHelper.material.opacity = 0.2;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+        }
+
+        function loadLevel(levelNum) {
+            // Очистка сцены от игровых объектов
+            objects.forEach(obj => {
+                if (obj !== objects[0] && obj !== objects[1]) { // Не удалять пол и сетку
+                    scene.remove(obj);
+                    if (obj.geometry) obj.geometry.dispose();
+                    if (obj.material) obj.material.dispose();
+                }
+            });
+            objects = objects.slice(0, 2);
+            obstacles = [];
+            platforms = [];
+
+            const level = levels[levelNum - 1];
+
+            // Создание целевой зоны
+            const targetGeometry = new THREE.BoxGeometry(level.targetSize.x, level.targetSize.y, level.targetSize.z);
+            const targetMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.7,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.3
+            });
+            targetZone = new THREE.Mesh(targetGeometry, targetMaterial);
+            targetZone.position.set(level.targetPosition.x, level.targetPosition.y, level.targetPosition.z);
+            targetZone.receiveShadow = true;
+            scene.add(targetZone);
+            objects.push(targetZone);
+
+            // Создание игрока (шара)
+            const ballGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const ballMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00,
+                roughness: 0.3,
+                metalness: 0.5
+            });
+            playerBall = new THREE.Mesh(ballGeometry, ballMaterial);
+            playerBall.position.set(level.ballPosition.x, level.ballPosition.y, level.ballPosition.z);
+            playerBall.castShadow = true;
+            playerBall.receiveShadow = true;
+            playerBall.velocity = new THREE.Vector3(
+                level.ballVelocity.x,
+                level.ballVelocity.y,
+                level.ballVelocity.z
+            );
+            playerBall.gravity = level.gravity;
+            playerBall.restitution = 0.7; // Коэффициент упругости
+            playerBall.friction = 0.98; // Трение
+            scene.add(playerBall);
+            objects.push(playerBall);
+
+            // Создание платформ
+            level.platforms.forEach(platformData => {
+                const geometry = new THREE.BoxGeometry(
+                    platformData.size.x,
+                    platformData.size.y,
+                    platformData.size.z
+                );
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: 0x8b4513,
+                    roughness: 0.6
+                });
+                const platform = new THREE.Mesh(geometry, material);
+                platform.position.set(
+                    platformData.position.x,
+                    platformData.position.y,
+                    platformData.position.z
+                );
+                if (platformData.rotation) {
+                    platform.rotation.set(
+                        platformData.rotation.x || 0,
+                        platformData.rotation.y || 0,
+                        platformData.rotation.z || 0
+                    );
+                }
+                platform.castShadow = true;
+                platform.receiveShadow = true;
+                
+                if (platformData.moving) {
+                    platform.userData = {
+                        moving: true,
+                        originalPosition: platform.position.clone(),
+                        moveRange: platformData.moveRange,
+                        moveSpeed: platformData.moveSpeed,
+                        axis: platformData.axis,
+                        time: 0
+                    };
+                    platforms.push(platform);
+                }
+                
+                scene.add(platform);
+                objects.push(platform);
+            });
+
+            // Создание препятствий
+            level.obstacles.forEach(obstacleData => {
+                const geometry = new THREE.BoxGeometry(
+                    obstacleData.size.x,
+                    obstacleData.size.y,
+                    obstacleData.size.z
+                );
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: 0x696969,
+                    roughness: 0.5
+                });
+                const obstacle = new THREE.Mesh(geometry, material);
+                obstacle.position.set(
+                    obstacleData.position.x,
+                    obstacleData.position.y,
+                    obstacleData.position.z
+                );
+                obstacle.castShadow = true;
+                obstacle.receiveShadow = true;
+                scene.add(obstacle);
+                objects.push(obstacle);
+                obstacles.push(obstacle);
+            });
+
+            // Установка камеры
+            camera.position.set(
+                level.cameraPosition.x,
+                level.cameraPosition.y,
+                level.cameraPosition.z
+            );
+            controls.update();
+
+            // Обновление UI
+            document.getElementById('level-info').textContent = `Уровень ${levelNum}: ${level.name}`;
+            document.getElementById('objective').textContent = level.objective;
+            document.getElementById('win-screen').style.display = 'none';
+        }
+
+        function updatePhysics(deltaTime) {
+            if (!playerBall) return;
+
+            // Применение гравитации
+            playerBall.velocity.y += playerBall.gravity * deltaTime;
+
+            // Применение трения
+            playerBall.velocity.x *= playerBall.friction;
+            playerBall.velocity.z *= playerBall.friction;
+
+            // Обновление позиции
+            playerBall.position.add(playerBall.velocity.clone().multiplyScalar(deltaTime));
+
+            // Проверка столкновений с полом
+            if (playerBall.position.y < 0.5) {
+                playerBall.position.y = 0.5;
+                playerBall.velocity.y = -playerBall.velocity.y * playerBall.restitution;
+                playerBall.velocity.x *= 0.95;
+                playerBall.velocity.z *= 0.95;
+            }
+
+            // Проверка столкновений с платформами и препятствиями
+            const ballBox = new THREE.Box3().setFromObject(playerBall);
+            
+            objects.forEach(obj => {
+                if (obj === playerBall || obj === objects[0] || obj === targetZone) return;
+
+                const objBox = new THREE.Box3().setFromObject(obj);
+                
+                if (ballBox.intersectsBox(objBox)) {
+                    // Простая обработка столкновений
+                    const normal = playerBall.position.clone().sub(obj.position).normalize();
+                    
+                    if (Math.abs(normal.y) > 0.7) {
+                        // Столкновение сверху/снизу
+                        playerBall.velocity.y = -playerBall.velocity.y * playerBall.restitution;
+                        if (normal.y > 0) {
+                            playerBall.position.y = obj.position.y + obj.geometry.parameters.height / 2 + 0.5;
+                        }
+                    } else {
+                        // Столкновение сбоку
+                        if (Math.abs(normal.x) > Math.abs(normal.z)) {
+                            playerBall.velocity.x = -playerBall.velocity.x * playerBall.restitution;
+                        } else {
+                            playerBall.velocity.z = -playerBall.velocity.z * playerBall.restitution;
+                        }
+                    }
+                }
+            });
+
+            // Обновление движущихся платформ
+            platforms.forEach(platform => {
+                if (platform.userData.moving) {
+                    platform.userData.time += deltaTime * platform.userData.moveSpeed;
+                    const offset = Math.sin(platform.userData.time) * platform.userData.moveRange;
+                    
+                    if (platform.userData.axis === 'x') {
+                        platform.position.x = platform.userData.originalPosition.x + offset;
+                    } else if (platform.userData.axis === 'z') {
+                        platform.position.z = platform.userData.originalPosition.z + offset;
+                    }
+                    
+                    // Если мяч на платформе, двигаем его вместе с платформой
+                    const ballBox = new THREE.Box3().setFromObject(playerBall);
+                    const platformBox = new THREE.Box3().setFromObject(platform);
+                    
+                    if (ballBox.intersectsBox(platformBox) && playerBall.velocity.y < 1) {
+                        if (platform.userData.axis === 'x') {
+                            playerBall.velocity.x += Math.cos(platform.userData.time) * platform.userData.moveRange * platform.userData.moveSpeed;
+                        } else if (platform.userData.axis === 'z') {
+                            playerBall.velocity.z += Math.cos(platform.userData.time) * platform.userData.moveRange * platform.userData.moveSpeed;
+                        }
+                    }
+                }
+            });
+
+            // Проверка победы
+            checkWin();
+
+            // Проверка проигрыша (мяч упал)
+            if (playerBall.position.y < -5) {
+                resetLevel();
+            }
+        }
+
+        function checkWin() {
+            const distance = playerBall.position.distanceTo(targetZone.position);
+            const combinedSize = 0.5 + Math.max(targetZone.geometry.parameters.width, targetZone.geometry.parameters.depth) / 2;
+            
+            if (distance < combinedSize * 0.8) {
+                document.getElementById('win-screen').style.display = 'flex';
+            }
+        }
+
+        function resetLevel() {
+            const level = levels[currentLevel - 1];
+            playerBall.position.set(level.ballPosition.x, level.ballPosition.y, level.ballPosition.z);
+            playerBall.velocity.set(0, 0, 0);
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            if (currentLevel > levels.length) {
+                alert('🎉 Поздравляем! Вы прошли все уровни! 🎉');
+                currentLevel = 1;
+            }
+            loadLevel(currentLevel);
+        }
+
+        function onMouseDown(event) {
+            if (event.button !== 0) return; // Только левая кнопка мыши
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(playerBall);
+
+            if (intersects.length > 0) {
+                isDragging = true;
+                selectedObject = playerBall;
+                controls.enabled = false;
+            }
+        }
+
+        function onMouseMove(event) {
+            if (!isDragging || !selectedObject) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            
+            const intersectionPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(dragPlane, intersectionPoint);
+
+            if (intersectionPoint) {
+                // Применяем силу к мячу в направлении движения мыши
+                const force = intersectionPoint.sub(selectedObject.position).multiplyScalar(5);
+                selectedObject.velocity.add(force);
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+            selectedObject = null;
+            controls.enabled = true;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = 0.016; // Примерно 60 FPS
+
+            updatePhysics(deltaTime);
+            controls.update();
+
+            // Анимация целевой зоны
+            if (targetZone) {
+                targetZone.rotation.y += deltaTime * 0.5;
+                targetZone.scale.setScalar(1 + Math.sin(Date.now() * 0.003) * 0.05);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Запуск игры после загрузки страницы
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
