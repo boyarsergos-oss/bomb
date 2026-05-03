@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Minecraft Dropper Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            touch-action: none;
+        }
+        
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        #level-info {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        #lives-info {
+            font-size: 18px;
+            color: #ff6b6b;
+        }
+        
+        #start-screen, #level-complete, #game-over, #victory-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            color: white;
+        }
+        
+        #start-screen h1, #level-complete h1, #game-over h1, #victory-screen h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #4ecdc4;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+        
+        #start-screen p, #level-complete p, #game-over p, #victory-screen p {
+            font-size: 16px;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+            transition: transform 0.2s;
+            pointer-events: auto;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 14px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+        
+        #mobile-controls {
+            position: absolute;
+            bottom: 80px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255,255,255,0.3);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            color: white;
+            pointer-events: auto;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .control-btn:active {
+            background: rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <div id="ui-overlay">
+        <div id="level-info">Уровень: 1</div>
+        <div id="lives-info">❤️❤️❤️</div>
+    </div>
+    
+    <div id="controls-hint">
+        🎮 Свайп для движения | Тап для прыжка
+    </div>
+    
+    <div id="mobile-controls">
+        <div class="control-btn" id="btn-left">◀</div>
+        <div class="control-btn" id="btn-jump">▲</div>
+        <div class="control-btn" id="btn-right">▶</div>
+    </div>
+    
+    <div id="start-screen">
+        <h1>🎮 Minecraft Dropper</h1>
+        <p>Падай вниз, избегая препятствий!<br>Доберись до зеленой платформы внизу.<br>Управление: свайп или кнопки</p>
+        <button class="btn" id="start-btn">Начать игру</button>
+    </div>
+    
+    <div id="level-complete" class="hidden">
+        <h1>✅ Уровень пройден!</h1>
+        <p>Отлично! Готов к следующему уровню?</p>
+        <button class="btn" id="next-level-btn">Следующий уровень</button>
+    </div>
+    
+    <div id="game-over" class="hidden">
+        <h1>💀 Игра окончена</h1>
+        <p>Попробуй еще раз!</p>
+        <button class="btn" id="restart-btn">Заново</button>
+    </div>
+    
+    <div id="victory-screen" class="hidden">
+        <h1>🏆 ПОБЕДА!</h1>
+        <p>Ты прошел все 5 уровней!<br>Молодец, чемпион!</p>
+        <button class="btn" id="play-again-btn">Играть снова</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Game state
+        let currentLevel = 1;
+        let lives = 3;
+        let isGameActive = false;
+        let playerVelocity = new THREE.Vector3(0, 0, 0);
+        let playerSpeed = 0.15;
+        let jumpForce = 0.25;
+        let gravity = 0.012;
+        
+        // Three.js variables
+        let scene, camera, renderer, player;
+        let platforms = [];
+        let obstacles = [];
+        let goalPlatform = null;
+        
+        // Touch controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isMovingLeft = false;
+        let isMovingRight = false;
+        
+        // Level designs
+        const levels = [
+            {
+                // Level 1 - Simple introduction
+                startHeight: 40,
+                platforms: [
+                    { x: 0, y: 35, z: 0, w: 8, d: 8 },
+                    { x: -3, y: 28, z: 0, w: 6, d: 6 },
+                    { x: 3, y: 21, z: 0, w: 6, d: 6 },
+                    { x: 0, y: 14, z: 0, w: 8, d: 8 },
+                    { x: 0, y: 7, z: 0, w: 6, d: 6 },
+                    { x: 0, y: 0, z: 0, w: 12, d: 12, isGoal: true }
+                ],
+                obstacles: []
+            },
+            {
+                // Level 2 - Moving platforms concept
+                startHeight: 45,
+                platforms: [
+                    { x: 0, y: 40, z: 0, w: 6, d: 6 },
+                    { x: -5, y: 33, z: 0, w: 5, d: 5 },
+                    { x: 5, y: 26, z: 0, w: 5, d: 5 },
+                    { x: -3, y: 19, z: 0, w: 6, d: 6 },
+                    { x: 3, y: 12, z: 0, w: 5, d: 5 },
+                    { x: 0, y: 5, z: 0, w: 7, d: 7 },
+                    { x: 0, y: 0, z: 0, w: 10, d: 10, isGoal: true }
+                ],
+                obstacles: [
+                    { x: -2, y: 26, z: 0, w: 2, d: 2, h: 2 },
+                    { x: 2, y: 12, z: 0, w: 2, d: 2, h: 2 }
+                ]
+            },
+            {
+                // Level 3 - Narrower platforms
+                startHeight: 50,
+                platforms: [
+                    { x: 0, y: 45, z: 0, w: 5, d: 5 },
+                    { x: -4, y: 38, z: 0, w: 4, d: 4 },
+                    { x: 4, y: 31, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 24, z: 0, w: 5, d: 5 },
+                    { x: -3, y: 17, z: 0, w: 4, d: 4 },
+                    { x: 3, y: 10, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 3, z: 0, w: 6, d: 6 },
+                    { x: 0, y: 0, z: 0, w: 8, d: 8, isGoal: true }
+                ],
+                obstacles: [
+                    { x: -1, y: 38, z: 0, w: 1.5, d: 1.5, h: 2 },
+                    { x: 1, y: 24, z: 0, w: 1.5, d: 1.5, h: 2 },
+                    { x: 0, y: 10, z: 0, w: 1.5, d: 1.5, h: 2 }
+                ]
+            },
+            {
+                // Level 4 - Complex layout
+                startHeight: 55,
+                platforms: [
+                    { x: 0, y: 50, z: 0, w: 4, d: 4 },
+                    { x: -6, y: 43, z: 0, w: 4, d: 4 },
+                    { x: 6, y: 36, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 29, z: 0, w: 5, d: 5 },
+                    { x: -5, y: 22, z: 0, w: 4, d: 4 },
+                    { x: 5, y: 15, z: 0, w: 4, d: 4 },
+                    { x: 0, y: 8, z: 0, w: 5, d: 5 },
+                    { x: 0, y: 0, z: 0, w: 7, d: 7, isGoal: true }
+                ],
+                obstacles: [
+                    { x: -3, y: 43, z: 0, w: 2, d: 2, h: 3 },
+                    { x: 3, y: 36, z: 0, w: 2, d: 2, h: 3 },
+                    { x: -2, y: 22, z: 0, w: 2, d: 2, h: 3 },
+                    { x: 2, y: 15, z: 0, w: 2, d: 2, h: 3 }
+                ]
+            },
+            {
+                // Level 5 - Final challenge
+                startHeight: 60,
+                platforms: [
+                    { x: 0, y: 55, z: 0, w: 4, d: 4 },
+                    { x: -5, y: 48, z: 0, w: 3, d: 3 },
+                    { x: 5, y: 41, z: 0, w: 3, d: 3 },
+                    { x: -3, y: 34, z: 0, w: 3, d: 3 },
+                    { x: 3, y: 27, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 20, z: 0, w: 4, d: 4 },
+                    { x: -4, y: 13, z: 0, w: 3, d: 3 },
+                    { x: 4, y: 6, z: 0, w: 3, d: 3 },
+                    { x: 0, y: 0, z: 0, w: 6, d: 6, isGoal: true }
+                ],
+                obstacles: [
+                    { x: -2, y: 48, z: 0, w: 1.5, d: 1.5, h: 4 },
+                    { x: 2, y: 41, z: 0, w: 1.5, d: 1.5, h: 4 },
+                    { x: 0, y: 34, z: 0, w: 1.5, d: 1.5, h: 4 },
+                    { x: -1, y: 27, z: 0, w: 1.5, d: 1.5, h: 4 },
+                    { x: 1, y: 20, z: 0, w: 1.5, d: 1.5, h: 4 },
+                    { x: -2, y: 13, z: 0, w: 1.5, d: 1.5, h: 4 },
+                    { x: 2, y: 6, z: 0, w: 1.5, d: 1.5, h: 4 }
+                ]
+            }
+        ];
+        
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.Fog(0x87ceeb, 20, 100);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.left = -50;
+            directionalLight.shadow.camera.right = 50;
+            directionalLight.shadow.camera.top = 50;
+            directionalLight.shadow.camera.bottom = -50;
+            scene.add(directionalLight);
+            
+            // Create player
+            createPlayer();
+            
+            // Event listeners
+            setupEventListeners();
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function createPlayer() {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshLambertMaterial({ color: 0xff6b6b });
+            player = new THREE.Mesh(geometry, material);
+            player.castShadow = true;
+            scene.add(player);
+        }
+        
+        function loadLevel(levelNum) {
+            // Clear existing objects
+            platforms.forEach(p => scene.remove(p.mesh));
+            obstacles.forEach(o => scene.remove(o.mesh));
+            if (goalPlatform) scene.remove(goalPlatform.mesh);
+            
+            platforms = [];
+            obstacles = [];
+            
+            const levelData = levels[levelNum - 1];
+            
+            // Create platforms
+            levelData.platforms.forEach(plat => {
+                const geometry = new THREE.BoxGeometry(plat.w, 1, plat.d);
+                let material;
+                
+                if (plat.isGoal) {
+                    material = new THREE.MeshLambertMaterial({ color: 0x4ecdc4 });
+                    goalPlatform = { mesh: null, ...plat };
+                } else {
+                    material = new THREE.MeshLambertMaterial({ color: 0x8b7355 });
+                }
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(plat.x, plat.y, plat.z);
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                
+                if (plat.isGoal) {
+                    goalPlatform.mesh = mesh;
+                } else {
+                    platforms.push({ mesh, ...plat });
+                }
+            });
+            
+            // Create obstacles
+            levelData.obstacles.forEach(obs => {
+                const geometry = new THREE.BoxGeometry(obs.w, obs.h, obs.d);
+                const material = new THREE.MeshLambertMaterial({ color: 0x555555 });
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(obs.x, obs.y + obs.h/2, obs.z);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                scene.add(mesh);
+                obstacles.push({ mesh, ...obs });
+            });
+            
+            // Position player
+            player.position.set(0, levelData.startHeight, 0);
+            playerVelocity.set(0, 0, 0);
+            
+            // Update UI
+            document.getElementById('level-info').textContent = `Уровень: ${levelNum}`;
+            updateLivesDisplay();
+            
+            // Camera position
+            camera.position.set(0, levelData.startHeight + 15, 25);
+            camera.lookAt(0, levelData.startHeight, 0);
+        }
+        
+        function setupEventListeners() {
+            // Button controls
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('next-level-btn').addEventListener('click', nextLevel);
+            document.getElementById('restart-btn').addEventListener('click', restartGame);
+            document.getElementById('play-again-btn').addEventListener('click', playAgain);
+            
+            // Mobile control buttons
+            const btnLeft = document.getElementById('btn-left');
+            const btnRight = document.getElementById('btn-right');
+            const btnJump = document.getElementById('btn-jump');
+            
+            btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); isMovingLeft = true; });
+            btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); isMovingLeft = false; });
+            btnLeft.addEventListener('mousedown', () => isMovingLeft = true);
+            btnLeft.addEventListener('mouseup', () => isMovingLeft = false);
+            
+            btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); isMovingRight = true; });
+            btnRight.addEventListener('touchend', (e) => { e.preventDefault(); isMovingRight = false; });
+            btnRight.addEventListener('mousedown', () => isMovingRight = true);
+            btnRight.addEventListener('mouseup', () => isMovingRight = false);
+            
+            btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+            btnJump.addEventListener('mousedown', () => jump());
+            
+            // Touch controls for swipe
+            document.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // Keyboard controls (for desktop testing)
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+            
+            // Window resize
+            window.addEventListener('resize', handleResize);
+        }
+        
+        function handleTouchStart(e) {
+            if (!isGameActive) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+        
+        function handleTouchMove(e) {
+            if (!isGameActive) return;
+            e.preventDefault();
+            
+            const deltaX = e.touches[0].clientX - touchStartX;
+            
+            if (deltaX < -30) {
+                isMovingLeft = true;
+                isMovingRight = false;
+            } else if (deltaX > 30) {
+                isMovingRight = true;
+                isMovingLeft = false;
+            } else {
+                isMovingLeft = false;
+                isMovingRight = false;
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            isMovingLeft = false;
+            isMovingRight = false;
+        }
+        
+        function handleKeyDown(e) {
+            if (!isGameActive) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                    isMovingLeft = true;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    isMovingRight = true;
+                    break;
+                case 'ArrowUp':
+                case ' ':
+                case 'w':
+                    jump();
+                    break;
+            }
+        }
+        
+        function handleKeyUp(e) {
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                    isMovingLeft = false;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    isMovingRight = false;
+                    break;
+            }
+        }
+        
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function jump() {
+            if (!isGameActive) return;
+            
+            // Check if player is on ground
+            const raycaster = new THREE.Raycaster();
+            raycaster.set(player.position, new THREE.Vector3(0, -1, 0));
+            const intersects = raycaster.intersectObjects([...platforms.map(p => p.mesh), goalPlatform ? goalPlatform.mesh : null].filter(Boolean));
+            
+            if (intersects.length > 0 && intersects[0].distance < 1.2) {
+                playerVelocity.y = jumpForce;
+            }
+        }
+        
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            currentLevel = 1;
+            lives = 3;
+            isGameActive = true;
+            loadLevel(currentLevel);
+        }
+        
+        function nextLevel() {
+            document.getElementById('level-complete').classList.add('hidden');
+            currentLevel++;
+            
+            if (currentLevel > levels.length) {
+                showVictory();
+            } else {
+                isGameActive = true;
+                loadLevel(currentLevel);
+            }
+        }
+        
+        function restartGame() {
+            document.getElementById('game-over').classList.add('hidden');
+            currentLevel = 1;
+            lives = 3;
+            isGameActive = true;
+            loadLevel(currentLevel);
+        }
+        
+        function playAgain() {
+            document.getElementById('victory-screen').classList.add('hidden');
+            currentLevel = 1;
+            lives = 3;
+            isGameActive = true;
+            loadLevel(currentLevel);
+        }
+        
+        function showVictory() {
+            isGameActive = false;
+            document.getElementById('victory-screen').classList.remove('hidden');
+        }
+        
+        function levelComplete() {
+            isGameActive = false;
+            document.getElementById('level-complete').classList.remove('hidden');
+        }
+        
+        function gameOver() {
+            isGameActive = false;
+            document.getElementById('game-over').classList.remove('hidden');
+        }
+        
+        function updateLivesDisplay() {
+            let hearts = '';
+            for (let i = 0; i < lives; i++) {
+                hearts += '❤️';
+            }
+            document.getElementById('lives-info').textContent = hearts;
+        }
+        
+        function playerDie() {
+            lives--;
+            updateLivesDisplay();
+            
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                // Reset player position
+                const levelData = levels[currentLevel - 1];
+                player.position.set(0, levelData.startHeight, 0);
+                playerVelocity.set(0, 0, 0);
+            }
+        }
+        
+        function checkCollisions() {
+            const playerBox = new THREE.Box3().setFromObject(player);
+            
+            // Check platform collisions
+            for (const platform of platforms) {
+                const platformBox = new THREE.Box3().setFromObject(platform.mesh);
+                
+                if (playerBox.intersectsBox(platformBox)) {
+                    // Check if landing on top
+                    if (playerVelocity.y <= 0 && 
+                        player.position.y > platform.y + 0.3 &&
+                        player.position.y < platform.y + 1.5) {
+                        player.position.y = platform.y + 1;
+                        playerVelocity.y = 0;
+                    }
+                }
+            }
+            
+            // Check goal platform
+            if (goalPlatform) {
+                const goalBox = new THREE.Box3().setFromObject(goalPlatform.mesh);
+                
+                if (playerBox.intersectsBox(goalBox)) {
+                    if (player.position.y <= goalPlatform.y + 1.5) {
+                        levelComplete();
+                        return;
+                    }
+                }
+            }
+            
+            // Check obstacle collisions
+            for (const obstacle of obstacles) {
+                const obstacleBox = new THREE.Box3().setFromObject(obstacle.mesh);
+                
+                if (playerBox.intersectsBox(obstacleBox)) {
+                    playerDie();
+                    return;
+                }
+            }
+            
+            // Check if fallen out of world
+            if (player.position.y < -10) {
+                playerDie();
+            }
+        }
+        
+        function updatePhysics() {
+            if (!isGameActive) return;
+            
+            // Apply gravity
+            playerVelocity.y -= gravity;
+            
+            // Apply horizontal movement
+            if (isMovingLeft) {
+                playerVelocity.x = -playerSpeed;
+            } else if (isMovingRight) {
+                playerVelocity.x = playerSpeed;
+            } else {
+                playerVelocity.x *= 0.8; // Friction
+            }
+            
+            // Update position
+            player.position.x += playerVelocity.x;
+            player.position.y += playerVelocity.y;
+            player.position.z += playerVelocity.z;
+            
+            // Boundary checks
+            const boundary = 15;
+            if (player.position.x > boundary) player.position.x = boundary;
+            if (player.position.x < -boundary) player.position.x = -boundary;
+            if (player.position.z > boundary) player.position.z = boundary;
+            if (player.position.z < -boundary) player.position.z = -boundary;
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Update camera to follow player
+            const targetY = player.position.y + 15;
+            const targetZ = player.position.z + 25;
+            camera.position.x += (player.position.x - camera.position.x) * 0.1;
+            camera.position.y += (targetY - camera.position.y) * 0.1;
+            camera.position.z += (targetZ - camera.position.z) * 0.1;
+            camera.lookAt(player.position.x, player.position.y, player.position.z);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePhysics();
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize game
+        init();
+    </script>
+</body>
+</html>
