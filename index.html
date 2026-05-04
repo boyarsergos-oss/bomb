@@ -353,22 +353,6 @@
             if (event.target.closest('#restart-btn')) return;
             if (!gameActive || winFlag) return;
             
-            // Проверка нажатия на кнопку активации портала (третий уровень)
-            if (currentLevel === 3 && !portalActivated) {
-                const worldPos = getMouseGroundPos(event);
-                if (worldPos) {
-                    const dx = worldPos.x - buttonGroup.position.x;
-                    const dz = worldPos.z - buttonGroup.position.z;
-                    const dist = Math.sqrt(dx*dx + dz*dz);
-                    if (dist < 1.0) {
-                        // Игрок нажал на кнопку!
-                        portalActivated = true;
-                        console.log('✅ Портал активирован!');
-                        return;
-                    }
-                }
-            }
-            
             const worldPos = getMouseGroundPos(event);
             if (worldPos) {
                 let dist = Math.hypot(worldPos.x, worldPos.z);
@@ -382,6 +366,18 @@
         
         function updateMovement(deltaTime) {
             if (!gameActive || winFlag) return;
+            
+            // Проверка: стоит ли игрок на кнопке (третий уровень)
+            if (currentLevel === 3 && !portalActivated) {
+                const dx = characterGroup.position.x - buttonGroup.position.x;
+                const dz = characterGroup.position.z - buttonGroup.position.z;
+                const distToButton = Math.sqrt(dx*dx + dz*dz);
+                if (distToButton < 0.8) {
+                    // Игрок стоит на кнопке!
+                    portalActivated = true;
+                    console.log('✅ Портал активирован! Игрок на кнопке.');
+                }
+            }
             
             // Если активен авто-прыжок на платформу
             if (autoJumpActive) {
