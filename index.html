@@ -74,18 +74,14 @@
         sunLight.shadow.camera.top = 12;
         sunLight.shadow.camera.bottom = -12;
         scene.add(sunLight);
-        
-        const fillLight = new THREE.PointLight(0xccaa88, 0.4);
-        fillLight.position.set(3, 5, 2);
-        scene.add(fillLight);
 
-        // --- ВОДА (без свечения под островом) ---
+        // --- ВОДА ---
         const waterGeometry = new THREE.CircleGeometry(40, 64);
         const waterMat = new THREE.MeshStandardMaterial({
             color: 0x3b8fcf,
-            emissive: 0x000000,   // убрано всё свечение
-            roughness: 0.3,
-            metalness: 0.85,
+            emissive: 0x000000,
+            roughness: 0.6,
+            metalness: 0.0,
             transparent: true,
             opacity: 0.94
         });
