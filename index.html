@@ -124,7 +124,10 @@
 
         // ========== УРОВНИ ==========
         let currentLevel = 1;
-        const totalLevels = 2;
+        const totalLevels = 3;
+        
+        // Флаг активации портала для третьего уровня
+        let portalActivated = false;
         
         // ========== ПЛАТФОРМА ДЛЯ ВТОРОГО УРОВНЯ ==========
         const platformGroup = new THREE.Group();
@@ -229,6 +232,30 @@
         const portalRadius = 7.6;
         portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
         islandGroup.add(portalGroup);
+        
+        // ========== КНОПКА АКТИВАЦИИ ПОРТАЛА (для третьего уровня) ==========
+        const buttonGroup = new THREE.Group();
+        const buttonBase = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.6, 0.7, 0.2, 16),
+            new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5, metalness: 0.8 })
+        );
+        buttonBase.castShadow = true;
+        buttonGroup.add(buttonBase);
+        
+        const buttonTop = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.5, 0.15, 16),
+            new THREE.MeshStandardMaterial({ color: 0x8888ff, emissive: 0x4444ff, emissiveIntensity: 0.5 })
+        );
+        buttonTop.position.y = 0.12;
+        buttonTop.castShadow = true;
+        buttonGroup.add(buttonTop);
+        
+        // Позиция кнопки (северо-запад)
+        const buttonAngle = 2.0;
+        const buttonRadius = 7.0;
+        buttonGroup.position.set(Math.cos(buttonAngle) * buttonRadius, 0.1, Math.sin(buttonAngle) * buttonRadius);
+        islandGroup.add(buttonGroup);
+        buttonGroup.visible = false; // Видна только на третьем уровне
 
         // ========== ЗЕЛЁНЫЙ ИГРОК (овечка) ==========
         const characterGroup = new THREE.Group();
@@ -325,6 +352,23 @@
         function onCanvasClick(event) {
             if (event.target.closest('#restart-btn')) return;
             if (!gameActive || winFlag) return;
+            
+            // Проверка нажатия на кнопку активации портала (третий уровень)
+            if (currentLevel === 3 && !portalActivated) {
+                const worldPos = getMouseGroundPos(event);
+                if (worldPos) {
+                    const dx = worldPos.x - buttonGroup.position.x;
+                    const dz = worldPos.z - buttonGroup.position.z;
+                    const dist = Math.sqrt(dx*dx + dz*dz);
+                    if (dist < 1.0) {
+                        // Игрок нажал на кнопку!
+                        portalActivated = true;
+                        console.log('✅ Портал активирован!');
+                        return;
+                    }
+                }
+            }
+            
             const worldPos = getMouseGroundPos(event);
             if (worldPos) {
                 let dist = Math.hypot(worldPos.x, worldPos.z);
@@ -451,6 +495,11 @@
             const dist3D = Math.sqrt(dx*dx + dz*dz + dy*dy);
             
             if (dist3D < 1.2) {
+                // Для третьего уровня портал должен быть активирован
+                if (currentLevel === 3 && !portalActivated) {
+                    return; // Портал не активен, игрок не может пройти
+                }
+                
                 winFlag = true;
                 gameActive = false;
                 
@@ -462,7 +511,15 @@
                     return;
                 }
                 
-                // Взрыв частиц
+                // Если это второй уровень, переходим на третий
+                if (currentLevel === 2) {
+                    setTimeout(() => {
+                        startLevel3();
+                    }, 1000);
+                    return;
+                }
+                
+                // Взрыв частиц (третий уровень - финал)
                 for (let i = 0; i < 80; i++) {
                     const particle = new THREE.Mesh(
                         new THREE.SphereGeometry(0.08, 6, 6),
@@ -498,6 +555,32 @@
             console.log('🎮 Уровень 2: Портал на платформе!');
         }
         
+        // Переход на третий уровень
+        function startLevel3() {
+            currentLevel = 3;
+            winFlag = false;
+            gameActive = true;
+            portalActivated = false;
+            
+            // Скрываем платформу
+            platformGroup.visible = false;
+            
+            // Возвращаем портал на первый уровень
+            portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+            
+            // Показываем кнопку
+            buttonGroup.visible = true;
+            
+            // Возвращаем игрока на стартовую позицию
+            characterGroup.position.set(Math.cos(startAngle) * startRadius, 0.45, Math.sin(startAngle) * startRadius);
+            characterGroup.rotation.y = 0;
+            targetPoint = null;
+            autoJumpActive = false;
+            jumpProgress = 0;
+            
+            console.log('🎮 Уровень 3: Нажми кнопку чтобы активировать портал!');
+        }
+        
         function restart() {
             currentLevel = 1;
             characterGroup.position.set(Math.cos(startAngle) * startRadius, 0.45, Math.sin(startAngle) * startRadius);
@@ -513,9 +596,11 @@
             walkCycle = 0;
             autoJumpActive = false;
             jumpProgress = 0;
+            portalActivated = false;
             
-            // Скрываем платформу и возвращаем портал на первый уровень
+            // Скрываем платформу, кнопку и возвращаем портал на первый уровень
             platformGroup.visible = false;
+            buttonGroup.visible = false;
             portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
         }
         
@@ -551,16 +636,36 @@
             midRing.rotation.x = Math.PI / 2 + 0.3 + Math.sin(portalTime * 0.7) * 0.1;
             midRing.rotation.z += 0.008;
             innerRing.rotation.z -= 0.015;
+            
+            // Анимация ядра портала - меняется в зависимости от активации
             const coreScale = 0.94 + Math.sin(portalTime * 7) * 0.06;
             portalCore.scale.set(coreScale, coreScale, coreScale);
-            portalCore.material.emissiveIntensity = 0.9 + Math.sin(portalTime * 9) * 0.5;
+            
+            // На третьем уровне портал тусклый пока не активирован
+            if (currentLevel === 3 && !portalActivated) {
+                portalCore.material.emissiveIntensity = 0.3 + Math.sin(portalTime * 5) * 0.1;
+                outerRing.material.emissiveIntensity = 0.3;
+                midRing.material.emissiveIntensity = 0.3;
+                innerRing.material.emissiveIntensity = 0.4;
+            } else {
+                portalCore.material.emissiveIntensity = 0.9 + Math.sin(portalTime * 9) * 0.5;
+                outerRing.material.emissiveIntensity = 0.9;
+                midRing.material.emissiveIntensity = 1.0;
+                innerRing.material.emissiveIntensity = 1.2;
+            }
             
             magicOrbs.forEach((orb, idx) => {
                 const ang = orb.userData.angle + portalTime * orb.userData.speed;
                 orb.position.x = Math.cos(ang) * orb.userData.radius;
                 orb.position.z = Math.sin(ang) * orb.userData.radius;
                 orb.position.y = Math.sin(ang * 2 + idx) * 0.25;
-                orb.material.emissiveIntensity = 0.6 + Math.sin(portalTime * 12 + idx) * 0.4;
+                
+                // На третьем уровне орбы тусклые пока портал не активирован
+                if (currentLevel === 3 && !portalActivated) {
+                    orb.material.emissiveIntensity = 0.2 + Math.sin(portalTime * 8 + idx) * 0.1;
+                } else {
+                    orb.material.emissiveIntensity = 0.6 + Math.sin(portalTime * 12 + idx) * 0.4;
+                }
             });
             
             sparkles.forEach((sp, idx) => {
@@ -570,10 +675,39 @@
                 const z = Math.sin(hor) * d.radius;
                 const y = Math.sin(portalTime * 1.8 + idx) * 0.35 + Math.sin(portalTime * 2.4) * 0.1;
                 sp.position.set(x, y + 0.1, z);
-                sp.material.emissiveIntensity = 0.5 + Math.sin(portalTime * 5 + idx) * 0.4;
+                
+                // На третьем уровне искры тусклые пока портал не активирован
+                if (currentLevel === 3 && !portalActivated) {
+                    sp.material.emissiveIntensity = 0.2 + Math.sin(portalTime * 3 + idx) * 0.1;
+                } else {
+                    sp.material.emissiveIntensity = 0.5 + Math.sin(portalTime * 5 + idx) * 0.4;
+                }
             });
             
-            portalLight.intensity = 0.8 + Math.sin(portalTime * 4) * 0.3;
+            // На третьем уровне свет портала тусклый пока не активирован
+            if (currentLevel === 3 && !portalActivated) {
+                portalLight.intensity = 0.3 + Math.sin(portalTime * 2) * 0.1;
+            } else {
+                portalLight.intensity = 0.8 + Math.sin(portalTime * 4) * 0.3;
+            }
+        }
+        
+        // --- АНИМАЦИЯ КНОПКИ ---
+        function animateButton(deltaTime) {
+            if (!buttonGroup.visible) return;
+            
+            // Пульсация кнопки
+            const pulse = 1.0 + Math.sin(Date.now() * 0.005) * 0.05;
+            buttonTop.scale.set(pulse, pulse, pulse);
+            
+            // Если портал активирован, кнопка становится зелёной
+            if (portalActivated) {
+                buttonTop.material.color.setHex(0x44ff44);
+                buttonTop.material.emissive.setHex(0x22aa22);
+            } else {
+                buttonTop.material.color.setHex(0x8888ff);
+                buttonTop.material.emissive.setHex(0x4444ff);
+            }
         }
         
         // --- КАМЕРА СЛЕДИТ ЗА ИГРОКОМ ---
@@ -599,6 +733,7 @@
             }
             
             animatePortal(dt);
+            animateButton(dt);
             updateMarker();
             updateCamera();
             
