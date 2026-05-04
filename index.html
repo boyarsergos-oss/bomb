@@ -146,12 +146,15 @@
             platformGroup.add(step);
         }
         
-        // Позиция платформы (северо-запад)
-        const platformAngle = 2.0;
-        const platformRadius = 6.5;
+        // Позиция платформы (юго-восток)
+        const platformAngle = -1.0;
+        const platformRadius = 6.0;
         platformGroup.position.set(Math.cos(platformAngle) * platformRadius, 0.6, Math.sin(platformAngle) * platformRadius);
         islandGroup.add(platformGroup);
         platformGroup.visible = false; // Скрыта на первом уровне
+        
+        // Радиус платформы для коллизий (базовый цилиндр)
+        const platformCollisionRadius = 2.5;
         
         // ========== КРАСИВЫЙ ПОРТАЛ (улучшенный) ==========
         const portalGroup = new THREE.Group();
@@ -383,14 +386,21 @@
                 newX = (newX / newDist) * 9.2;
                 newZ = (newZ / newDist) * 9.2;
             }
-            characterGroup.position.x = newX;
-            characterGroup.position.z = newZ;
-            characterGroup.rotation.y = Math.atan2(dx, dz);
             
-            // Проверка авто-прыжка на платформу для второго уровня
-            if (currentLevel === 2 && !autoJumpActive) {
+            // Коллизия с платформой на втором уровне
+            if (currentLevel === 2 && !autoJumpActive && characterGroup.position.y < 1.0) {
                 const distToPlatform = Math.hypot(pos.x - platformGroup.position.x, pos.z - platformGroup.position.z);
-                if (distToPlatform < 2.8 && characterGroup.position.y < 1.0) {
+                const minDist = platformCollisionRadius + 0.5; // радиус платформы + радиус игрока
+                
+                if (distToPlatform < minDist) {
+                    // Игрок касается платформы - толкаем его наружу
+                    const angleToPlayer = Math.atan2(pos.z - platformGroup.position.z, pos.x - platformGroup.position.x);
+                    newX = platformGroup.position.x + Math.cos(angleToPlayer) * minDist;
+                    newZ = platformGroup.position.z + Math.sin(angleToPlayer) * minDist;
+                }
+                
+                // Проверка авто-прыжка на платформу
+                if (distToPlatform < 2.8) {
                     // Игрок близко к платформе - запускаем авто-прыжок
                     autoJumpActive = true;
                     jumpProgress = 0;
@@ -398,6 +408,10 @@
                     jumpTargetPos.set(platformGroup.position.x, 0, platformGroup.position.z);
                 }
             }
+            
+            characterGroup.position.x = newX;
+            characterGroup.position.z = newZ;
+            characterGroup.rotation.y = Math.atan2(dx, dz);
             
             // Анимация ходьбы
             const moving = true;
