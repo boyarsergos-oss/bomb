@@ -476,9 +476,16 @@
                 
                 // Записываем действие в историю для клона (только на 4 уровне и если клон ещё не создан)
                 if (currentLevel === 4 && !cloneActive) {
+                    // Проверяем, стоит ли игрок на кнопке
+                    const dx = characterGroup.position.x - button2Group.position.x;
+                    const dz = characterGroup.position.z - button2Group.position.z;
+                    const distToButton = Math.sqrt(dx*dx + dz*dz);
+                    const onButton = distToButton < 0.8;
+                    
                     actionHistory.push({
                         position: new THREE.Vector3(worldPos.x, 0, worldPos.z),
-                        time: Date.now()
+                        time: Date.now(),
+                        onButton: onButton
                     });
                 }
             }
@@ -514,6 +521,17 @@
                 } else {
                     // Игрок сошёл с кнопки
                     portalActivated = false;
+                }
+                
+                // Также проверяем, стоит ли клон на кнопке
+                if (cloneActive && cloneGroup) {
+                    const cloneDx = cloneGroup.position.x - button2Group.position.x;
+                    const cloneDz = cloneGroup.position.z - button2Group.position.z;
+                    const cloneDistToButton = Math.sqrt(cloneDx*cloneDx + cloneDz*cloneDz);
+                    if (cloneDistToButton < 0.8) {
+                        // Клон стоит на кнопке!
+                        portalActivated = true;
+                    }
                 }
             }
             
@@ -740,6 +758,7 @@
             actionHistory = [];
             cloneActive = false;
             clonePlaybackIndex = 0;
+            cloneOnButton = false;
             if (cloneGroup) {
                 islandGroup.remove(cloneGroup);
                 cloneGroup = null;
@@ -790,6 +809,7 @@
             actionHistory = [];
             cloneActive = false;
             clonePlaybackIndex = 0;
+            cloneOnButton = false;
             cloneButtonVisible = false;
             if (cloneGroup) {
                 islandGroup.remove(cloneGroup);
@@ -1010,12 +1030,11 @@
             
             // Создаём клона (копию игрока)
             cloneGroup = characterGroup.clone();
-            cloneGroup.material = characterGroup.children[0].material.clone();
             cloneGroup.position.set(Math.cos(startAngle) * startRadius, 0.45, Math.sin(startAngle) * startRadius);
             cloneGroup.rotation.y = 0;
             islandGroup.add(cloneGroup);
             
-            // Делаем клона полупрозрачным
+            // Делаем клона полупрозрачным и копируем все материалы
             cloneGroup.traverse((child) => {
                 if (child.isMesh) {
                     child.material = child.material.clone();
@@ -1026,6 +1045,7 @@
             
             cloneActive = true;
             clonePlaybackIndex = 0;
+            cloneOnButton = false;
             
             // Возвращаем игрока на спавн
             characterGroup.position.set(Math.cos(startAngle) * startRadius, 0.45, Math.sin(startAngle) * startRadius);
@@ -1048,7 +1068,16 @@
             const distance = Math.hypot(dx, dz);
             
             if (distance < 0.1) {
+                // Клон достиг точки действия
                 clonePlaybackIndex++;
+                
+                // Проверяем, должно ли действие включать нажатие кнопки
+                if (action.onButton !== undefined && action.onButton) {
+                    cloneOnButton = true;
+                } else if (action.onButton === false) {
+                    cloneOnButton = false;
+                }
+                
                 return;
             }
             
@@ -1060,14 +1089,51 @@
             cloneGroup.position.z += dirZ * move;
             cloneGroup.rotation.y = Math.atan2(dx, dz);
             
-            // Анимация ходьбы клона (ноги)
+            // Анимация ходьбы клона (ноги и все анимации как у игрока)
             const cloneWalkCycle = Date.now() * 0.014;
             const phase = Math.sin(cloneWalkCycle);
-            // Ноги клона находятся на тех же индексах что и у игрока (footL и footR)
-            if (cloneGroup.children[12] && cloneGroup.children[13]) {
-                cloneGroup.children[12].rotation.x = phase * 0.7;
-                cloneGroup.children[13].rotation.x = -phase * 0.7;
+            
+            // Ноги клона (footL и footR)
+            if (cloneGroup.children[6] && cloneGroup.children[7]) {
+                cloneGroup.children[6].rotation.x = phase * 0.7;
+                cloneGroup.children[7].rotation.x = -phase * 0.7;
+                cloneGroup.children[6].rotation.z = phase * 0.2;
+                cloneGroup.children[7].rotation.z = -phase * 0.2;
             }
+            
+            // Рога клона (hornL и hornR)
+            if (cloneGroup.children[4] && cloneGroup.children[5]) {
+                cloneGroup.children[4].rotation.z = -0.4 + phase * 0.2;
+                cloneGroup.children[5].rotation.z = 0.4 - phase * 0.2;
+            }
+            
+            // Тело клона подпрыгивает при ходьбе
+            cloneGroup.position.y = 0.45 + Math.abs(phase) * 0.04;
+            
+            // Уши клона (earL и earR)
+            if (cloneGroup.children[8] && cloneGroup.children[9]) {
+                cloneGroup.children[8].rotation.z = -0.2 + phase * 0.1;
+                cloneGroup.children[9].rotation.z = 0.2 - phase * 0.1;
+            }
+            
+            // Хвост клона (tail)
+            if (cloneGroup.children[3]) {
+                cloneGroup.children[3].rotation.x = 0.6 + phase * 0.15;
+            }
+        }
+        
+        // Флаг: клон на кнопке
+        let cloneOnButton = false;
+        
+        // Проверка: стоит ли клон на кнопке (четвертый уровень)
+        function checkCloneButton() {
+            if (!cloneActive || !cloneGroup || currentLevel !== 4) return false;
+            
+            const dx = cloneGroup.position.x - button2Group.position.x;
+            const dz = cloneGroup.position.z - button2Group.position.z;
+            const distToButton = Math.sqrt(dx*dx + dz*dz);
+            
+            return distToButton < 0.8;
         }
         
         console.log('✅ Сцена загружена: остров полностью зелёный как трава');
