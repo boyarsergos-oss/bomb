@@ -391,21 +391,7 @@
         function updateMovement(deltaTime) {
             if (!gameActive || winFlag) return;
             
-            // Проверка: стоит ли игрок на кнопке (третий уровень)
-            if (currentLevel === 3) {
-                const dx = characterGroup.position.x - buttonGroup.position.x;
-                const dz = characterGroup.position.z - buttonGroup.position.z;
-                const distToButton = Math.sqrt(dx*dx + dz*dz);
-                if (distToButton < 0.8) {
-                    // Игрок стоит на кнопке!
-                    portalActivated = true;
-                    console.log('✅ Портал активирован! Игрок на кнопке.');
-                } else {
-                    // Игрок сошёл с кнопки
-                    portalActivated = false;
-                }
-            }
-            
+            // Проверка: стоит ли игрок на кнопке (третий уровень) - портал всегда активен на 3 уровне
             // Проверка: стоит ли игрок на второй кнопке (четвертый уровень)
             if (currentLevel === 4) {
                 const dx = characterGroup.position.x - button2Group.position.x;
@@ -533,8 +519,8 @@
             const dist3D = Math.sqrt(dx*dx + dz*dz + dy*dy);
             
             if (dist3D < 1.2) {
-                // Для третьего и четвертого уровня портал должен быть активирован
-                if ((currentLevel === 3 || currentLevel === 4) && !portalActivated) {
+                // Для четвертого уровня портал должен быть активирован кнопкой
+                if (currentLevel === 4 && !portalActivated) {
                     return; // Портал не активен, игрок не может пройти
                 }
                 
@@ -715,8 +701,8 @@
             const coreScale = 0.94 + Math.sin(portalTime * 7) * 0.06;
             portalCore.scale.set(coreScale, coreScale, coreScale);
             
-            // На третьем и четвертом уровне портал тусклый пока не активирован
-            if ((currentLevel === 3 || currentLevel === 4) && !portalActivated) {
+            // На четвертом уровне портал тусклый пока не активирован кнопкой
+            if (currentLevel === 4 && !portalActivated) {
                 portalCore.material.emissiveIntensity = 0.3 + Math.sin(portalTime * 5) * 0.1;
                 outerRing.material.emissiveIntensity = 0.3;
                 midRing.material.emissiveIntensity = 0.3;
@@ -734,8 +720,8 @@
                 orb.position.z = Math.sin(ang) * orb.userData.radius;
                 orb.position.y = Math.sin(ang * 2 + idx) * 0.25;
                 
-                // На третьем и четвертом уровне орбы тусклые пока портал не активирован
-                if ((currentLevel === 3 || currentLevel === 4) && !portalActivated) {
+                // На четвертом уровне орбы тусклые пока портал не активирован
+                if (currentLevel === 4 && !portalActivated) {
                     orb.material.emissiveIntensity = 0.2 + Math.sin(portalTime * 8 + idx) * 0.1;
                 } else {
                     orb.material.emissiveIntensity = 0.6 + Math.sin(portalTime * 12 + idx) * 0.4;
@@ -750,16 +736,16 @@
                 const y = Math.sin(portalTime * 1.8 + idx) * 0.35 + Math.sin(portalTime * 2.4) * 0.1;
                 sp.position.set(x, y + 0.1, z);
                 
-                // На третьем и четвертом уровне искры тусклые пока портал не активирован
-                if ((currentLevel === 3 || currentLevel === 4) && !portalActivated) {
+                // На четвертом уровне искры тусклые пока портал не активирован
+                if (currentLevel === 4 && !portalActivated) {
                     sp.material.emissiveIntensity = 0.2 + Math.sin(portalTime * 3 + idx) * 0.1;
                 } else {
                     sp.material.emissiveIntensity = 0.5 + Math.sin(portalTime * 5 + idx) * 0.4;
                 }
             });
             
-            // На третьем и четвертом уровне свет портала тусклый пока не активирован
-            if ((currentLevel === 3 || currentLevel === 4) && !portalActivated) {
+            // На четвертом уровне свет портала тусклый пока не активирован
+            if (currentLevel === 4 && !portalActivated) {
                 portalLight.intensity = 0.3 + Math.sin(portalTime * 2) * 0.1;
             } else {
                 portalLight.intensity = 0.8 + Math.sin(portalTime * 4) * 0.3;
