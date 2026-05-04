@@ -714,63 +714,66 @@
         let portalTime = 0;
         function animatePortal(deltaTime) {
             portalTime += deltaTime;
-            outerRing.rotation.z += 0.01;
-            midRing.rotation.x = Math.PI / 2 + 0.3 + Math.sin(portalTime * 0.7) * 0.1;
-            midRing.rotation.z += 0.008;
-            innerRing.rotation.z -= 0.015;
             
-            // Анимация ядра портала - меняется в зависимости от активации
-            const coreScale = 0.94 + Math.sin(portalTime * 7) * 0.06;
-            portalCore.scale.set(coreScale, coreScale, coreScale);
+            // Проверка: портал активен?
+            const isPortalActive = (currentLevel !== 3 && currentLevel !== 4) || portalActivated;
             
-            // На четвертом уровне портал тусклый пока не активирован кнопкой
-            if (currentLevel === 4 && !portalActivated) {
-                portalCore.material.emissiveIntensity = 0.3 + Math.sin(portalTime * 5) * 0.1;
-                outerRing.material.emissiveIntensity = 0.3;
-                midRing.material.emissiveIntensity = 0.3;
-                innerRing.material.emissiveIntensity = 0.4;
-            } else {
+            if (isPortalActive) {
+                // Активный портал - полная анимация
+                outerRing.visible = true;
+                midRing.visible = true;
+                innerRing.visible = true;
+                magicOrbs.forEach(orb => orb.visible = true);
+                sparkles.forEach(sp => sp.visible = true);
+                
+                outerRing.rotation.z += 0.01;
+                midRing.rotation.x = Math.PI / 2 + 0.3 + Math.sin(portalTime * 0.7) * 0.1;
+                midRing.rotation.z += 0.008;
+                innerRing.rotation.z -= 0.015;
+                
+                // Анимация ядра портала
+                const coreScale = 0.94 + Math.sin(portalTime * 7) * 0.06;
+                portalCore.scale.set(coreScale, coreScale, coreScale);
+                portalCore.material.color.setHex(0xff6666);
+                portalCore.material.emissive.setHex(0xff1100);
                 portalCore.material.emissiveIntensity = 0.9 + Math.sin(portalTime * 9) * 0.5;
                 outerRing.material.emissiveIntensity = 0.9;
                 midRing.material.emissiveIntensity = 1.0;
                 innerRing.material.emissiveIntensity = 1.2;
-            }
-            
-            magicOrbs.forEach((orb, idx) => {
-                const ang = orb.userData.angle + portalTime * orb.userData.speed;
-                orb.position.x = Math.cos(ang) * orb.userData.radius;
-                orb.position.z = Math.sin(ang) * orb.userData.radius;
-                orb.position.y = Math.sin(ang * 2 + idx) * 0.25;
                 
-                // На четвертом уровне орбы тусклые пока портал не активирован
-                if (currentLevel === 4 && !portalActivated) {
-                    orb.material.emissiveIntensity = 0.2 + Math.sin(portalTime * 8 + idx) * 0.1;
-                } else {
+                magicOrbs.forEach((orb, idx) => {
+                    const ang = orb.userData.angle + portalTime * orb.userData.speed;
+                    orb.position.x = Math.cos(ang) * orb.userData.radius;
+                    orb.position.z = Math.sin(ang) * orb.userData.radius;
+                    orb.position.y = Math.sin(ang * 2 + idx) * 0.25;
                     orb.material.emissiveIntensity = 0.6 + Math.sin(portalTime * 12 + idx) * 0.4;
-                }
-            });
-            
-            sparkles.forEach((sp, idx) => {
-                const d = sp.userData;
-                const hor = d.angleHor + portalTime * d.speed;
-                const x = Math.cos(hor) * d.radius;
-                const z = Math.sin(hor) * d.radius;
-                const y = Math.sin(portalTime * 1.8 + idx) * 0.35 + Math.sin(portalTime * 2.4) * 0.1;
-                sp.position.set(x, y + 0.1, z);
+                });
                 
-                // На четвертом уровне искры тусклые пока портал не активирован
-                if (currentLevel === 4 && !portalActivated) {
-                    sp.material.emissiveIntensity = 0.2 + Math.sin(portalTime * 3 + idx) * 0.1;
-                } else {
+                sparkles.forEach((sp, idx) => {
+                    const d = sp.userData;
+                    const hor = d.angleHor + portalTime * d.speed;
+                    const x = Math.cos(hor) * d.radius;
+                    const z = Math.sin(hor) * d.radius;
+                    const y = Math.sin(portalTime * 1.8 + idx) * 0.35 + Math.sin(portalTime * 2.4) * 0.1;
+                    sp.position.set(x, y + 0.1, z);
                     sp.material.emissiveIntensity = 0.5 + Math.sin(portalTime * 5 + idx) * 0.4;
-                }
-            });
-            
-            // На четвертом уровне свет портала тусклый пока не активирован
-            if (currentLevel === 4 && !portalActivated) {
-                portalLight.intensity = 0.3 + Math.sin(portalTime * 2) * 0.1;
-            } else {
+                });
+                
                 portalLight.intensity = 0.8 + Math.sin(portalTime * 4) * 0.3;
+            } else {
+                // Неактивный портал - просто серый шар
+                outerRing.visible = false;
+                midRing.visible = false;
+                innerRing.visible = false;
+                magicOrbs.forEach(orb => orb.visible = false);
+                sparkles.forEach(sp => sp.visible = false);
+                
+                portalCore.scale.set(1, 1, 1);
+                portalCore.material.color.setHex(0x888888);
+                portalCore.material.emissive.setHex(0x444444);
+                portalCore.material.emissiveIntensity = 0.3;
+                
+                portalLight.intensity = 0.1;
             }
         }
         
