@@ -392,20 +392,18 @@
                 const distToPlatform = Math.hypot(pos.x - platformGroup.position.x, pos.z - platformGroup.position.z);
                 const minDist = platformCollisionRadius + 0.5; // радиус платформы + радиус игрока
                 
-                if (distToPlatform < minDist) {
-                    // Игрок касается платформы - толкаем его наружу
-                    const angleToPlayer = Math.atan2(pos.z - platformGroup.position.z, pos.x - platformGroup.position.x);
-                    newX = platformGroup.position.x + Math.cos(angleToPlayer) * minDist;
-                    newZ = platformGroup.position.z + Math.sin(angleToPlayer) * minDist;
-                }
-                
-                // Проверка авто-прыжка на платформу
+                // Проверка авто-прыжка на платформу (приоритет над коллизией)
                 if (distToPlatform < 2.8) {
                     // Игрок близко к платформе - запускаем авто-прыжок
                     autoJumpActive = true;
                     jumpProgress = 0;
                     jumpStartPos.copy(pos);
                     jumpTargetPos.set(platformGroup.position.x, 0, platformGroup.position.z);
+                } else if (distToPlatform < minDist) {
+                    // Игрок касается платформы - толкаем его наружу (только если не触发рил прыжок)
+                    const angleToPlayer = Math.atan2(pos.z - platformGroup.position.z, pos.x - platformGroup.position.x);
+                    newX = platformGroup.position.x + Math.cos(angleToPlayer) * minDist;
+                    newZ = platformGroup.position.z + Math.sin(angleToPlayer) * minDist;
                 }
             }
             
