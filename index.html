@@ -392,7 +392,7 @@
             if (!gameActive || winFlag) return;
             
             // Проверка: стоит ли игрок на кнопке (третий уровень)
-            if (currentLevel === 3 && !portalActivated) {
+            if (currentLevel === 3) {
                 const dx = characterGroup.position.x - buttonGroup.position.x;
                 const dz = characterGroup.position.z - buttonGroup.position.z;
                 const distToButton = Math.sqrt(dx*dx + dz*dz);
@@ -400,11 +400,14 @@
                     // Игрок стоит на кнопке!
                     portalActivated = true;
                     console.log('✅ Портал активирован! Игрок на кнопке.');
+                } else {
+                    // Игрок сошёл с кнопки
+                    portalActivated = false;
                 }
             }
             
             // Проверка: стоит ли игрок на второй кнопке (четвертый уровень)
-            if (currentLevel === 4 && !portalActivated) {
+            if (currentLevel === 4) {
                 const dx = characterGroup.position.x - button2Group.position.x;
                 const dz = characterGroup.position.z - button2Group.position.z;
                 const distToButton = Math.sqrt(dx*dx + dz*dz);
@@ -412,6 +415,9 @@
                     // Игрок стоит на кнопке!
                     portalActivated = true;
                     console.log('✅ Уровень 4: Портал активирован! Игрок на кнопке.');
+                } else {
+                    // Игрок сошёл с кнопки
+                    portalActivated = false;
                 }
             }
             
