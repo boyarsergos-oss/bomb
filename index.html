@@ -122,6 +122,40 @@
         }
         scene.add(islandGroup);
 
+        // ========== УРОВНИ ==========
+        let currentLevel = 1;
+        const totalLevels = 2;
+        
+        // ========== ПЛАТФОРМА ДЛЯ ВТОРОГО УРОВНЯ ==========
+        const platformGroup = new THREE.Group();
+        const platformMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.7 });
+        const platformBase = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.8, 1.2, 16), platformMat);
+        platformBase.castShadow = true;
+        platformBase.receiveShadow = true;
+        platformGroup.add(platformBase);
+        
+        // Ступеньки
+        const stepMat = new THREE.MeshStandardMaterial({ color: 0x7a6245 });
+        for (let i = 0; i < 4; i++) {
+            const step = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.3, 0.8), stepMat);
+            const angle = (i / 4) * Math.PI * 2;
+            const radius = 2.0;
+            step.position.set(Math.cos(angle) * radius, -0.3 + i * 0.3, Math.sin(angle) * radius);
+            step.rotation.y = -angle;
+            step.castShadow = true;
+            platformGroup.add(step);
+        }
+        
+        // Позиция платформы (юго-восток)
+        const platformAngle = -1.0;
+        const platformRadius = 6.0;
+        platformGroup.position.set(Math.cos(platformAngle) * platformRadius, 0.6, Math.sin(platformAngle) * platformRadius);
+        islandGroup.add(platformGroup);
+        platformGroup.visible = false; // Скрыта на первом уровне
+        
+        // Радиус платформы для коллизий (базовый цилиндр)
+        const platformCollisionRadius = 2.5;
+        
         // ========== КРАСИВЫЙ ПОРТАЛ (улучшенный) ==========
         const portalGroup = new THREE.Group();
         
@@ -190,7 +224,7 @@
             sparkles.push(spark);
         }
         
-        // Позиция портала (юго-запад)
+        // Позиция портала (юго-запад) для первого уровня
         const portalAngle = -2.4;
         const portalRadius = 7.6;
         portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
@@ -266,8 +300,17 @@
         let walkCycle = 0;
         let wasMoving = false;
         
+        // Переменные для авто-прыжка на платформу
+        let autoJumpActive = false;
+        let jumpProgress = 0;
+        let jumpStartPos = new THREE.Vector3();
+        let jumpTargetPos = new THREE.Vector3();
+        
         const raycaster = new THREE.Raycaster();
         const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        
+        // Позиция на платформе для второго уровня
+        const platformPortalY = 1.8; // Высота портала на платформе
         
         function getMouseGroundPos(event) {
             const mouse = new THREE.Vector2();
@@ -294,7 +337,37 @@
         }
         
         function updateMovement(deltaTime) {
-            if (!gameActive || winFlag || !targetPoint) return;
+            if (!gameActive || winFlag) return;
+            
+            // Если активен авто-прыжок на платформу
+            if (autoJumpActive) {
+                jumpProgress += deltaTime * 2.0;
+                if (jumpProgress >= 1.0) {
+                    jumpProgress = 1.0;
+                    autoJumpActive = false;
+                    characterGroup.position.copy(jumpTargetPos);
+                    characterGroup.position.y = platformPortalY;
+                    targetPoint = null;
+                } else {
+                    // Плавная интерполяция к цели прыжка с подпрыгиванием
+                    const t = jumpProgress;
+                    const arcHeight = Math.sin(t * Math.PI) * 0.8;
+                    characterGroup.position.x = jumpStartPos.x + (jumpTargetPos.x - jumpStartPos.x) * t;
+                    characterGroup.position.z = jumpStartPos.z + (jumpTargetPos.z - jumpStartPos.z) * t;
+                    characterGroup.position.y = jumpStartPos.y + (platformPortalY - jumpStartPos.y) * t + arcHeight;
+                    
+                    // Анимация ходьбы во время прыжка
+                    walkCycle += deltaTime * 14;
+                    const phase = Math.sin(walkCycle);
+                    footL.rotation.x = phase * 0.7;
+                    footR.rotation.x = -phase * 0.7;
+                    wasMoving = true;
+                }
+                return;
+            }
+            
+            if (!targetPoint) return;
+            
             const pos = characterGroup.position;
             const dx = targetPoint.x - pos.x;
             const dz = targetPoint.z - pos.z;
@@ -313,6 +386,27 @@
                 newX = (newX / newDist) * 9.2;
                 newZ = (newZ / newDist) * 9.2;
             }
+            
+            // Коллизия с платформой на втором уровне
+            if (currentLevel === 2 && !autoJumpActive && characterGroup.position.y < 1.0) {
+                const distToPlatform = Math.hypot(pos.x - platformGroup.position.x, pos.z - platformGroup.position.z);
+                const minDist = platformCollisionRadius + 0.5; // радиус платформы + радиус игрока
+                
+                // Проверка авто-прыжка на платформу (приоритет над коллизией)
+                if (distToPlatform < 2.8) {
+                    // Игрок близко к платформе - запускаем авто-прыжок
+                    autoJumpActive = true;
+                    jumpProgress = 0;
+                    jumpStartPos.copy(pos);
+                    jumpTargetPos.set(platformGroup.position.x, 0, platformGroup.position.z);
+                } else if (distToPlatform < minDist) {
+                    // Игрок касается платформы - толкаем его наружу (только если не触发рил прыжок)
+                    const angleToPlayer = Math.atan2(pos.z - platformGroup.position.z, pos.x - platformGroup.position.x);
+                    newX = platformGroup.position.x + Math.cos(angleToPlayer) * minDist;
+                    newZ = platformGroup.position.z + Math.sin(angleToPlayer) * minDist;
+                }
+            }
+            
             characterGroup.position.x = newX;
             characterGroup.position.z = newZ;
             characterGroup.rotation.y = Math.atan2(dx, dz);
@@ -348,9 +442,25 @@
             if (winFlag) return;
             const portalPos = portalGroup.position;
             const charPos = characterGroup.position;
-            if (Math.hypot(charPos.x - portalPos.x, charPos.z - portalPos.z) < 1.05) {
+            
+            // Расстояние до портала (с учётом высоты для второго уровня)
+            const dx = charPos.x - portalPos.x;
+            const dz = charPos.z - portalPos.z;
+            const dy = Math.abs(charPos.y - (portalPos.y + 0.5));
+            const dist3D = Math.sqrt(dx*dx + dz*dz + dy*dy);
+            
+            if (dist3D < 1.2) {
                 winFlag = true;
                 gameActive = false;
+                
+                // Если это первый уровень, переходим на второй
+                if (currentLevel === 1) {
+                    setTimeout(() => {
+                        startLevel2();
+                    }, 1000);
+                    return;
+                }
+                
                 // Взрыв частиц
                 for (let i = 0; i < 80; i++) {
                     const particle = new THREE.Mesh(
@@ -365,7 +475,30 @@
             }
         }
         
+        // Переход на второй уровень
+        function startLevel2() {
+            currentLevel = 2;
+            winFlag = false;
+            gameActive = true;
+            
+            // Показываем платформу
+            platformGroup.visible = true;
+            
+            // Перемещаем портал на платформу
+            portalGroup.position.set(platformGroup.position.x, platformPortalY, platformGroup.position.z);
+            
+            // Возвращаем игрока на стартовую позицию
+            characterGroup.position.set(Math.cos(startAngle) * startRadius, 0.45, Math.sin(startAngle) * startRadius);
+            characterGroup.rotation.y = 0;
+            targetPoint = null;
+            autoJumpActive = false;
+            jumpProgress = 0;
+            
+            console.log('🎮 Уровень 2: Портал на платформе!');
+        }
+        
         function restart() {
+            currentLevel = 1;
             characterGroup.position.set(Math.cos(startAngle) * startRadius, 0.45, Math.sin(startAngle) * startRadius);
             characterGroup.rotation.y = 0;
             footL.rotation.x = 0;
@@ -377,6 +510,12 @@
             winFlag = false;
             wasMoving = false;
             walkCycle = 0;
+            autoJumpActive = false;
+            jumpProgress = 0;
+            
+            // Скрываем платформу и возвращаем портал на первый уровень
+            platformGroup.visible = false;
+            portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
         }
         
         // --- МАРКЕР КЛИКА ---
