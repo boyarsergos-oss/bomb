@@ -126,8 +126,10 @@
         let currentLevel = 1;
         const totalLevels = 4;
         
-        // Флаг активации портала для третьего и четвертого уровня
+        // Флаг активации портала для третьего уровня (переключатель)
         let portalActivated = false;
+        // Флаг для отслеживания состояния кнопки на 3 уровне
+        let button3Pressed = false;
         
         // ========== ПЛАТФОРМА ДЛЯ ВТОРОГО УРОВНЯ ==========
         const platformGroup = new THREE.Group();
@@ -391,8 +393,23 @@
         function updateMovement(deltaTime) {
             if (!gameActive || winFlag) return;
             
-            // Проверка: стоит ли игрок на кнопке (третий уровень) - портал всегда активен на 3 уровне
-            // Проверка: стоит ли игрок на второй кнопке (четвертый уровень)
+            // Проверка: стоит ли игрок на кнопке (третий уровень) - переключатель
+            if (currentLevel === 3) {
+                const dx = characterGroup.position.x - buttonGroup.position.x;
+                const dz = characterGroup.position.z - buttonGroup.position.z;
+                const distToButton = Math.sqrt(dx*dx + dz*dz);
+                if (distToButton < 0.8 && !button3Pressed) {
+                    // Игрок встал на кнопку - переключаем состояние портала
+                    portalActivated = !portalActivated;
+                    button3Pressed = true;
+                    console.log('✅ Уровень 3: Портал ' + (portalActivated ? 'активирован' : 'деактивирован') + '!');
+                } else if (distToButton >= 0.8) {
+                    // Игрок сошёл с кнопки - сбрасываем флаг для следующего нажатия
+                    button3Pressed = false;
+                }
+            }
+            
+            // Проверка: стоит ли игрок на второй кнопке (четвертый уровень) - только пока стоит
             if (currentLevel === 4) {
                 const dx = characterGroup.position.x - button2Group.position.x;
                 const dz = characterGroup.position.z - button2Group.position.z;
@@ -400,7 +417,6 @@
                 if (distToButton < 0.8) {
                     // Игрок стоит на кнопке!
                     portalActivated = true;
-                    console.log('✅ Уровень 4: Портал активирован! Игрок на кнопке.');
                 } else {
                     // Игрок сошёл с кнопки
                     portalActivated = false;
@@ -593,6 +609,7 @@
             winFlag = false;
             gameActive = true;
             portalActivated = false;
+            button3Pressed = false;
             
             // Скрываем платформу
             platformGroup.visible = false;
@@ -656,6 +673,7 @@
             autoJumpActive = false;
             jumpProgress = 0;
             portalActivated = false;
+            button3Pressed = false;
             
             // Скрываем платформу, кнопки и возвращаем портал на первый уровень
             platformGroup.visible = false;
