@@ -54,6 +54,21 @@
         #clone-btn:active { transform: scale(0.95); }
         #clone-btn.visible { display: block; }
         
+        /* Счётчик FPS */
+        #fps-counter {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            z-index: 50;
+            pointer-events: none;
+        }
+        
         /* Подсказка с изображением мыши */
         #clone-prompt {
             position: absolute;
@@ -172,6 +187,9 @@
 </head>
 <body>
     <button id="restart-btn">🌿 ПЕРЕЗАПУСТИТЬ</button>
+    
+    <!-- Счётчик FPS -->
+    <div id="fps-counter">FPS: 60</div>
     
     <!-- Кнопка создания клона -->
     <button id="clone-btn">👥 СОЗДАТЬ КЛОНА</button>
@@ -612,11 +630,23 @@
                 footR.rotation.x = -phase * 0.7;
                 wasMoving = true;
                 
-                // Проверка коллизий с платформой на втором уровне
+                // Проверка коллизий с платформой на втором уровне - авто-прыжок
                 if (currentLevel === 2 && characterGroup.position.y < 1.0) {
                     const distToPlatform = Math.hypot(pos.x - platformGroup.position.x, pos.z - platformGroup.position.z);
-                    if (distToPlatform < 1.8 && !(newX > platformGroup.position.x - 1.5 && newX < platformGroup.position.x + 1.5 && newZ > platformGroup.position.z - 1.5 && newZ < platformGroup.position.z + 1.5)) {
+                    const minDist = platformCollisionRadius + 0.5;
+                    
+                    // Запускаем авто-прыжок когда игрок очень близко к краю платформы
+                    if (distToPlatform < minDist + 0.3 && distToPlatform >= minDist - 0.5) {
+                        autoJumpActive = true;
+                        jumpProgress = 0;
+                        jumpStartPos.copy(pos);
+                        jumpTargetPos.set(platformGroup.position.x, 0, platformGroup.position.z);
                         return;
+                    } else if (distToPlatform < minDist) {
+                        // Толкаем игрока наружу если он касается платформы
+                        const angleToPlayer = Math.atan2(pos.z - platformGroup.position.z, pos.x - platformGroup.position.x);
+                        newX = platformGroup.position.x + Math.cos(angleToPlayer) * minDist;
+                        newZ = platformGroup.position.z + Math.sin(angleToPlayer) * minDist;
                     }
                 }
                 
@@ -1096,11 +1126,25 @@
         
         // --- ОСНОВНОЙ ЦИКЛ ---
         let lastTime = performance.now() / 1000;
+        let frameCount = 0;
+        let fpsTime = 0;
+        const fpsElement = document.getElementById('fps-counter');
+        
         function gameLoop() {
             const now = performance.now() / 1000;
             let dt = Math.min(0.033, now - lastTime);
             if (dt < 0) dt = 0.016;
             lastTime = now;
+            
+            // Счётчик FPS
+            frameCount++;
+            fpsTime += dt;
+            if (fpsTime >= 0.5) {
+                const fps = Math.round(frameCount / fpsTime);
+                fpsElement.textContent = 'FPS: ' + fps;
+                frameCount = 0;
+                fpsTime = 0;
+            }
             
             if (gameActive && !winFlag) {
                 updateMovement(dt);
