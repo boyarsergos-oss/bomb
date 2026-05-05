@@ -586,6 +586,45 @@
         function updateMovement(deltaTime) {
             if (!gameActive || winFlag) return;
             
+            // Обработка движения от джойстика (мобильное управление)
+            if (joystickActive && Math.abs(joystickValue.x) > 0.1 || Math.abs(joystickValue.y) > 0.1) {
+                const pos = characterGroup.position;
+                const moveSpeed = MOVE_SPEED * deltaTime;
+                
+                let newX = pos.x + joystickValue.x * moveSpeed;
+                let newZ = pos.z + joystickValue.y * moveSpeed;
+                
+                // Ограничиваем радиусом острова
+                const newDist = Math.hypot(newX, newZ);
+                if (newDist > 9.2) {
+                    newX = (newX / newDist) * 9.2;
+                    newZ = (newZ / newDist) * 9.2;
+                }
+                
+                // Поворот персонажа в направлении движения
+                const angle = Math.atan2(joystickValue.x, joystickValue.y);
+                characterGroup.rotation.y = angle;
+                
+                // Анимация ходьбы
+                walkCycle += deltaTime * 14;
+                const phase = Math.sin(walkCycle);
+                footL.rotation.x = phase * 0.7;
+                footR.rotation.x = -phase * 0.7;
+                wasMoving = true;
+                
+                // Проверка коллизий с платформой на втором уровне
+                if (currentLevel === 2 && characterGroup.position.y < 1.0) {
+                    const distToPlatform = Math.hypot(pos.x - platformGroup.position.x, pos.z - platformGroup.position.z);
+                    if (distToPlatform < 1.8 && !(newX > platformGroup.position.x - 1.5 && newX < platformGroup.position.x + 1.5 && newZ > platformGroup.position.z - 1.5 && newZ < platformGroup.position.z + 1.5)) {
+                        return;
+                    }
+                }
+                
+                characterGroup.position.x = newX;
+                characterGroup.position.z = newZ;
+                return;
+            }
+            
             // Проверка: стоит ли игрок на кнопке (третий уровень) - переключатель
             if (currentLevel === 3) {
                 const dx = characterGroup.position.x - buttonGroup.position.x;
