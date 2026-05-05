@@ -26,10 +26,60 @@
         }
         #restart-btn:hover { background: #2e6b2e; transform: scale(1.02); }
         * { user-select: none; }
+        
+        /* Подсказка для клона - интерактивная мышка */
+        #clone-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            pointer-events: none;
+            display: none;
+        }
+        #clone-hint svg {
+            width: 120px;
+            height: 120px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+        .mouse-body {
+            fill: #ffffff;
+            stroke: #333333;
+            stroke-width: 2;
+        }
+        .mouse-button {
+            fill: #cccccc;
+            opacity: 0.3;
+        }
+        .mouse-button.active {
+            fill: #4caf50;
+            opacity: 1;
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes pulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
     <button id="restart-btn">🌿 ПЕРЕЗАПУСТИТЬ</button>
+    
+    <!-- Интерактивная подсказка для клона -->
+    <div id="clone-hint">
+        <svg viewBox="0 0 100 140" xmlns="http://www.w3.org/2000/svg">
+            <!-- Корпус мыши -->
+            <ellipse class="mouse-body" cx="50" cy="70" rx="35" ry="50"/>
+            <!-- Левая кнопка -->
+            <path class="mouse-button left-btn" d="M 50 35 Q 50 20 35 20 Q 20 20 20 45 L 50 55 Z"/>
+            <!-- Правая кнопка -->
+            <path class="mouse-button right-btn" d="M 50 35 Q 50 20 65 20 Q 80 20 80 45 L 50 55 Z"/>
+            <!-- Колесо прокрутки -->
+            <ellipse cx="50" cy="55" rx="4" ry="6" fill="#999999"/>
+            <!-- Разделитель кнопок -->
+            <line x1="50" y1="35" x2="50" y2="55" stroke="#333333" stroke-width="1.5"/>
+        </svg>
+    </div>
 
     <script type="importmap">
         {
@@ -126,10 +176,18 @@
         let currentLevel = 1;
         const totalLevels = 4;
         
+        // ========== КЛОНЫ ДЛЯ ЧЕТВЕРТОГО УРОВНЯ ==========
+        let cloneGroup = null;
+        let showCloneHint = false;
+        let cloneActions = [];
+        let cloneActionIndex = 0;
+        
         // Флаг активации портала для третьего уровня (переключатель)
         let portalActivated = false;
         // Флаг для отслеживания состояния кнопки на 3 уровне
         let button3Pressed = false;
+        // Флаг для показа подсказки клона (4 уровень)
+        let cloneHintShown = false;
         
         // ========== ПЛАТФОРМА ДЛЯ ВТОРОГО УРОВНЯ ==========
         const platformGroup = new THREE.Group();
@@ -641,6 +699,7 @@
             winFlag = false;
             gameActive = true;
             portalActivated = false;
+            cloneHintShown = false;
             
             // Скрываем первую кнопку
             buttonGroup.visible = false;
@@ -678,12 +737,99 @@
             jumpProgress = 0;
             portalActivated = false;
             button3Pressed = false;
+            cloneHintShown = false;
             
             // Скрываем платформу, кнопки и возвращаем портал на первый уровень
             platformGroup.visible = false;
             buttonGroup.visible = false;
             button2Group.visible = false;
             portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+            
+            // Удаляем клона при рестарте
+            if (cloneGroup) {
+                islandGroup.remove(cloneGroup);
+                cloneGroup = null;
+            }
+        }
+        
+        // --- ФУНКЦИЯ СОЗДАНИЯ КЛОНА (4 уровень) ---
+        function createClone() {
+            if (currentLevel !== 4 || cloneGroup) return;
+            
+            // Создаём клона - копию игрока
+            cloneGroup = new THREE.Group();
+            
+            // Тело ярко-зелёное (полупрозрачное)
+            const bodyMat = new THREE.MeshStandardMaterial({ 
+                color: 0x6fcf6f, 
+                roughness: 0.3, 
+                metalness: 0.05, 
+                emissive: 0x226622, 
+                emissiveIntensity: 0.1,
+                transparent: true,
+                opacity: 0.7
+            });
+            const mainBody = new THREE.Mesh(new THREE.IcosahedronGeometry(0.58, 0), bodyMat);
+            mainBody.castShadow = true;
+            cloneGroup.add(mainBody);
+            
+            // Глаза
+            const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            const eyeBlack = new THREE.MeshStandardMaterial({ color: 0x000000 });
+            const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 24), eyeWhite);
+            leftEye.position.set(-0.32, 0.32, 0.58);
+            const rightEye = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 24), eyeWhite);
+            rightEye.position.set(0.32, 0.32, 0.58);
+            const leftPupil = new THREE.Mesh(new THREE.SphereGeometry(0.12, 24, 24), eyeBlack);
+            leftPupil.position.set(-0.32, 0.28, 0.78);
+            const rightPupil = new THREE.Mesh(new THREE.SphereGeometry(0.12, 24, 24), eyeBlack);
+            rightPupil.position.set(0.32, 0.28, 0.78);
+            cloneGroup.add(leftEye, rightEye, leftPupil, rightPupil);
+            
+            // Рога
+            const hornMat = new THREE.MeshStandardMaterial({ color: 0xccaa77, transparent: true, opacity: 0.8 });
+            const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.55, 6), hornMat);
+            hornL.position.set(-0.42, 0.68, 0.25);
+            hornL.rotation.z = -0.4;
+            const hornR = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.55, 6), hornMat);
+            hornR.position.set(0.42, 0.68, 0.25);
+            hornR.rotation.z = 0.4;
+            cloneGroup.add(hornL, hornR);
+            
+            // Хвост и ноги
+            const tail = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.6, 6), new THREE.MeshStandardMaterial({ color: 0x5cb85c, transparent: true, opacity: 0.7 }));
+            tail.position.set(0, -0.2, -0.75);
+            tail.rotation.x = 0.6;
+            cloneGroup.add(tail);
+            
+            const footMat = new THREE.MeshStandardMaterial({ color: 0x5cb85c, transparent: true, opacity: 0.7 });
+            const footL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.2, 0.35), footMat);
+            footL.position.set(-0.38, -0.45, 0.42);
+            const footR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.2, 0.35), footMat);
+            footR.position.set(0.38, -0.45, 0.42);
+            cloneGroup.add(footL, footR);
+            
+            // Ушки
+            const earMat = new THREE.MeshStandardMaterial({ color: 0x7ed37e, transparent: true, opacity: 0.8 });
+            const earL = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.35, 6), earMat);
+            earL.position.set(-0.54, 0.58, 0.15);
+            earL.rotation.z = -0.2;
+            const earR = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.35, 6), earMat);
+            earR.position.set(0.54, 0.58, 0.15);
+            earR.rotation.z = 0.2;
+            cloneGroup.add(earL, earR);
+            
+            // Позиция клона - на спавне
+            cloneGroup.position.set(Math.cos(startAngle) * startRadius, 0.45, Math.sin(startAngle) * startRadius);
+            cloneGroup.rotation.y = characterGroup.rotation.y;
+            cloneGroup.castShadow = true;
+            islandGroup.add(cloneGroup);
+            
+            // Записываем действия клона
+            cloneActions = [];
+            cloneActionIndex = 0;
+            
+            console.log('👥 Клон создан!');
         }
         
         // --- МАРКЕР КЛИКА ---
@@ -820,6 +966,21 @@
             camera.lookAt(characterGroup.position);
         }
         
+        // --- ПОДСКАЗКА ДЛЯ КЛОНА ---
+        function showCloneHintUI(show) {
+            const hintEl = document.getElementById('clone-hint');
+            if (show) {
+                hintEl.style.display = 'block';
+                // Анимация правой кнопки мыши
+                const rightBtn = hintEl.querySelector('.right-btn');
+                rightBtn.classList.add('active');
+            } else {
+                hintEl.style.display = 'none';
+                const rightBtn = hintEl.querySelector('.right-btn');
+                rightBtn.classList.remove('active');
+            }
+        }
+        
         // --- ОСНОВНОЙ ЦИКЛ ---
         let lastTime = performance.now() / 1000;
         function gameLoop() {
@@ -831,6 +992,12 @@
             if (gameActive && !winFlag) {
                 updateMovement(dt);
                 checkWin();
+                
+                // Показываем подсказку на 4 уровне когда игрок стоит на кнопке и клона ещё нет
+                if (currentLevel === 4 && portalActivated && !cloneGroup && !cloneHintShown) {
+                    showCloneHintUI(true);
+                    cloneHintShown = true;
+                }
             } else {
                 updateIdle(dt);
             }
@@ -846,7 +1013,17 @@
         
         // --- ЗАПУСК ---
         window.addEventListener('click', onCanvasClick);
-        window.addEventListener('contextmenu', e => e.preventDefault());
+        
+        // Обработка ПКМ для создания клона на 4 уровне
+        window.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            
+            // Только на 4 уровне, когда игрок активировал портал (стоит на кнопке)
+            if (currentLevel === 4 && portalActivated && !cloneGroup && gameActive) {
+                createClone();
+            }
+        });
+        
         document.getElementById('restart-btn').addEventListener('click', () => restart());
         
         createClickMarker();
