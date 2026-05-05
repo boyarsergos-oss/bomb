@@ -25,10 +25,55 @@
             border: 1px solid #aaffaa;
         }
         #restart-btn:hover { background: #2e6b2e; transform: scale(1.02); }
+        
+        /* Уровень selector */
+        #level-selector {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+        }
+        .level-btn {
+            background: #4c8b4c;
+            border: 1px solid #aaffaa;
+            color: #ffffcc;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: inherit;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+        .level-btn:hover {
+            background: #2e6b2e;
+            transform: scale(1.05);
+        }
+        .level-btn.active {
+            background: #ffcc00;
+            color: #333;
+            border-color: #ffee88;
+            box-shadow: 0 0 15px rgba(255, 204, 0, 0.6);
+        }
+        
         * { user-select: none; }
     </style>
 </head>
 <body>
+    <div id="level-selector">
+        <button class="level-btn active" data-level="1">🌱 Уровень 1</button>
+        <button class="level-btn" data-level="2">🏝️ Уровень 2</button>
+        <button class="level-btn" data-level="3">✨ Уровень 3</button>
+        <button class="level-btn" data-level="4">🌟 Уровень 4</button>
+    </div>
     <button id="restart-btn">🌿 ПЕРЕЗАПУСТИТЬ</button>
 
     <script type="importmap">
@@ -377,6 +422,7 @@
         
         function onCanvasClick(event) {
             if (event.target.closest('#restart-btn')) return;
+            if (event.target.closest('#level-selector')) return;
             if (!gameActive || winFlag) return;
             
             const worldPos = getMouseGroundPos(event);
@@ -684,6 +730,10 @@
             buttonGroup.visible = false;
             button2Group.visible = false;
             portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+            
+            // Обновляем UI кнопок уровня
+            document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.level-btn[data-level="1"]').classList.add('active');
         }
         
         // --- МАРКЕР КЛИКА ---
@@ -848,6 +898,50 @@
         window.addEventListener('click', onCanvasClick);
         window.addEventListener('contextmenu', e => e.preventDefault());
         document.getElementById('restart-btn').addEventListener('click', () => restart());
+        
+        // Обработчик выбора уровня
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const selectedLevel = parseInt(e.target.dataset.level);
+                if (selectedLevel !== currentLevel) {
+                    // Обновляем активную кнопку
+                    document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    
+                    // Устанавливаем уровень и сбрасываем состояние
+                    currentLevel = selectedLevel;
+                    portalActivated = false;
+                    button3Pressed = false;
+                    
+                    // Настраиваем видимость объектов в зависимости от уровня
+                    platformGroup.visible = (currentLevel === 2 || currentLevel === 3 || currentLevel === 4);
+                    buttonGroup.visible = (currentLevel === 3 || currentLevel === 4);
+                    button2Group.visible = (currentLevel === 4);
+                    
+                    // Позиционируем портал в зависимости от уровня
+                    if (currentLevel === 1) {
+                        portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+                    } else if (currentLevel === 2) {
+                        portalGroup.position.set(
+                            platformGroup.position.x + Math.cos(platformAngle) * 1.5,
+                            platformPortalY,
+                            platformGroup.position.z + Math.sin(platformAngle) * 1.5
+                        );
+                    } else {
+                        portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+                    }
+                    
+                    // Возвращаем игрока на стартовую позицию
+                    characterGroup.position.set(Math.cos(startAngle) * startRadius, 0.45, Math.sin(startAngle) * startRadius);
+                    characterGroup.rotation.y = 0;
+                    targetPoint = null;
+                    autoJumpActive = false;
+                    jumpProgress = 0;
+                    
+                    console.log(`🎮 Переключен на Уровень ${currentLevel}`);
+                }
+            });
+        });
         
         createClickMarker();
         lastTime = performance.now() / 1000;
