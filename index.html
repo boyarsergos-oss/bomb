@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Зелёный остров — Волшебный портал</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'Quicksand', system-ui, sans-serif; }
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', 'Quicksand', system-ui, sans-serif; touch-action: none; }
         #restart-btn {
             position: absolute;
             bottom: 30px;
@@ -23,9 +23,11 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             transition: transform 0.1s, background 0.2s;
             border: 1px solid #aaffaa;
+            -webkit-tap-highlight-color: transparent;
         }
         #restart-btn:hover { background: #2e6b2e; transform: scale(1.02); }
-        * { user-select: none; }
+        #restart-btn:active { transform: scale(0.95); }
+        * { user-select: none; -webkit-user-select: none; }
         
         /* Кнопка создания клона (видна только на 4 уровне) */
         #clone-btn {
@@ -46,8 +48,10 @@
             transition: transform 0.1s, background 0.2s, opacity 0.3s;
             border: 1px solid #ffaaff;
             display: none;
+            -webkit-tap-highlight-color: transparent;
         }
         #clone-btn:hover { background: #6b2e6b; transform: scale(1.02); }
+        #clone-btn:active { transform: scale(0.95); }
         #clone-btn.visible { display: block; }
         
         /* Подсказка с изображением мыши */
@@ -86,6 +90,84 @@
             from { opacity: 0.6; }
             to { opacity: 1; }
         }
+        
+        /* Мобильный контроллер */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 15;
+            display: none;
+            pointer-events: none;
+        }
+        #mobile-controls.visible { display: block; }
+        
+        .joystick-base {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            position: relative;
+            pointer-events: auto;
+            backdrop-filter: blur(4px);
+        }
+        
+        .joystick-stick {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        /* Кнопка действия для мобильных */
+        #mobile-action-btn {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 100, 100, 0.6);
+            border: 3px solid rgba(255, 150, 150, 0.8);
+            border-radius: 50%;
+            z-index: 15;
+            display: none;
+            pointer-events: auto;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #mobile-action-btn.visible { display: block; }
+        #mobile-action-btn:active {
+            background: rgba(255, 80, 80, 0.8);
+            transform: scale(0.95);
+        }
+        
+        /* Адаптация под маленькие экраны */
+        @media (max-width: 600px) {
+            #restart-btn {
+                bottom: 10px;
+                right: 10px;
+                padding: 10px 18px;
+                font-size: 14px;
+            }
+            #clone-btn {
+                bottom: 10px;
+                left: 10px;
+                padding: 10px 18px;
+                font-size: 14px;
+            }
+            #mobile-action-btn {
+                bottom: 20px;
+                right: 20px;
+                width: 60px;
+                height: 60px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -93,6 +175,16 @@
     
     <!-- Кнопка создания клона -->
     <button id="clone-btn">👥 СОЗДАТЬ КЛОНА</button>
+    
+    <!-- Мобильный джойстик -->
+    <div id="mobile-controls">
+        <div class="joystick-base" id="joystick-base">
+            <div class="joystick-stick" id="joystick-stick"></div>
+        </div>
+    </div>
+    
+    <!-- Кнопка действия для мобильных -->
+    <div id="mobile-action-btn"></div>
     
     <!-- Подсказка с изображением мыши -->
     <div id="clone-prompt">
@@ -823,6 +915,10 @@
             document.getElementById('clone-btn').classList.remove('visible');
             document.getElementById('clone-prompt').classList.remove('visible');
             portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+            
+            // Сбрасываем мобильное управление
+            mobileTargetPoint = null;
+            joystickValue = { x: 0, y: 0 };
         }
         
         // --- МАРКЕР КЛИКА ---
@@ -987,6 +1083,16 @@
         }
         
         // --- ЗАПУСК ---
+        
+        // Определение мобильного устройства
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                         (window.innerWidth <= 768 && 'ontouchstart' in window);
+        
+        if (isMobile) {
+            document.getElementById('mobile-controls').classList.add('visible');
+            document.getElementById('mobile-action-btn').classList.add('visible');
+        }
+        
         window.addEventListener('click', onCanvasClick);
         
         // Обработка контекстного меню (ПКМ) для создания клона
@@ -999,6 +1105,9 @@
             }
         });
         
+        // Для мобильных: долгое нажатие на кнопку действия создаёт клона
+        // (удалено - теперь используется actionBtnPressTimer в основном обработчике)
+        
         document.getElementById('restart-btn').addEventListener('click', () => restart());
         
         // Кнопка создания клона
@@ -1010,6 +1119,180 @@
             }
         });
         
+        // ========== МОБИЛЬНОЕ УПРАВЛЕНИЕ (ДЖОЙСТИК + КНОПКА) ==========
+        let joystickActive = false;
+        let joystickCenter = { x: 0, y: 0 };
+        let joystickMaxRadius = 35;
+        let joystickValue = { x: 0, y: 0 };
+        let mobileTargetPoint = null;
+        
+        const joystickBase = document.getElementById('joystick-base');
+        const joystickStick = document.getElementById('joystick-stick');
+        const mobileActionBtn = document.getElementById('mobile-action-btn');
+        
+        // Джойстик события
+        joystickBase.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.changedTouches[0];
+            const rect = joystickBase.getBoundingClientRect();
+            joystickCenter = {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            };
+            joystickActive = true;
+            updateJoystick(touch);
+        }, { passive: false });
+        
+        joystickBase.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (joystickActive) {
+                const touch = e.changedTouches[0];
+                updateJoystick(touch);
+            }
+        }, { passive: false });
+        
+        joystickBase.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            joystickActive = false;
+            joystickStick.style.transform = `translate(-50%, -50%)`;
+            joystickValue = { x: 0, y: 0 };
+            mobileTargetPoint = null;
+        }, { passive: false });
+        
+        function updateJoystick(touch) {
+            const dx = touch.clientX - joystickCenter.x;
+            const dy = touch.clientY - joystickCenter.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            
+            const clampedDistance = Math.min(distance, joystickMaxRadius);
+            const stickX = Math.cos(angle) * clampedDistance;
+            const stickY = Math.sin(angle) * clampedDistance;
+            
+            joystickStick.style.transform = `translate(calc(-50% + ${stickX}px), calc(-50% + ${stickY}px))`;
+            
+            joystickValue = {
+                x: stickX / joystickMaxRadius,
+                y: stickY / joystickMaxRadius
+            };
+            
+            // Обновляем целевую точку для движения персонажа
+            if (gameActive && !winFlag) {
+                const charPos = characterGroup.position;
+                const moveSpeed = 0.15;
+                const targetOffset = 2.0;
+                
+                mobileTargetPoint = new THREE.Vector3(
+                    charPos.x + joystickValue.x * targetOffset,
+                    0,
+                    charPos.z + joystickValue.y * targetOffset
+                );
+                
+                // Ограничиваем радиусом острова
+                let dist = Math.hypot(mobileTargetPoint.x, mobileTargetPoint.z);
+                if (dist > 9.2) {
+                    mobileTargetPoint.x = (mobileTargetPoint.x / dist) * 9.1;
+                    mobileTargetPoint.z = (mobileTargetPoint.z / dist) * 9.1;
+                }
+            }
+        }
+        
+        // Кнопка действия для мобильных (аналог клика)
+        let actionBtnPressTimer = null;
+        mobileActionBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            
+            // Если показана подсказка для клона - запускаем таймер долгого нажатия
+            if (showClonePrompt && !cloneActive && currentLevel === 4) {
+                actionBtnPressTimer = setTimeout(() => {
+                    createClone();
+                    actionBtnPressTimer = null;
+                }, 800);
+                return;
+            }
+            
+            // Обычное действие - установка точки назначения
+            if (mobileTargetPoint && gameActive && !winFlag) {
+                targetPoint = mobileTargetPoint.clone();
+                
+                // Записываем действие в историю для клона (только на 4 уровне и если клон ещё не создан)
+                if (currentLevel === 4 && !cloneActive) {
+                    const dx = characterGroup.position.x - button2Group.position.x;
+                    const dz = characterGroup.position.z - button2Group.position.z;
+                    const distToButton = Math.sqrt(dx*dx + dz*dz);
+                    const onButton = distToButton < 0.8;
+                    
+                    actionHistory.push({
+                        position: new THREE.Vector3(targetPoint.x, 0, targetPoint.z),
+                        time: Date.now(),
+                        onButton: onButton
+                    });
+                }
+            }
+        }, { passive: false });
+        
+        mobileActionBtn.addEventListener('touchend', (e) => {
+            if (actionBtnPressTimer) {
+                clearTimeout(actionBtnPressTimer);
+                actionBtnPressTimer = null;
+            }
+        });
+        
+        mobileActionBtn.addEventListener('touchmove', (e) => {
+            if (actionBtnPressTimer) {
+                clearTimeout(actionBtnPressTimer);
+                actionBtnPressTimer = null;
+            }
+        });
+        
+        // Также поддерживаем свайпы по экрану для перемещения
+        let touchStartPos = null;
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            if (e.target.closest('#mobile-controls') || e.target.closest('#mobile-action-btn')) return;
+            touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }, { passive: true });
+        
+        renderer.domElement.addEventListener('touchend', (e) => {
+            if (!touchStartPos || e.target.closest('#mobile-controls') || e.target.closest('#mobile-action-btn')) return;
+            
+            const touchEnd = e.changedTouches[0];
+            const dx = touchEnd.clientX - touchStartPos.x;
+            const dy = touchEnd.clientY - touchStartPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Если это был короткий тап (не свайп) - считаем как клик
+            if (distance < 10 && gameActive && !winFlag) {
+                const worldPos = getMouseGroundPos({
+                    clientX: touchEnd.clientX,
+                    clientY: touchEnd.clientY
+                });
+                if (worldPos) {
+                    let dist = Math.hypot(worldPos.x, worldPos.z);
+                    if (dist > 9.2) {
+                        worldPos.x = (worldPos.x / dist) * 9.1;
+                        worldPos.z = (worldPos.z / dist) * 9.1;
+                    }
+                    targetPoint = new THREE.Vector3(worldPos.x, 0, worldPos.z);
+                    
+                    // Записываем действие в историю для клона
+                    if (currentLevel === 4 && !cloneActive) {
+                        const charDx = characterGroup.position.x - button2Group.position.x;
+                        const charDz = characterGroup.position.z - button2Group.position.z;
+                        const distToButton = Math.sqrt(charDx*charDx + charDz*charDz);
+                        const onButton = distToButton < 0.8;
+                        
+                        actionHistory.push({
+                            position: new THREE.Vector3(worldPos.x, 0, worldPos.z),
+                            time: Date.now(),
+                            onButton: onButton
+                        });
+                    }
+                }
+            }
+            
+            touchStartPos = null;
+        }, { passive: true });
+        
         createClickMarker();
         lastTime = performance.now() / 1000;
         gameLoop();
@@ -1018,6 +1301,15 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Обновляем позицию джойстика при ресайзе
+            if (isMobile && joystickBase) {
+                const rect = joystickBase.getBoundingClientRect();
+                joystickCenter = {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+            }
         });
         
         // ========== ФУНКЦИИ ДЛЯ КЛОНОВ ==========
