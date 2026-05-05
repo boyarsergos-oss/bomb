@@ -908,27 +908,45 @@
                     document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
                     e.target.classList.add('active');
                     
-                    // Устанавливаем уровень и сбрасываем состояние
+                    // Устанавливаем уровень и полностью сбрасываем состояние
                     currentLevel = selectedLevel;
                     portalActivated = false;
                     button3Pressed = false;
                     
-                    // Настраиваем видимость объектов в зависимости от уровня
-                    platformGroup.visible = (currentLevel === 2 || currentLevel === 3 || currentLevel === 4);
-                    buttonGroup.visible = (currentLevel === 3 || currentLevel === 4);
-                    button2Group.visible = (currentLevel === 4);
+                    // Сбрасываем все объекты в исходное состояние перед настройкой уровня
+                    platformGroup.visible = false;
+                    buttonGroup.visible = false;
+                    button2Group.visible = false;
                     
-                    // Позиционируем портал в зависимости от уровня
+                    // Восстанавливаем портал на позицию по умолчанию
+                    portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+                    outerRing.material.emissive.setHex(0xff0000);
+                    midRing.material.emissive.setHex(0xff2200);
+                    innerRing.material.emissive.setHex(0xff4400);
+                    portalCore.material.emissive.setHex(0xff1100);
+                    
+                    // Настраиваем видимость и позиции объектов в зависимости от уровня
                     if (currentLevel === 1) {
-                        portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+                        // Только портал на острове
+                        portalGroup.visible = true;
                     } else if (currentLevel === 2) {
+                        // Платформа + портал на платформе
+                        platformGroup.visible = true;
+                        portalGroup.visible = true;
                         portalGroup.position.set(
                             platformGroup.position.x + Math.cos(platformAngle) * 1.5,
                             platformPortalY,
                             platformGroup.position.z + Math.sin(platformAngle) * 1.5
                         );
-                    } else {
-                        portalGroup.position.set(Math.cos(portalAngle) * portalRadius, 0.2, Math.sin(portalAngle) * portalRadius);
+                    } else if (currentLevel === 3) {
+                        // Портал на острове + кнопка активации
+                        portalGroup.visible = true;
+                        buttonGroup.visible = true;
+                    } else if (currentLevel === 4) {
+                        // Портал на острове + две кнопки
+                        portalGroup.visible = true;
+                        buttonGroup.visible = true;
+                        button2Group.visible = true;
                     }
                     
                     // Возвращаем игрока на стартовую позицию
