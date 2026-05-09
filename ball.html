@@ -291,36 +291,55 @@
                 if (count >= 7) setTimeout(() => playTone(base * 2, 'triangle', 0.15, 0.2), 120);
             }
 
-            function playErrorSound() { playTone(150, 'sawtooth', 0.2, 0.2); }
-
-            function playSadMusic() {
+            function playErrorSound() { 
+                // Мягкий звук отмены - нисходящий свист
                 const ctx = getAudioContext();
                 const now = ctx.currentTime;
-                const sadNotes = [220, 196, 174.6, 164.8, 146.8, 130.8];
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            function playSadMusic() {
+                // Мелодичный грустный звук поражения в стиле игры
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const sadNotes = [329.63, 293.66, 261.63, 246.94, 220, 196];
                 sadNotes.forEach((freq, i) => {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(freq, now + i * 0.2);
-                    gain.gain.setValueAtTime(0.12, now + i * 0.2);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.2 + 0.9);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.18);
+                    gain.gain.setValueAtTime(0.15, now + i * 0.18);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.5);
                     osc.connect(gain);
                     gain.connect(ctx.destination);
-                    osc.start(now + i * 0.2);
-                    osc.stop(now + i * 0.2 + 0.9);
+                    osc.start(now + i * 0.18);
+                    osc.stop(now + i * 0.18 + 0.5);
                 });
+                // Добавляем аккорд в конце для завершённости
                 setTimeout(() => {
-                    const osc2 = ctx.createOscillator();
-                    const gain2 = ctx.createGain();
-                    osc2.type = 'sine';
-                    osc2.frequency.setValueAtTime(261.63, ctx.currentTime);
-                    gain2.gain.setValueAtTime(0.07, ctx.currentTime);
-                    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-                    osc2.connect(gain2);
-                    gain2.connect(ctx.destination);
-                    osc2.start(ctx.currentTime);
-                    osc2.stop(ctx.currentTime + 1.2);
-                }, 400);
+                    [261.63, 311.13, 392].forEach((freq, i) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(ctx.currentTime);
+                        osc.stop(ctx.currentTime + 0.8);
+                    });
+                }, 900);
             }
 
             function playLevelCompleteSound() {
@@ -342,49 +361,49 @@
             }
 
             function playLineSound(length) {
+                // Приятный звук рисования маркером/фломастером
                 const ctx = getAudioContext();
                 const now = ctx.currentTime;
                 
-                // Создаем шум для имитации трения фломастера о бумагу
-                const bufferSize = ctx.sampleRate * 0.15;
-                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-                const data = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) {
-                    data[i] = (Math.random() * 2 - 1) * 0.3;
-                }
-                
-                const noise = ctx.createBufferSource();
-                noise.buffer = buffer;
-                
-                // Фильтр низких частот для смягчения шума
-                const filter = ctx.createBiquadFilter();
-                filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(600, now);
-                filter.frequency.linearRampToValueAtTime(800 + length * 40, now + 0.05);
-                
-                const gain = ctx.createGain();
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-                
-                noise.connect(filter);
-                filter.connect(gain);
-                gain.connect(ctx.destination);
-                noise.start(now);
-                
-                // Добавляем мягкий тон для обратной связи с плавным входом
+                // Основной тон - мягкий, похожий на трение
                 const osc = ctx.createOscillator();
                 const oscGain = ctx.createGain();
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(180, now);
-                osc.frequency.linearRampToValueAtTime(200 + length * 15, now + 0.06);
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(250 + length * 10, now + 0.08);
                 oscGain.gain.setValueAtTime(0, now);
-                oscGain.gain.linearRampToValueAtTime(0.05, now + 0.03);
+                oscGain.gain.linearRampToValueAtTime(0.06, now + 0.02);
                 oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
                 osc.connect(oscGain);
                 oscGain.connect(ctx.destination);
                 osc.start(now);
                 osc.stop(now + 0.1);
+                
+                // Добавляем лёгкий шум для эффекта трения
+                const bufferSize = ctx.sampleRate * 0.12;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * 0.15;
+                }
+                
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(800, now);
+                filter.Q.value = 1;
+                
+                const noiseGain = ctx.createGain();
+                noiseGain.gain.setValueAtTime(0, now);
+                noiseGain.gain.linearRampToValueAtTime(0.04, now + 0.02);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(ctx.destination);
+                noise.start(now);
             }
             function playShuffleSound() { playTone(500, 'triangle', 0.2, 0.2); }
 
