@@ -410,7 +410,7 @@
                     
                     if (p.sparkle && Math.random() > 0.7) {
                         // Эффект мерцания
-                        ctx.shadowBlur = 15;
+                        ctx.shadowBlur = 7;
                         ctx.shadowColor = p.color;
                     } else {
                         ctx.shadowBlur = 0;
@@ -463,7 +463,7 @@
                     ctx.scale(t.scale, t.scale);
                     
                     // Тень текста
-                    ctx.shadowBlur = 10;
+                    ctx.shadowBlur = 5;
                     ctx.shadowColor = t.color;
                     ctx.fillStyle = '#ffffff';
                     ctx.font = 'bold 22px "Segoe UI"';
@@ -1104,7 +1104,7 @@
                     ctx.strokeStyle = currentColor;
                     ctx.lineWidth = CELL_SIZE * 0.75 * pulse;
                     ctx.lineCap = "round"; ctx.lineJoin = "round";
-                    ctx.shadowBlur = 35; ctx.shadowColor = currentColor;
+                    ctx.shadowBlur = 17; ctx.shadowColor = currentColor;
                     ctx.globalAlpha = 0.4;
                     ctx.beginPath();
                     ctx.moveTo(currentPath[0].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[0].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
@@ -1115,13 +1115,13 @@
                     // Внутренняя яркая линия
                     ctx.globalAlpha = 0.9;
                     ctx.lineWidth = CELL_SIZE * 0.45 * pulse;
-                    ctx.shadowBlur = 20; ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#ffffff';
                     ctx.stroke();
                     
                     // Центральная белая линия
                     ctx.globalAlpha = 1.0;
                     ctx.lineWidth = CELL_SIZE * 0.2;
-                    ctx.shadowBlur = 10; ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 5; ctx.shadowColor = '#ffffff';
                     ctx.strokeStyle = '#ffffff';
                     ctx.stroke();
                     
@@ -1155,7 +1155,7 @@
                             const glowIntensity = isBad ? (0.8 + 0.3 * Math.sin(pulsePhase * 2)) : 0.6;
                             
                             // Внешнее свечение
-                            ctx.shadowBlur = isBad ? 30 : 20;
+                            ctx.shadowBlur = isBad ? 15 : 10;
                             ctx.shadowColor = cell.color;
                             
                             // Градиент кристалла
