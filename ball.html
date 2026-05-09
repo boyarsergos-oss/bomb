@@ -219,7 +219,7 @@
 <body>
     <div class="bg-particles" id="bgParticles"></div>
     <div class="victory-overlay" id="victoryOverlay"></div>
-    <h1>✨ CRYSTAL CONNECT ✨</h1>
+    <h1 id="levelTitle">Уровень 1</h1>
     <canvas id="game"></canvas>
     <div class="controls">
         <button onclick="resetFullGame()">🆕 Новая игра</button>
@@ -950,6 +950,10 @@
                         grid[i][j] = newGrid[i]?.[j] ? { ...newGrid[i][j] } : null;
                 currentPath = null; currentColor = null;
                 if (!keepBaseScore) baseScoreForLevel = score;
+                
+                // Обновляем заголовок с текущим уровнем
+                document.getElementById('levelTitle').textContent = `Уровень ${level}`;
+                
                 updateStatusMessage(); draw(); 
                 historyStack = [];
                 lossHighlightColors.clear();
