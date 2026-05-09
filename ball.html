@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Соединяй 3+ — яркие контрастные цвета</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #1e1e2e;
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            touch-action: none;
+            overflow: hidden;
+        }
+        h1 { margin: 10px 0 5px; font-size: 1.8rem; letter-spacing: 1px; }
+        canvas {
+            border: 4px solid #4a4a6a;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #2a2a3a;
+            max-width: 100%;
+            max-height: 65vh;
+            cursor: pointer;
+        }
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 10px 18px;
+            font-size: 14px;
+            background: linear-gradient(135deg, #6e6ef0, #4a4ac0);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        button:hover { background: linear-gradient(135deg, #8a8af5, #6a6ae0); transform: scale(0.96);}
+        button:active { transform: scale(0.92); }
+        .info {
+            margin-top: 10px;
+            font-size: 18px;
+            text-align: center;
+            background: #2a2a3a;
+            padding: 8px 18px;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+        }
+        @media (max-width: 550px) {
+            .info { font-size: 13px; }
+            button { padding: 6px 12px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>✨ СОЕДИНЯЙ 3+ ✨</h1>
+    <canvas id="game"></canvas>
+    <div class="controls">
+        <button onclick="resetFullGame()">🆕 Новая игра</button>
+        <button onclick="undoLastMove()">↩️ Отменить ход</button>
+        <button onclick="restartLevel()">🔄 Рестарт уровня</button>
+        <button onclick="resetCurrentLevel()">⚠️ Сброс уровня</button>
+        <button onclick="shuffleField()">🃏 Перемешать</button>
+    </div>
+    <div class="info" id="status">⚡ Соединяйте 3+ шарика (линию можно проводить назад) ⚡</div>
+
+    <script>
+        (function(){
+            const canvas = document.getElementById('game');
+            const ctx = canvas.getContext('2d');
+            
+            let currentGridSize = 8;
+            let CELL_SIZE = 60;
+            const OFFSET = 20;
+            
+            let grid = [];
+            let currentPath = null;
+            let currentColor = null;
+            let score = 0;
+            let currentLevel = 1;
+            let baseScoreForLevel = 0;
+            
+            let initialLevelGrid = null;
+            
+            let historyStack = [];
+            const MAX_HISTORY = 30;
+            let isRestartingDueToLoss = false;
+            
+            let pulsePhase = 0;
+            let lossHighlightColors = new Set();
+
+            // ========== ЗВУК ==========
+            let audioCtx = null;
+            function getAudioContext() {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                return audioCtx;
+            }
+
+            function playTone(freq, type = 'sine', duration = 0.15, volume = 0.3, rampDown = true) {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(volume, ctx.currentTime);
+                if (rampDown) gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                else gain.gain.linearRampToValueAtTime(0, ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + duration);
+            }
+
+            function playPickupSound(count) {
+                const base = 400 + count * 40;
+                playTone(base, 'sine', 0.12, 0.25);
+                setTimeout(() => playTone(base * 1.5, 'sine', 0.08, 0.15), 60);
+                if (count >= 7) setTimeout(() => playTone(base * 2, 'triangle', 0.15, 0.2), 120);
+            }
+
+            function playErrorSound() { playTone(150, 'sawtooth', 0.2, 0.2); }
+
+            function playSadMusic() {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const sadNotes = [220, 196, 174.6, 164.8, 146.8, 130.8];
+                sadNotes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.2);
+                    gain.gain.setValueAtTime(0.12, now + i * 0.2);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.2 + 0.9);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + i * 0.2);
+                    osc.stop(now + i * 0.2 + 0.9);
+                });
+                setTimeout(() => {
+                    const osc2 = ctx.createOscillator();
+                    const gain2 = ctx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(261.63, ctx.currentTime);
+                    gain2.gain.setValueAtTime(0.07, ctx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    osc2.start(ctx.currentTime);
+                    osc2.stop(ctx.currentTime + 1.2);
+                }, 400);
+            }
+
+            function playLevelCompleteSound() {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.5];
+                notes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.15);
+                    gain.gain.setValueAtTime(0.3, now + i * 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + i * 0.15);
+                    osc.stop(now + i * 0.15 + 0.5);
+                });
+            }
+
+            function playLineSound(length) { playTone(300 + length * 30, 'sine', 0.06, 0.15); }
+            function playShuffleSound() { playTone(500, 'triangle', 0.2, 0.2); }
+
+            // ========== ЧАСТИЦЫ ==========
+            let activeParticles = [];
+            let levelCompleteParticles = [];
+
+            function spawnParticles(x, y, color, count = 12) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1.5 + Math.random() * 3;
+                    activeParticles.push({
+                        x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                        life: 1.0, decay: 0.02 + Math.random() * 0.03, size: 2 + Math.random() * 4, color
+                    });
+                }
+            }
+
+            function spawnLevelCompleteFireworks() {
+                for (let i = 0; i < 60; i++) {
+                    const x = OFFSET + Math.random() * (currentGridSize * CELL_SIZE);
+                    const y = OFFSET + Math.random() * (currentGridSize * CELL_SIZE);
+                    const color = colorsPalette[Math.floor(Math.random() * colorsPalette.length)];
+                    levelCompleteParticles.push({
+                        x, y, vx: (Math.random() - 0.5) * 5, vy: -Math.random() * 5 - 2,
+                        life: 1.0, decay: 0.015 + Math.random() * 0.02, size: 3 + Math.random() * 5, color
+                    });
+                }
+            }
+
+            function updateParticles() {
+                for (let p of activeParticles) { p.x += p.vx; p.y += p.vy; p.life -= p.decay; p.size *= 0.98; }
+                activeParticles = activeParticles.filter(p => p.life > 0);
+                for (let p of levelCompleteParticles) { p.x += p.vx; p.y += p.vy; p.life -= p.decay; p.vy += 0.1; }
+                levelCompleteParticles = levelCompleteParticles.filter(p => p.life > 0);
+            }
+
+            function drawParticles(ctx) {
+                for (let p of [...activeParticles, ...levelCompleteParticles]) {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+            let floatingTexts = [];
+            function addFloatingText(x, y, text, color = 'white') {
+                floatingTexts.push({ x, y, text, color, life: 1.0, vy: -2 });
+            }
+            function updateFloatingTexts() {
+                for (let t of floatingTexts) { t.y += t.vy; t.life -= 0.02; }
+                floatingTexts = floatingTexts.filter(t => t.life > 0);
+            }
+            function drawFloatingTexts(ctx) {
+                for (let t of floatingTexts) {
+                    ctx.globalAlpha = t.life;
+                    ctx.fillStyle = t.color;
+                    ctx.font = 'bold 18px "Segoe UI"';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(t.text, t.x, t.y);
+                }
+                ctx.globalAlpha = 1.0;
+            }
+
+            // ========== ИСТОРИЯ ==========
+            function pushToHistory() {
+                const snapshot = grid.map(row => row.map(cell => cell ? { ...cell } : null));
+                historyStack.push({ gridSnapshot: snapshot, scoreSnapshot: score });
+                if (historyStack.length > MAX_HISTORY) historyStack.shift();
+            }
+            
+            function undoLastMove() {
+                if (historyStack.length === 0) {
+                    document.getElementById('status').innerHTML = `❌ Нет ходов для отмены | Уровень ${currentLevel} | Счёт: ${score}`;
+                    setTimeout(() => updateStatusMessage(), 1200);
+                    return;
+                }
+                const last = historyStack.pop();
+                for (let i = 0; i < currentGridSize; i++)
+                    for (let j = 0; j < currentGridSize; j++)
+                        grid[i][j] = last.gridSnapshot[i][j] ? { ...last.gridSnapshot[i][j] } : null;
+                score = last.scoreSnapshot;
+                currentPath = null; currentColor = null;
+                updateStatusMessage(); draw();
+                document.getElementById('status').innerHTML = `↩️ Ход отменён | Уровень ${currentLevel} | Счёт: ${score}`;
+                playTone(300, 'triangle', 0.1, 0.2);
+                setTimeout(() => updateStatusMessage(), 1500);
+            }
+            
+            // ========== ПЕРЕМЕШИВАНИЕ (равномерно по полю) ==========
+            function shuffleField() {
+                pushToHistory();
+                let balls = [];
+                for (let y = 0; y < currentGridSize; y++) {
+                    for (let x = 0; x < currentGridSize; x++) {
+                        if (grid[y][x] && grid[y][x].isDot) {
+                            balls.push({ color: grid[y][x].color });
+                        }
+                    }
+                }
+                let positions = [];
+                for (let y = 0; y < currentGridSize; y++) {
+                    for (let x = 0; x < currentGridSize; x++) {
+                        positions.push({ x, y });
+                    }
+                }
+                for (let i = positions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [positions[i], positions[j]] = [positions[j], positions[i]];
+                }
+                for (let y = 0; y < currentGridSize; y++) {
+                    for (let x = 0; x < currentGridSize; x++) {
+                        grid[y][x] = null;
+                    }
+                }
+                for (let i = 0; i < balls.length; i++) {
+                    const pos = positions[i];
+                    grid[pos.y][pos.x] = { color: balls[i].color, isDot: true };
+                }
+                currentPath = null; currentColor = null;
+                draw();
+                playShuffleSound();
+                document.getElementById('status').innerHTML = `🃏 Шарики перемешаны по всему полю | Уровень ${currentLevel} | Счёт: ${score}`;
+                setTimeout(() => updateStatusMessage(), 1500);
+            }
+            
+            function resizeCanvas() {
+                let maxSize = Math.min(window.innerWidth - 40, window.innerHeight - 200);
+                const minTotalSize = 30 * currentGridSize + OFFSET * 2;
+                if (maxSize < minTotalSize) maxSize = minTotalSize;
+                const size = Math.floor(maxSize / currentGridSize) * currentGridSize;
+                canvas.width = size + OFFSET * 2;
+                canvas.height = size + OFFSET * 2;
+                CELL_SIZE = size / currentGridSize;
+                if (CELL_SIZE < 20) CELL_SIZE = 20;
+            }
+            
+            // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ГЕНЕРАЦИИ ----------
+            function scatterSameColorBalls(minDist, size) {
+                if (minDist <= 1) return;
+                let colorPoints = new Map();
+                for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+                    const cell = grid[y][x];
+                    if (cell && cell.isDot) {
+                        if (!colorPoints.has(cell.color)) colorPoints.set(cell.color, []);
+                        colorPoints.get(cell.color).push({x, y});
+                    }
+                }
+                let maxIterations = 50, changed = true;
+                for (let iter = 0; iter < maxIterations && changed; iter++) {
+                    changed = false;
+                    for (let [color, points] of colorPoints.entries()) {
+                        let pointsCopy = [...points];
+                        for (let i = 0; i < pointsCopy.length; i++) {
+                            const p = pointsCopy[i];
+                            let isViolated = false;
+                            for (let j = 0; j < points.length; j++) {
+                                if (i === j) continue;
+                                const other = points[j];
+                                if (Math.abs(p.x - other.x) <= minDist && Math.abs(p.y - other.y) <= minDist) { isViolated = true; break; }
+                            }
+                            if (!isViolated) continue;
+                            let newX = -1, newY = -1;
+                            for (let y = 0; y < size && newX === -1; y++) {
+                                for (let x = 0; x < size; x++) {
+                                    if (grid[y][x] !== null) continue;
+                                    let ok = true;
+                                    for (let other of points) {
+                                        if (other.x === p.x && other.y === p.y) continue;
+                                        if (Math.abs(x - other.x) <= minDist && Math.abs(y - other.y) <= minDist) { ok = false; break; }
+                                    }
+                                    if (ok) { newX = x; newY = y; break; }
+                                }
+                            }
+                            if (newX !== -1) {
+                                grid[newY][newX] = { color: color, isDot: true };
+                                grid[p.y][p.x] = null;
+                                const idx = points.findIndex(pt => pt.x === p.x && pt.y === p.y);
+                                if (idx !== -1) points[idx] = { x: newX, y: newY };
+                                changed = true;
+                                pointsCopy[i] = { x: newX, y: newY };
+                            }
+                        }
+                        colorPoints.set(color, points);
+                    }
+                }
+            }
+            
+            function createChainWithDistance(colorHex, length, occupiedSet, existingPointsOfColor, minDist, size, maxAttempts = 150) {
+                const isTooClose = (x, y) => {
+                    for (let p of existingPointsOfColor) if (Math.abs(p.x - x) <= minDist && Math.abs(p.y - y) <= minDist) return true;
+                    return false;
+                };
+                for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                    let startX, startY, found = false;
+                    for (let sub = 0; sub < 40; sub++) {
+                        startX = Math.floor(Math.random() * size);
+                        startY = Math.floor(Math.random() * size);
+                        const key = `${startX},${startY}`;
+                        if (!occupiedSet.has(key) && !isTooClose(startX, startY)) { found = true; break; }
+                    }
+                    if (!found) continue;
+                    let positions = [{x: startX, y: startY}];
+                    let frontier = [{x: startX, y: startY}];
+                    let used = new Set(); used.add(`${startX},${startY}`);
+                    for (let i = 1; i < length; i++) {
+                        let neighbours = [];
+                        const dirs = [[0,1],[1,0],[0,-1],[-1,0]];
+                        for (let p of frontier) {
+                            for (let [dx, dy] of dirs) {
+                                const nx = p.x + dx, ny = p.y + dy, nKey = `${nx},${ny}`;
+                                if (nx >= 0 && nx < size && ny >= 0 && ny < size && !occupiedSet.has(nKey) && !used.has(nKey) && !isTooClose(nx, ny)) {
+                                    neighbours.push({x: nx, y: ny, key: nKey});
+                                }
+                            }
+                        }
+                        if (neighbours.length === 0) break;
+                        const chosen = neighbours[Math.floor(Math.random() * neighbours.length)];
+                        positions.push({x: chosen.x, y: chosen.y});
+                        frontier.push({x: chosen.x, y: chosen.y});
+                        used.add(chosen.key);
+                    }
+                    if (positions.length === length) {
+                        for (let pos of positions) occupiedSet.add(`${pos.x},${pos.y}`);
+                        return positions;
+                    }
+                }
+                return null;
+            }
+            
+            function splitIntoGroups(total) {
+                let groups = [];
+                let remaining = total;
+                while (remaining > 0) {
+                    if (remaining === 4) { groups.push(4); remaining = 0; }
+                    else if (remaining === 3) { groups.push(3); remaining = 0; }
+                    else {
+                        if (remaining - 4 !== 1 && remaining - 4 !== 2 && remaining - 4 >= 0) {
+                            groups.push(4);
+                            remaining -= 4;
+                        } else {
+                            groups.push(3);
+                            remaining -= 3;
+                        }
+                    }
+                }
+                return groups;
+            }
+            
+            // ========== ГЕНЕРАЦИЯ ДЛЯ УРОВНЕЙ 20+: 9 цветов, мин 60% заполнения, запрет на 4 ==========
+            function generateHardLevel(level, size) {
+                const MIN_DIST = (level >= 6) ? 3 : 2;
+                const totalCells = size * size; // 100
+                const minBalls = Math.floor(totalCells * 0.6); // 60
+                const maxBalls = Math.min(totalCells, 90); // не более 90
+                let targetTotal = Math.floor(Math.random() * (maxBalls - minBalls + 1) + minBalls);
+                // 9 цветов, допустимые количества для цвета: 3,6,7,8,9,10
+                const allowedCounts = [3,6,7,8,9,10];
+                let colorDemands = [];
+                const numColors = 9;
+                // Сначала назначаем каждому цвету случайное количество из allowed
+                for (let i = 0; i < numColors; i++) {
+                    let idx = Math.floor(Math.random() * allowedCounts.length);
+                    let amount = allowedCounts[idx];
+                    colorDemands.push({ colorIdx: i % colorsPalette.length, totalBalls: amount });
+                }
+                // Считаем сумму
+                let sum = colorDemands.reduce((s, d) => s + d.totalBalls, 0);
+                // Нужно подогнать сумму к targetTotal, меняя цвета по одному
+                let maxIter = 100;
+                while (sum !== targetTotal && maxIter-- > 0) {
+                    if (sum < targetTotal) {
+                        // увеличиваем какой-то цвет, но не более 10
+                        let candidates = colorDemands.filter(d => d.totalBalls < 10);
+                        if (candidates.length === 0) break;
+                        let idx = Math.floor(Math.random() * candidates.length);
+                        let old = candidates[idx].totalBalls;
+                        let possible = allowedCounts.filter(v => v > old && v <= 10);
+                        if (possible.length === 0) continue;
+                        let newVal = possible[Math.floor(Math.random() * possible.length)];
+                        sum += (newVal - old);
+                        candidates[idx].totalBalls = newVal;
+                    } else if (sum > targetTotal) {
+                        // уменьшаем, но не менее 3
+                        let candidates = colorDemands.filter(d => d.totalBalls > 3);
+                        if (candidates.length === 0) break;
+                        let idx = Math.floor(Math.random() * candidates.length);
+                        let old = candidates[idx].totalBalls;
+                        let possible = allowedCounts.filter(v => v < old && v >= 3);
+                        if (possible.length === 0) continue;
+                        let newVal = possible[Math.floor(Math.random() * possible.length)];
+                        sum += (newVal - old);
+                        candidates[idx].totalBalls = newVal;
+                    }
+                }
+                // Если всё равно не сошлось, слегка подкрутим последний цвет
+                if (sum !== targetTotal) {
+                    let diff = targetTotal - sum;
+                    let idx = Math.floor(Math.random() * colorDemands.length);
+                    let newVal = colorDemands[idx].totalBalls + diff;
+                    if (newVal >= 3 && newVal <= 10 && allowedCounts.includes(newVal)) {
+                        colorDemands[idx].totalBalls = newVal;
+                    }
+                }
+                
+                // Разбиваем на группы
+                let groups = [];
+                for (let demand of colorDemands) {
+                    const subGroups = splitIntoGroups(demand.totalBalls);
+                    for (let sz of subGroups) {
+                        groups.push({ colorIdx: demand.colorIdx, size: sz });
+                    }
+                }
+                
+                // Перемешиваем группы
+                for (let i = groups.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [groups[i], groups[j]] = [groups[j], groups[i]];
+                }
+                
+                let occupied = new Set();
+                let newGrid = Array(size).fill().map(() => Array(size).fill(null));
+                let colorPointsMap = new Map();
+                const isTooCloseToExisting = (x, y, colorHex) => {
+                    const points = colorPointsMap.get(colorHex) || [];
+                    for (let p of points) if (Math.abs(p.x - x) <= MIN_DIST && Math.abs(p.y - y) <= MIN_DIST) return true;
+                    return false;
+                };
+                
+                for (let group of groups) {
+                    const colorHex = colorsPalette[group.colorIdx % colorsPalette.length];
+                    const existingPoints = colorPointsMap.get(colorHex) || [];
+                    const positions = createChainWithDistance(colorHex, group.size, occupied, existingPoints, MIN_DIST, size, 150);
+                    if (!positions) {
+                        let placed = 0;
+                        for (let y = 0; y < size && placed < group.size; y++) for (let x = 0; x < size && placed < group.size; x++) {
+                            const key = `${x},${y}`;
+                            if (!occupied.has(key) && !newGrid[y][x] && !isTooCloseToExisting(x, y, colorHex)) {
+                                newGrid[y][x] = { color: colorHex, isDot: true };
+                                occupied.add(key);
+                                const arr = colorPointsMap.get(colorHex) || []; arr.push({x,y}); colorPointsMap.set(colorHex, arr);
+                                placed++;
+                            }
+                        }
+                        for (let y = 0; y < size && placed < group.size; y++) for (let x = 0; x < size && placed < group.size; x++) {
+                            const key = `${x},${y}`;
+                            if (!occupied.has(key) && !newGrid[y][x]) {
+                                newGrid[y][x] = { color: colorHex, isDot: true };
+                                occupied.add(key);
+                                const arr = colorPointsMap.get(colorHex) || []; arr.push({x,y}); colorPointsMap.set(colorHex, arr);
+                                placed++;
+                            }
+                        }
+                        continue;
+                    }
+                    for (let pos of positions) {
+                        newGrid[pos.y][pos.x] = { color: colorHex, isDot: true };
+                        const arr = colorPointsMap.get(colorHex) || []; arr.push({x: pos.x, y: pos.y}); colorPointsMap.set(colorHex, arr);
+                    }
+                }
+                
+                // Добивка до минимума 3 (на всякий случай)
+                const colorCounts = new Map();
+                for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+                    const cell = newGrid[y][x];
+                    if (cell && cell.isDot) colorCounts.set(cell.color, (colorCounts.get(cell.color) || 0) + 1);
+                }
+                for (let [colorHex, cnt] of colorCounts) {
+                    if (cnt < 3) {
+                        let need = 3 - cnt;
+                        for (let attempt = 0; attempt < 40 && need > 0; attempt++) {
+                            for (let y = 0; y < size && need > 0; y++) for (let x = 0; x < size && need > 0; x++) {
+                                if (!newGrid[y][x] && !isTooCloseToExisting(x, y, colorHex)) {
+                                    newGrid[y][x] = { color: colorHex, isDot: true };
+                                    const arr = colorPointsMap.get(colorHex) || []; arr.push({x,y}); colorPointsMap.set(colorHex, arr);
+                                    need--;
+                                }
+                            }
+                        }
+                        for (let y = 0; y < size && need > 0; y++) for (let x = 0; x < size && need > 0; x++) {
+                            if (!newGrid[y][x]) { newGrid[y][x] = { color: colorHex, isDot: true }; need--; }
+                        }
+                    }
+                }
+                
+                if (level >= 6 && size <= 10) {
+                    const savedGrid = grid;
+                    grid = newGrid;
+                    scatterSameColorBalls(3, size);
+                    const result = grid;
+                    grid = savedGrid;
+                    return result;
+                }
+                return newGrid;
+            }
+            
+            // Генерация обычных уровней (старая логика)
+            function generateNormalLevel(level, size) {
+                const MIN_DIST = (level >= 6) ? 3 : 2;
+                let colorDemands = [];
+                if (level === 1) colorDemands.push({ colorIdx: 0, totalBalls: 3 });
+                else if (level === 2) colorDemands.push({ colorIdx: 0, totalBalls: 5 });
+                else if (level === 3) colorDemands.push({ colorIdx: 0, totalBalls: 6 }, { colorIdx: 1, totalBalls: 4 });
+                else if (level === 4) colorDemands.push({ colorIdx: 0, totalBalls: 7 }, { colorIdx: 1, totalBalls: 5 });
+                else if (level === 5) colorDemands.push({ colorIdx: 0, totalBalls: 6 }, { colorIdx: 1, totalBalls: 6 }, { colorIdx: 2, totalBalls: 4 });
+                else if (level === 6) colorDemands.push({ colorIdx: 0, totalBalls: 7 }, { colorIdx: 1, totalBalls: 6 }, { colorIdx: 2, totalBalls: 5 });
+                else {
+                    let maxColors = 6; if (level > 15) maxColors = 7;
+                    let colorsCount = Math.min(3 + Math.floor((level - 6) / 2), maxColors);
+                    if (colorsCount < 2) colorsCount = 2;
+                    let baseTotal = 10 + Math.floor((level - 6) * 1.1);
+                    if (baseTotal > 32) baseTotal = 32;
+                    let perColor = Math.floor(baseTotal / colorsCount);
+                    if (perColor < 4) perColor = 4;
+                    for (let i = 0; i < colorsCount; i++) {
+                        let add = (i % 2 === 0) ? 1 : 0;
+                        let total = perColor + add;
+                        if (total > 10) total = 10;
+                        if (level >= 8 && total === 5) total = 6;
+                        colorDemands.push({ colorIdx: i % colorsPalette.length, totalBalls: total });
+                    }
+                }
+                
+                for (let demand of colorDemands) {
+                    let variation = Math.floor(Math.random() * 3) - 1;
+                    let newTotal = demand.totalBalls + variation;
+                    if (newTotal < 3) newTotal = 3;
+                    if (newTotal > 10) newTotal = 10;
+                    if (newTotal === 5) newTotal = (Math.random() < 0.5) ? 4 : 6;
+                    demand.totalBalls = newTotal;
+                }
+                
+                let groups = [];
+                for (let demand of colorDemands) {
+                    const subGroups = splitIntoGroups(demand.totalBalls);
+                    for (let sz of subGroups) {
+                        groups.push({ colorIdx: demand.colorIdx, size: sz });
+                    }
+                }
+                
+                for (let i = groups.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [groups[i], groups[j]] = [groups[j], groups[i]];
+                }
+                
+                let occupied = new Set();
+                let newGrid = Array(size).fill().map(() => Array(size).fill(null));
+                let colorPointsMap = new Map();
+                const isTooCloseToExisting = (x, y, colorHex) => {
+                    const points = colorPointsMap.get(colorHex) || [];
+                    for (let p of points) if (Math.abs(p.x - x) <= MIN_DIST && Math.abs(p.y - y) <= MIN_DIST) return true;
+                    return false;
+                };
+                
+                for (let group of groups) {
+                    const colorHex = colorsPalette[group.colorIdx % colorsPalette.length];
+                    const existingPoints = colorPointsMap.get(colorHex) || [];
+                    const positions = createChainWithDistance(colorHex, group.size, occupied, existingPoints, MIN_DIST, size, 120);
+                    if (!positions) {
+                        let placed = 0;
+                        for (let y = 0; y < size && placed < group.size; y++) for (let x = 0; x < size && placed < group.size; x++) {
+                            const key = `${x},${y}`;
+                            if (!occupied.has(key) && !newGrid[y][x] && !isTooCloseToExisting(x, y, colorHex)) {
+                                newGrid[y][x] = { color: colorHex, isDot: true };
+                                occupied.add(key);
+                                const arr = colorPointsMap.get(colorHex) || []; arr.push({x,y}); colorPointsMap.set(colorHex, arr);
+                                placed++;
+                            }
+                        }
+                        for (let y = 0; y < size && placed < group.size; y++) for (let x = 0; x < size && placed < group.size; x++) {
+                            const key = `${x},${y}`;
+                            if (!occupied.has(key) && !newGrid[y][x]) {
+                                newGrid[y][x] = { color: colorHex, isDot: true };
+                                occupied.add(key);
+                                const arr = colorPointsMap.get(colorHex) || []; arr.push({x,y}); colorPointsMap.set(colorHex, arr);
+                                placed++;
+                            }
+                        }
+                        continue;
+                    }
+                    for (let pos of positions) {
+                        newGrid[pos.y][pos.x] = { color: colorHex, isDot: true };
+                        const arr = colorPointsMap.get(colorHex) || []; arr.push({x: pos.x, y: pos.y}); colorPointsMap.set(colorHex, arr);
+                    }
+                }
+                const colorCounts = new Map();
+                for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+                    const cell = newGrid[y][x];
+                    if (cell && cell.isDot) colorCounts.set(cell.color, (colorCounts.get(cell.color) || 0) + 1);
+                }
+                for (let [colorHex, cnt] of colorCounts) {
+                    if (cnt < 3) {
+                        let need = 3 - cnt;
+                        for (let attempt = 0; attempt < 40 && need > 0; attempt++) {
+                            for (let y = 0; y < size && need > 0; y++) for (let x = 0; x < size && need > 0; x++) {
+                                if (!newGrid[y][x] && !isTooCloseToExisting(x, y, colorHex)) {
+                                    newGrid[y][x] = { color: colorHex, isDot: true };
+                                    const arr = colorPointsMap.get(colorHex) || []; arr.push({x,y}); colorPointsMap.set(colorHex, arr);
+                                    need--;
+                                }
+                            }
+                        }
+                        for (let y = 0; y < size && need > 0; y++) for (let x = 0; x < size && need > 0; x++) {
+                            if (!newGrid[y][x]) { newGrid[y][x] = { color: colorHex, isDot: true }; need--; }
+                        }
+                    }
+                }
+                if (level >= 6 && size <= 10) {
+                    const savedGrid = grid;
+                    grid = newGrid;
+                    scatterSameColorBalls(3, size);
+                    const result = grid;
+                    grid = savedGrid;
+                    return result;
+                }
+                return newGrid;
+            }
+            
+            // ========== ЗАГРУЗКА УРОВНЯ С ВЫБОРОМ ГЕНЕРАТОРА ==========
+            function loadLevel(level, keepBaseScore = false) {
+                let newSize = (level >= 20) ? 10 : 8;
+                if (newSize !== currentGridSize) {
+                    currentGridSize = newSize;
+                    resizeCanvas();
+                    historyStack = [];
+                    initialLevelGrid = null;
+                }
+                let newGrid;
+                if (level >= 20) {
+                    newGrid = generateHardLevel(level, currentGridSize);
+                } else {
+                    newGrid = generateNormalLevel(level, currentGridSize);
+                }
+                initialLevelGrid = newGrid.map(row => row.map(cell => cell ? { ...cell } : null));
+                grid = Array(currentGridSize).fill().map(() => Array(currentGridSize).fill(null));
+                for (let i = 0; i < currentGridSize; i++)
+                    for (let j = 0; j < currentGridSize; j++)
+                        grid[i][j] = newGrid[i]?.[j] ? { ...newGrid[i][j] } : null;
+                currentPath = null; currentColor = null;
+                if (!keepBaseScore) baseScoreForLevel = score;
+                updateStatusMessage(); draw(); 
+                historyStack = [];
+                lossHighlightColors.clear();
+            }
+            
+            function forceRestartCurrentLevel() {
+                if (isRestartingDueToLoss) return;
+                isRestartingDueToLoss = true;
+                score = baseScoreForLevel;
+                if (initialLevelGrid) {
+                    for (let i = 0; i < currentGridSize; i++)
+                        for (let j = 0; j < currentGridSize; j++)
+                            grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
+                    currentPath = null; currentColor = null;
+                    updateStatusMessage(); draw(); historyStack = [];
+                } else {
+                    loadLevel(currentLevel, true);
+                }
+                lossHighlightColors.clear();
+                isRestartingDueToLoss = false;
+            }
+            
+            function restartLevel() {
+                if (confirm(`Перезапустить уровень ${currentLevel}?`)) {
+                    score = baseScoreForLevel;
+                    if (initialLevelGrid) {
+                        for (let i = 0; i < currentGridSize; i++)
+                            for (let j = 0; j < currentGridSize; j++)
+                                grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
+                        currentPath = null; currentColor = null;
+                        updateStatusMessage(); draw(); historyStack = [];
+                    } else {
+                        loadLevel(currentLevel, true);
+                    }
+                    lossHighlightColors.clear();
+                }
+            }
+            
+            function resetCurrentLevel() {
+                if (confirm(`Сбросить уровень ${currentLevel}?`)) {
+                    score = baseScoreForLevel;
+                    if (initialLevelGrid) {
+                        for (let i = 0; i < currentGridSize; i++)
+                            for (let j = 0; j < currentGridSize; j++)
+                                grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
+                        currentPath = null; currentColor = null;
+                        updateStatusMessage(); draw(); historyStack = [];
+                    } else {
+                        loadLevel(currentLevel, true);
+                    }
+                    lossHighlightColors.clear();
+                }
+            }
+            
+            // ========== ПРОВЕРКА НА ПРОИГРЫШ ==========
+            function getColorsWithTwoOrOne() {
+                const colorCount = new Map();
+                for (let y = 0; y < currentGridSize; y++) {
+                    for (let x = 0; x < currentGridSize; x++) {
+                        const cell = grid[y][x];
+                        if (cell && cell.isDot) {
+                            colorCount.set(cell.color, (colorCount.get(cell.color) || 0) + 1);
+                        }
+                    }
+                }
+                const badColors = new Set();
+                for (let [color, cnt] of colorCount.entries()) {
+                    if (cnt === 2 || cnt === 1) badColors.add(color);
+                }
+                return badColors;
+            }
+            
+            function checkLossAndRestart() {
+                const badColors = getColorsWithTwoOrOne();
+                if (badColors.size > 0) {
+                    lossHighlightColors = badColors;
+                    playSadMusic();
+                    document.getElementById('status').innerHTML = `😭 Поражение! Остались шарики в количестве 2 или 1. Уровень перезапущен. 😭`;
+                    setTimeout(() => {
+                        forceRestartCurrentLevel();
+                    }, 800);
+                    return true;
+                }
+                return false;
+            }
+            
+            // ========== ЗАВЕРШЕНИЕ УРОВНЯ ==========
+            function checkLevelComplete() {
+                let anyDot = false;
+                for (let y = 0; y < currentGridSize; y++) for (let x = 0; x < currentGridSize; x++) if (grid[y][x]?.isDot) { anyDot = true; break; }
+                if (!anyDot) {
+                    currentLevel++;
+                    baseScoreForLevel = score;
+                    initialLevelGrid = null;
+                    loadLevel(currentLevel, false);
+                    spawnLevelCompleteFireworks();
+                    playLevelCompleteSound();
+                    document.getElementById('status').innerHTML = `🎉 УРОВЕНЬ ${currentLevel-1} ПРОЙДЕН! → Уровень ${currentLevel} 🎉 | Счёт: ${score}`;
+                    setTimeout(() => updateStatusMessage(), 1800);
+                    draw();
+                    return true;
+                }
+                return false;
+            }
+            
+            function updateStatusMessage() {
+                const totalDots = grid.flat().filter(cell => cell?.isDot).length;
+                document.getElementById('status').innerHTML = `🌟 Уровень ${currentLevel} | Поле ${currentGridSize}×${currentGridSize} | 💎 Счёт: ${score} | 🎯 Шариков: ${totalDots}`;
+            }
+            
+            // ========== ОТРИСОВКА ==========
+            function draw() {
+                if (CELL_SIZE <= 0) { resizeCanvas(); if (CELL_SIZE <= 0) CELL_SIZE = 30; }
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                pulsePhase = (pulsePhase + 0.15) % (Math.PI * 2);
+                ctx.strokeStyle = '#3a3a4a';
+                ctx.lineWidth = 2;
+                for (let i = 0; i <= currentGridSize; i++) {
+                    const pos = i * CELL_SIZE + OFFSET;
+                    ctx.beginPath(); ctx.moveTo(pos, OFFSET); ctx.lineTo(pos, currentGridSize * CELL_SIZE + OFFSET); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(OFFSET, pos); ctx.lineTo(currentGridSize * CELL_SIZE + OFFSET, pos); ctx.stroke();
+                }
+                
+                if (currentPath && currentPath.length > 1) {
+                    const time = Date.now() / 300;
+                    const pulse = 0.9 + 0.1 * Math.sin(time);
+                    ctx.strokeStyle = currentColor;
+                    ctx.lineWidth = CELL_SIZE * 0.65 * pulse;
+                    ctx.lineCap = "round"; ctx.lineJoin = "round";
+                    ctx.shadowBlur = 25; ctx.shadowColor = currentColor;
+                    ctx.beginPath();
+                    ctx.moveTo(currentPath[0].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[0].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
+                    for (let i = 1; i < currentPath.length; i++)
+                        ctx.lineTo(currentPath[i].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[i].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
+                
+                for (let y = 0; y < currentGridSize; y++) {
+                    for (let x = 0; x < currentGridSize; x++) {
+                        const cell = grid[y][x];
+                        if (cell && cell.isDot) {
+                            const cx = x * CELL_SIZE + CELL_SIZE/2 + OFFSET;
+                            const cy = y * CELL_SIZE + CELL_SIZE/2 + OFFSET;
+                            let radius = CELL_SIZE * 0.38;
+                            let isBad = lossHighlightColors.has(cell.color);
+                            let currentRadius = radius;
+                            if (isBad) {
+                                currentRadius = radius * (0.8 + 0.4 * Math.sin(pulsePhase * 2));
+                                if (currentRadius < 2) currentRadius = 2;
+                            } else {
+                                if (currentRadius < 2) currentRadius = 2;
+                            }
+                            ctx.shadowBlur = isBad ? 20 : 12;
+                            ctx.shadowColor = cell.color;
+                            let glowIntensity = isBad ? (0.7 + 0.3 * Math.sin(pulsePhase * 2)) : 1;
+                            const gradient = ctx.createRadialGradient(cx - currentRadius*0.3, cy - currentRadius*0.4, currentRadius*0.1, cx, cy, currentRadius);
+                            gradient.addColorStop(0, '#ffffff');
+                            gradient.addColorStop(0.3, cell.color);
+                            if (isBad) {
+                                gradient.addColorStop(1, `rgba(255, 100, 100, ${glowIntensity * 0.8})`);
+                            } else {
+                                gradient.addColorStop(1, '#000000');
+                            }
+                            ctx.fillStyle = gradient;
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, currentRadius, 0, Math.PI*2);
+                            ctx.fill();
+                            ctx.shadowBlur = 0;
+                            if (!isBad) {
+                                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                                ctx.beginPath();
+                                ctx.arc(cx - radius*0.3, cy - radius*0.35, radius*0.25, 0, Math.PI*2);
+                                ctx.fill();
+                            }
+                        }
+                    }
+                }
+                drawParticles(ctx);
+                drawFloatingTexts(ctx);
+            }
+            
+            // ========== УПРАВЛЕНИЕ ==========
+            function getGridPos(clientX, clientY) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                let canvasX = (clientX - rect.left) * scaleX;
+                let canvasY = (clientY - rect.top) * scaleY;
+                const x = Math.floor((canvasX - OFFSET) / CELL_SIZE);
+                const y = Math.floor((canvasY - OFFSET) / CELL_SIZE);
+                return { x: Math.max(0, Math.min(currentGridSize-1, x)), y: Math.max(0, Math.min(currentGridSize-1, y)) };
+            }
+            function isValidMove(x, y) {
+                if (x < 0 || x >= currentGridSize || y < 0 || y >= currentGridSize) return false;
+                const cell = grid[y][x];
+                return !cell || (cell.isDot && cell.color === currentColor);
+            }
+            function indexInPath(x, y) {
+                if (!currentPath) return -1;
+                for (let i = 0; i < currentPath.length; i++) if (currentPath[i].x === x && currentPath[i].y === y) return i;
+                return -1;
+            }
+            function truncatePathTo(index) {
+                if (!currentPath || index < 0 || index >= currentPath.length) return;
+                currentPath = currentPath.slice(0, index + 1);
+                playLineSound(currentPath.length);
+                draw();
+            }
+            function countDotsOnPath(path) {
+                let count = 0;
+                path.forEach(p => { if (grid[p.y][p.x]?.isDot && grid[p.y][p.x].color === currentColor) count++; });
+                return count;
+            }
+            function removeDotsOnPath(path) {
+                path.forEach(p => { if (grid[p.y][p.x]?.isDot && grid[p.y][p.x].color === currentColor) grid[p.y][p.x] = null; });
+            }
+            
+            function startPath(e) {
+                e.preventDefault();
+                const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
+                const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0);
+                const pos = getGridPos(clientX, clientY);
+                const cell = grid[pos.y][pos.x];
+                if (cell && cell.isDot) {
+                    currentColor = cell.color;
+                    currentPath = [pos];
+                    playTone(300, 'sine', 0.1, 0.2);
+                    draw();
+                } else { if (currentPath) { currentPath = null; currentColor = null; draw(); } }
+            }
+            
+            function movePath(e) {
+                if (!currentPath) return;
+                e.preventDefault();
+                const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
+                const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0);
+                const pos = getGridPos(clientX, clientY);
+                const last = currentPath[currentPath.length - 1];
+                if (last.x === pos.x && last.y === pos.y) return;
+                const dx = pos.x - last.x, dy = pos.y - last.y;
+                const dist = Math.abs(dx) + Math.abs(dy);
+                if (dist === 1) {
+                    const existingIndex = indexInPath(pos.x, pos.y);
+                    if (existingIndex !== -1) {
+                        if (existingIndex < currentPath.length - 1) truncatePathTo(existingIndex);
+                        return;
+                    }
+                    if (!isValidMove(pos.x, pos.y)) return;
+                    currentPath.push(pos);
+                    playLineSound(currentPath.length);
+                    draw();
+                    return;
+                }
+                const orders = [{ first: 'h', second: 'v' }, { first: 'v', second: 'h' }];
+                for (let order of orders) {
+                    let steps = [];
+                    let curX = last.x, curY = last.y;
+                    if (order.first === 'h') {
+                        const stepX = Math.sign(dx);
+                        for (let i = 1; i <= Math.abs(dx); i++) { curX = last.x + i * stepX; steps.push({x: curX, y: curY}); }
+                        const stepY = Math.sign(dy);
+                        for (let j = 1; j <= Math.abs(dy); j++) { curY = last.y + j * stepY; steps.push({x: curX, y: curY}); }
+                    } else {
+                        const stepY = Math.sign(dy);
+                        for (let j = 1; j <= Math.abs(dy); j++) { curY = last.y + j * stepY; steps.push({x: curX, y: curY}); }
+                        const stepX = Math.sign(dx);
+                        for (let i = 1; i <= Math.abs(dx); i++) { curX = last.x + i * stepX; steps.push({x: curX, y: curY}); }
+                    }
+                    let valid = true;
+                    for (let step of steps) if (!isValidMove(step.x, step.y)) { valid = false; break; }
+                    if (!valid) continue;
+                    for (let step of steps) {
+                        const existIdx = indexInPath(step.x, step.y);
+                        if (existIdx !== -1) { if (existIdx < currentPath.length - 1) truncatePathTo(existIdx); break; }
+                        currentPath.push(step);
+                        playLineSound(currentPath.length);
+                    }
+                    draw();
+                    break;
+                }
+            }
+            
+            function endPath() {
+                if (!currentPath || currentPath.length < 2) {
+                    currentPath = null; currentColor = null; draw();
+                    return;
+                }
+                const dotsCount = countDotsOnPath(currentPath);
+                if (dotsCount >= 3) {
+                    pushToHistory();
+                    const lastPos = currentPath[currentPath.length-1];
+                    const px = lastPos.x * CELL_SIZE + CELL_SIZE/2 + OFFSET;
+                    const py = lastPos.y * CELL_SIZE + CELL_SIZE/2 + OFFSET;
+                    removeDotsOnPath(currentPath);
+                    const addScore = dotsCount * 10;
+                    score += addScore;
+                    playPickupSound(dotsCount);
+                    spawnParticles(px, py, currentColor, dotsCount * 4);
+                    addFloatingText(px, py - 15, `+${addScore}`, currentColor);
+                    document.getElementById('status').innerHTML = `✅ Убрано ${dotsCount} шариков (+${addScore}) | Уровень ${currentLevel} | Счёт: ${score}`;
+                    setTimeout(() => updateStatusMessage(), 800);
+                    
+                    const completed = checkLevelComplete();
+                    if (!completed) {
+                        checkLossAndRestart();
+                    }
+                    draw();
+                } else {
+                    playErrorSound();
+                    document.getElementById('status').innerHTML = `⚠️ Нужно минимум 3 шарика (соединено ${dotsCount}) | Уровень ${currentLevel} | Счёт: ${score}`;
+                    setTimeout(() => updateStatusMessage(), 1200);
+                }
+                currentPath = null; currentColor = null;
+                draw();
+            }
+            
+            function resetFullGame() {
+                if (confirm("Начать новую игру? Весь прогресс будет потерян.")) {
+                    score = 0; currentLevel = 1; baseScoreForLevel = 0;
+                    currentGridSize = 8;
+                    initialLevelGrid = null;
+                    lossHighlightColors.clear();
+                    resizeCanvas();
+                    loadLevel(1, false);
+                    historyStack = [];
+                }
+            }
+            
+            window.resetFullGame = resetFullGame;
+            window.undoLastMove = undoLastMove;
+            window.restartLevel = restartLevel;
+            window.resetCurrentLevel = resetCurrentLevel;
+            window.shuffleField = shuffleField;
+            
+            // ========== НОВАЯ ПАЛИТРА: КОНТРАСТНЫЕ, ЧЁТКО РАЗЛИЧИМЫЕ ЦВЕТА ==========
+            const colorsPalette = [
+                '#e74c3c', // ярко-красный
+                '#3498db', // насыщенный синий
+                '#2ecc71', // изумрудный зелёный (не сливается с жёлтым)
+                '#f1c40f', // яркий золотисто-жёлтый
+                '#e84393', // розово-маджента
+                '#e67e22', // оранжевый
+                '#9b59b6', // фиолетовый
+                '#ecf0f1', // светлый, почти белый, но с голубоватым отливом (отличается от фона)
+                '#1abc9c', // бирюзовый
+                '#ff69b4'  // hot pink
+            ];
+            
+            function animationLoop() {
+                updateParticles();
+                updateFloatingTexts();
+                draw();
+                requestAnimationFrame(animationLoop);
+            }
+            
+            function init() {
+                resizeCanvas();
+                grid = Array(currentGridSize).fill().map(() => Array(currentGridSize).fill(null));
+                resetFullGame();
+                canvas.addEventListener('mousedown', startPath);
+                canvas.addEventListener('mousemove', movePath);
+                document.addEventListener('mouseup', endPath);
+                canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPath(e); });
+                canvas.addEventListener('touchmove', (e) => { e.preventDefault(); movePath(e); });
+                document.addEventListener('touchend', (e) => { e.preventDefault(); endPath(); });
+                window.addEventListener('resize', () => { resizeCanvas(); draw(); });
+                animationLoop();
+            }
+            
+            init();
+        })();
+    </script>
+</body>
+</html>
