@@ -257,6 +257,9 @@
             
             let pulsePhase = 0;
             let lossHighlightColors = new Set();
+            
+            // Флаг для блокировки начала нового уровня во время анимации победы
+            let isVictoryAnimating = false;
 
             // ========== ЗВУК ==========
             let audioCtx = null;
@@ -490,6 +493,7 @@
             }
             
             function undoLastMove() {
+                if (isVictoryAnimating) return;
                 if (historyStack.length === 0) {
                     document.getElementById('status').innerHTML = `❌ Нет ходов для отмены | Уровень ${currentLevel} | Счёт: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1200);
@@ -509,6 +513,7 @@
             
             // ========== ПЕРЕМЕШИВАНИЕ (равномерно по полю) ==========
             function shuffleField() {
+                if (isVictoryAnimating) return;
                 pushToHistory();
                 let balls = [];
                 for (let y = 0; y < currentGridSize; y++) {
@@ -985,6 +990,7 @@
             }
             
             function restartLevel() {
+                if (isVictoryAnimating) return;
                 score = baseScoreForLevel;
                 if (initialLevelGrid) {
                     for (let i = 0; i < currentGridSize; i++)
@@ -999,6 +1005,7 @@
             }
             
             function resetCurrentLevel() {
+                if (isVictoryAnimating) return;
                 if (confirm(`Сбросить уровень ${currentLevel}?`)) {
                     score = baseScoreForLevel;
                     if (initialLevelGrid) {
@@ -1051,14 +1058,22 @@
                 let anyDot = false;
                 for (let y = 0; y < currentGridSize; y++) for (let x = 0; x < currentGridSize; x++) if (grid[y][x]?.isDot) { anyDot = true; break; }
                 if (!anyDot) {
+                    isVictoryAnimating = true;
                     currentLevel++;
                     baseScoreForLevel = score;
                     initialLevelGrid = null;
-                    loadLevel(currentLevel, false);
                     spawnLevelCompleteFireworks();
                     playLevelCompleteSound();
                     document.getElementById('status').innerHTML = `🎉 УРОВЕНЬ ${currentLevel-1} ПРОЙДЕН! → Уровень ${currentLevel} 🎉 | Счёт: ${score}`;
-                    setTimeout(() => updateStatusMessage(), 1800);
+                    
+                    // Ждём завершения анимации частиц перед загрузкой нового уровня
+                    setTimeout(() => {
+                        isVictoryAnimating = false;
+                        loadLevel(currentLevel, false);
+                        updateStatusMessage();
+                        draw();
+                    }, 2500);
+                    
                     draw();
                     return true;
                 }
@@ -1227,6 +1242,7 @@
             }
             
             function startPath(e) {
+                if (isVictoryAnimating) return;
                 e.preventDefault();
                 const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
                 const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0);
