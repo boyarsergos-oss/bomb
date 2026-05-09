@@ -1074,18 +1074,18 @@
             function draw() {
                 if (CELL_SIZE <= 0) { resizeCanvas(); if (CELL_SIZE <= 0) CELL_SIZE = 30; }
                 
-                // Красивый градиентный фон канваса
+                // Яркий мультяшный градиентный фон канваса
                 const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                bgGradient.addColorStop(0, 'rgba(25, 25, 45, 0.95)');
-                bgGradient.addColorStop(0.5, 'rgba(35, 35, 60, 0.95)');
-                bgGradient.addColorStop(1, 'rgba(25, 25, 45, 0.95)');
+                bgGradient.addColorStop(0, '#FFF5E1');
+                bgGradient.addColorStop(0.5, '#E8F4FF');
+                bgGradient.addColorStop(1, '#FFF9E6');
                 ctx.fillStyle = bgGradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
                 pulsePhase = (pulsePhase + 0.1) % (Math.PI * 2);
                 
-                // Мультяшная сетка с закругленными ячейками
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                // Мультяшная сетка с закругленными ячейками - более яркая
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
                 ctx.lineWidth = 2;
                 ctx.shadowBlur = 0;
                 for (let i = 0; i <= currentGridSize; i++) {
