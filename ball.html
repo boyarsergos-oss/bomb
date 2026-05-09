@@ -251,14 +251,14 @@
 <body>
     <div class="bg-pattern"></div>
     <div class="victory-overlay" id="victoryOverlay"></div>
-    <h1 id="levelTitle">⭐ LEVEL 1 ⭐</h1>
+    <h1 id="levelTitle">⭐ УРОВЕНЬ 1 ⭐</h1>
     <canvas id="game"></canvas>
     <div class="controls">
-        <button onclick="undoLastMove()">↩️ UNDO</button>
-        <button onclick="restartLevel()">🔄 RETRY</button>
-        <button onclick="shuffleField()">🔀 SHUFFLE</button>
+        <button onclick="undoLastMove()">↩️ ОТМЕНА</button>
+        <button onclick="restartLevel()">🔄 ЗАНОВО</button>
+        <button onclick="shuffleField()">🔀 ПЕРЕМЕШАТЬ</button>
     </div>
-    <div class="info" id="status">💎 MATCH 3+ GEMS! 💎</div>
+    <div class="info" id="status">💎 СОБЕРИ 3+ КРИСТАЛЛА! 💎</div>
 
     <script>
         (function(){
@@ -513,7 +513,7 @@
             
             function undoLastMove() {
                 if (historyStack.length === 0) {
-                    document.getElementById('status').innerHTML = `❌ No moves to undo | LEVEL ${currentLevel} | SCORE: ${score}`;
+                    document.getElementById('status').innerHTML = `⛔ Нечего отменять | УРОВЕНЬ ${currentLevel} | СЧЁТ: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1200);
                     return;
                 }
@@ -524,7 +524,7 @@
                 score = last.scoreSnapshot;
                 currentPath = null; currentColor = null;
                 updateStatusMessage(); draw();
-                document.getElementById('status').innerHTML = `↩️ Move undone | LEVEL ${currentLevel} | SCORE: ${score}`;
+                document.getElementById('status').innerHTML = `↩️ Ход отменён | УРОВЕНЬ ${currentLevel} | СЧЁТ: ${score}`;
                 playTone(300, 'triangle', 0.1, 0.2);
                 setTimeout(() => updateStatusMessage(), 1500);
             }
@@ -532,11 +532,11 @@
             // ========== ПЕРЕМЕШИВАНИЕ (равномерно по полю) ==========
             function shuffleField() {
                 pushToHistory();
-                let gems = [];
+                let crystals = [];
                 for (let y = 0; y < currentGridSize; y++) {
                     for (let x = 0; x < currentGridSize; x++) {
                         if (grid[y][x] && grid[y][x].isDot) {
-                            gems.push({ color: grid[y][x].color });
+                            crystals.push({ color: grid[y][x].color });
                         }
                     }
                 }
@@ -555,14 +555,14 @@
                         grid[y][x] = null;
                     }
                 }
-                for (let i = 0; i < gems.length; i++) {
+                for (let i = 0; i < crystals.length; i++) {
                     const pos = positions[i];
-                    grid[pos.y][pos.x] = { color: gems[i].color, isDot: true };
+                    grid[pos.y][pos.x] = { color: crystals[i].color, isDot: true };
                 }
                 currentPath = null; currentColor = null;
                 draw();
                 playShuffleSound();
-                document.getElementById('status').innerHTML = `🃏 Shuffled | LEVEL ${currentLevel} | SCORE: ${score}`;
+                document.getElementById('status').innerHTML = `🃏 Перемешано | УРОВЕНЬ ${currentLevel} | СЧЁТ: ${score}`;
                 setTimeout(() => updateStatusMessage(), 1500);
             }
             
@@ -982,7 +982,7 @@
                 if (!keepBaseScore) baseScoreForLevel = score;
                 
                 // Обновляем заголовок с текущим уровнем
-                document.getElementById('levelTitle').textContent = `LEVEL ${level}`;
+                document.getElementById('levelTitle').textContent = `УРОВЕНЬ ${level}`;
                 
                 updateStatusMessage(); draw(); 
                 historyStack = [];
@@ -1059,7 +1059,7 @@
                 if (badColors.size > 0) {
                     lossHighlightColors = badColors;
                     playSadMusic();
-                    document.getElementById('status').innerHTML = `😭 DEFEAT. 😭`;
+                    document.getElementById('status').innerHTML = `😭 ПОРАЖЕНИЕ 😭`;
                     setTimeout(() => {
                         forceRestartCurrentLevel();
                     }, 800);
@@ -1079,7 +1079,7 @@
                     loadLevel(currentLevel, false);
                     spawnLevelCompleteFireworks();
                     playLevelCompleteSound();
-                    document.getElementById('status').innerHTML = `🎉 LEVEL ${currentLevel-1} COMPLETE! → LEVEL ${currentLevel} 🎉 | SCORE: ${score}`;
+                    document.getElementById('status').innerHTML = `🎉 УРОВЕНЬ ${currentLevel-1} ПРОЙДЕН! → УРОВЕНЬ ${currentLevel} 🎉 | СЧЁТ: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1800);
                     draw();
                     return true;
@@ -1089,7 +1089,7 @@
             
             function updateStatusMessage() {
                 const totalDots = grid.flat().filter(cell => cell?.isDot).length;
-                document.getElementById('status').innerHTML = `🌟 Grid ${currentGridSize}×${currentGridSize} | 💎 SCORE: ${score} | 🎯 Gems: ${totalDots}`;
+                document.getElementById('status').innerHTML = `🌟 Поле ${currentGridSize}×${currentGridSize} | 💎 СЧЁТ: ${score} | 🎯 Кристаллов: ${totalDots}`;
             }
             
             // ========== ОТРИСОВКА ==========
@@ -1097,54 +1097,48 @@
                 if (CELL_SIZE <= 0) { resizeCanvas(); if (CELL_SIZE <= 0) CELL_SIZE = 30; }
                 
                 // Красивый градиентный фон канваса
+                // Фон игрового поля в стиле Brawl Stars
                 const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                bgGradient.addColorStop(0, 'rgba(25, 25, 45, 0.95)');
-                bgGradient.addColorStop(0.5, 'rgba(35, 35, 60, 0.95)');
-                bgGradient.addColorStop(1, 'rgba(25, 25, 45, 0.95)');
+                bgGradient.addColorStop(0, '#4a90e2');
+                bgGradient.addColorStop(1, '#357abd');
                 ctx.fillStyle = bgGradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
-                pulsePhase = (pulsePhase + 0.1) % (Math.PI * 2);
+                // Декоративная рамка внутри
+                ctx.strokeStyle = '#1a252f';
+                ctx.lineWidth = 6;
+                ctx.strokeRect(OFFSET - 3, OFFSET - 3, currentGridSize * CELL_SIZE + 6, currentGridSize * CELL_SIZE + 6);
                 
-                // Сетка с эффектом свечения
-                ctx.strokeStyle = 'rgba(138, 43, 226, 0.15)';
-                ctx.lineWidth = 1;
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = 'rgba(138, 43, 226, 0.3)';
+                // Сетка на фоне (тактическая карта)
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 0;
                 for (let i = 0; i <= currentGridSize; i++) {
                     const pos = i * CELL_SIZE + OFFSET;
                     ctx.beginPath(); ctx.moveTo(pos, OFFSET); ctx.lineTo(pos, currentGridSize * CELL_SIZE + OFFSET); ctx.stroke();
                     ctx.beginPath(); ctx.moveTo(OFFSET, pos); ctx.lineTo(currentGridSize * CELL_SIZE + OFFSET, pos); ctx.stroke();
                 }
-                ctx.shadowBlur = 0;
                 
-                // Линия пути с красивым эффектом
+                pulsePhase = (pulsePhase + 0.1) % (Math.PI * 2);
+                
+                // Линия пути в стиле Brawl Stars (жёлтая с белой обводкой)
                 if (currentPath && currentPath.length > 1) {
-                    const time = Date.now() / 200;
-                    const pulse = 0.85 + 0.15 * Math.sin(time);
-                    
-                    // Внешнее свечение
-                    ctx.strokeStyle = currentColor;
-                    ctx.lineWidth = CELL_SIZE * 0.75 * pulse;
+                    // Основная толстая линия (жёлтая)
+                    ctx.strokeStyle = '#f1c40f';
+                    ctx.lineWidth = CELL_SIZE * 0.7;
                     ctx.lineCap = "round"; ctx.lineJoin = "round";
-                    ctx.shadowBlur = 17; ctx.shadowColor = currentColor;
-                    ctx.globalAlpha = 0.4;
+                    ctx.shadowBlur = 8; ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                    ctx.globalAlpha = 1.0;
                     ctx.beginPath();
                     ctx.moveTo(currentPath[0].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[0].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
                     for (let i = 1; i < currentPath.length; i++)
                         ctx.lineTo(currentPath[i].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[i].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
                     ctx.stroke();
                     
-                    // Внутренняя яркая линия
-                    ctx.globalAlpha = 0.9;
-                    ctx.lineWidth = CELL_SIZE * 0.45 * pulse;
-                    ctx.shadowBlur = 10; ctx.shadowColor = '#ffffff';
-                    ctx.stroke();
-                    
-                    // Центральная белая линия
+                    // Внутренняя белая линия для объёма
                     ctx.globalAlpha = 1.0;
-                    ctx.lineWidth = CELL_SIZE * 0.2;
-                    ctx.shadowBlur = 5; ctx.shadowColor = '#ffffff';
+                    ctx.lineWidth = CELL_SIZE * 0.35;
+                    ctx.shadowBlur = 4; ctx.shadowColor = 'rgba(0,0,0,0.3)';
                     ctx.strokeStyle = '#ffffff';
                     ctx.stroke();
                     
@@ -1152,7 +1146,7 @@
                     ctx.globalAlpha = 1.0;
                 }
                 
-                // Отрисовка gems-gemов
+                // Отрисовка кристаллов
                 for (let y = 0; y < currentGridSize; y++) {
                     for (let x = 0; x < currentGridSize; x++) {
                         const cell = grid[y][x];
@@ -1168,7 +1162,7 @@
                                 if (currentRadius < 2) currentRadius = 2;
                             }
                             
-                            // Пульсация для обычных gems тоже
+                            // Пульсация для обычных кристаллов тоже
                             if (!isBad) {
                                 const subtlePulse = 1 + 0.03 * Math.sin(pulsePhase + x * 0.3 + y * 0.3);
                                 currentRadius = radius * subtlePulse;
@@ -1348,7 +1342,7 @@
                     playPickupSound(dotsCount);
                     spawnParticles(px, py, currentColor, dotsCount * 4);
                     addFloatingText(px, py - 15, `+${addScore}`, currentColor);
-                    document.getElementById('status').innerHTML = `✅ ${dotsCount} gems cleared (+${addScore}) | LEVEL ${currentLevel} | SCORE: ${score}`;
+                    document.getElementById('status').innerHTML = `✅ ${dotsCount} кристаллов собрано (+${addScore}) | УРОВЕНЬ ${currentLevel} | СЧЁТ: ${score}`;
                     setTimeout(() => updateStatusMessage(), 800);
                     
                     const completed = checkLevelComplete();
@@ -1358,7 +1352,7 @@
                     draw();
                 } else {
                     playErrorSound();
-                    document.getElementById('status').innerHTML = `⚠️ Need 3+ gems (${dotsCount} connected) | LEVEL ${currentLevel} | SCORE: ${score}`;
+                    document.getElementById('status').innerHTML = `⚠️ Нужно 3+ кристалла (${dotsCount} выбрано) | УРОВЕНЬ ${currentLevel} | СЧЁТ: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1200);
                 }
                 currentPath = null; currentColor = null;
