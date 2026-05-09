@@ -1059,7 +1059,7 @@
             
             function updateStatusMessage() {
                 const totalDots = grid.flat().filter(cell => cell?.isDot).length;
-                document.getElementById('status').innerHTML = `🌟 Уровень ${currentLevel} | Поле ${currentGridSize}×${currentGridSize} | 💎 Счёт: ${score} | 🎯 Шариков: ${totalDots}`;
+                document.getElementById('status').innerHTML = `🌟 Поле ${currentGridSize}×${currentGridSize} | 💎 Счёт: ${score} | 🎯 Шариков: ${totalDots}`;
             }
             
             // ========== ОТРИСОВКА ==========
