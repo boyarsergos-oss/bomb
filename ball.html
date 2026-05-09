@@ -341,7 +341,40 @@
                 });
             }
 
-            function playLineSound(length) { playTone(300 + length * 30, 'sine', 0.06, 0.15); }
+            function playLineSound(length) {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                
+                // Создаем шум для имитации трения фломастера о бумагу
+                const bufferSize = ctx.sampleRate * 0.15;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * 0.3;
+                }
+                
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                // Фильтр низких частот для смягчения шума
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800 + length * 50, now);
+                
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                noise.start(now);
+                
+                // Добавляем мягкий тон для обратной связи
+                setTimeout(() => {
+                    playTone(200 + length * 20, 'triangle', 0.08, 0.06, false);
+                }, 0);
+            }
             function playShuffleSound() { playTone(500, 'triangle', 0.2, 0.2); }
 
             // ========== ЧАСТИЦЫ ==========
