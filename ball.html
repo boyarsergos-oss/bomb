@@ -207,17 +207,112 @@
             pointer-events: none;
             z-index: 100;
             opacity: 0;
-            transition: opacity 0.5s;
+            transition: opacity 0.3s;
+            overflow: hidden;
         }
         
         .victory-overlay.active {
             opacity: 1;
-            animation: victoryPulse 0.5s ease-out;
         }
         
-        @keyframes victoryPulse {
-            0% { background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%); }
-            100% { background: transparent; }
+        /* Радужный градиент фон */
+        .victory-overlay.active::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(
+                from 0deg, 
+                #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff, #5f27cd, #ff6b6b
+            );
+            animation: rainbowSpin 2s linear infinite;
+            opacity: 0.3;
+        }
+        
+        @keyframes rainbowSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Конфетти */
+        .confetti {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            animation: confettiFall 2.5s ease-out forwards;
+            opacity: 0;
+        }
+        
+        .confetti:nth-child(odd) {
+            border-radius: 50%;
+        }
+        
+        .confetti:nth-child(even) {
+            border-radius: 2px;
+        }
+        
+        @keyframes confettiFall {
+            0% { 
+                transform: translateY(-100px) rotate(0deg) scale(0);
+                opacity: 1;
+            }
+            10% {
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(100vh) rotate(720deg) scale(1);
+                opacity: 0;
+            }
+        }
+        
+        /* Звёзды */
+        .victory-star {
+            position: absolute;
+            font-size: 30px;
+            animation: starPop 1.5s ease-out forwards;
+            opacity: 0;
+            text-shadow: 0 0 10px rgba(255,255,255,0.8);
+        }
+        
+        @keyframes starPop {
+            0% { 
+                transform: scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% { 
+                transform: scale(1.5) rotate(180deg) translateY(200px);
+                opacity: 0;
+            }
+        }
+        
+        /* Блик */
+        .victory-flash {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background: radial-gradient(circle, rgba(255,255,255,1) 0%, transparent 70%);
+            animation: flashExpand 0.8s ease-out forwards;
+        }
+        
+        @keyframes flashExpand {
+            0% { 
+                width: 10px;
+                height: 10px;
+                opacity: 1;
+            }
+            100% { 
+                width: 200vw;
+                height: 200vw;
+                opacity: 0;
+            }
         }
     </style>
 </head>
@@ -362,12 +457,49 @@
             }
 
             function spawnLevelCompleteFireworks() {
-                // Лёгкий эффект: просто активируем CSS-оверлей вместо 100 частиц
                 const overlay = document.getElementById('victoryOverlay');
+                
+                // Очищаем предыдущие элементы
+                overlay.innerHTML = '';
                 overlay.classList.remove('active');
-                void overlay.offsetWidth; // триггер рефлоу для перезапуска анимации
+                void overlay.offsetWidth;
                 overlay.classList.add('active');
-                setTimeout(() => overlay.classList.remove('active'), 600);
+                
+                // Добавляем блик
+                const flash = document.createElement('div');
+                flash.className = 'victory-flash';
+                overlay.appendChild(flash);
+                
+                // Добавляем конфетти (30 штук, рандомные позиции и цвета)
+                const colors = ['#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff', '#5f27cd', '#ffd700', '#ff69b4'];
+                for (let i = 0; i < 30; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                    confetti.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+                    overlay.appendChild(confetti);
+                }
+                
+                // Добавляем звёзды (15 штук)
+                const stars = ['⭐', '✨', '🌟', '💫'];
+                for (let i = 0; i < 15; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'victory-star';
+                    star.textContent = stars[Math.floor(Math.random() * stars.length)];
+                    star.style.left = (10 + Math.random() * 80) + '%';
+                    star.style.top = (20 + Math.random() * 60) + '%';
+                    star.style.animationDelay = Math.random() * 0.3 + 's';
+                    star.style.fontSize = (20 + Math.random() * 30) + 'px';
+                    overlay.appendChild(star);
+                }
+                
+                // Убираем эффект через 2.5 секунды
+                setTimeout(() => {
+                    overlay.classList.remove('active');
+                    overlay.innerHTML = '';
+                }, 2500);
             }
 
             function updateParticles() {
