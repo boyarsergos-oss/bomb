@@ -578,16 +578,16 @@
                 if (isVictoryAnimating) return;
                 pushToHistory();
                 let balls = [];
-                for (let y = 0; y < currentGridSize; y++) {
-                    for (let x = 0; x < currentGridSize; x++) {
+                for (let y = 0; y < currentGridSizeY; y++) {
+                    for (let x = 0; x < currentGridSizeX; x++) {
                         if (grid[y][x] && grid[y][x].isDot) {
                             balls.push({ color: grid[y][x].color });
                         }
                     }
                 }
                 let positions = [];
-                for (let y = 0; y < currentGridSize; y++) {
-                    for (let x = 0; x < currentGridSize; x++) {
+                for (let y = 0; y < currentGridSizeY; y++) {
+                    for (let x = 0; x < currentGridSizeX; x++) {
                         positions.push({ x, y });
                     }
                 }
@@ -595,8 +595,8 @@
                     const j = Math.floor(Math.random() * (i + 1));
                     [positions[i], positions[j]] = [positions[j], positions[i]];
                 }
-                for (let y = 0; y < currentGridSize; y++) {
-                    for (let x = 0; x < currentGridSize; x++) {
+                for (let y = 0; y < currentGridSizeY; y++) {
+                    for (let x = 0; x < currentGridSizeX; x++) {
                         grid[y][x] = null;
                     }
                 }
@@ -622,10 +622,10 @@
             }
             
             // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ГЕНЕРАЦИИ ----------
-            function scatterSameColorBalls(minDist, size) {
+            function scatterSameColorBalls(minDist, sizeX, sizeY) {
                 if (minDist <= 1) return;
                 let colorPoints = new Map();
-                for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+                for (let y = 0; y < sizeY; y++) for (let x = 0; x < sizeX; x++) {
                     const cell = grid[y][x];
                     if (cell && cell.isDot) {
                         if (!colorPoints.has(cell.color)) colorPoints.set(cell.color, []);
@@ -647,8 +647,8 @@
                             }
                             if (!isViolated) continue;
                             let newX = -1, newY = -1;
-                            for (let y = 0; y < size && newX === -1; y++) {
-                                for (let x = 0; x < size; x++) {
+                            for (let y = 0; y < sizeY && newX === -1; y++) {
+                                for (let x = 0; x < sizeX; x++) {
                                     if (grid[y][x] !== null) continue;
                                     let ok = true;
                                     for (let other of points) {
@@ -672,7 +672,7 @@
                 }
             }
             
-            function createChainWithDistance(colorHex, length, occupiedSet, existingPointsOfColor, minDist, size, maxAttempts = 150) {
+            function createChainWithDistance(colorHex, length, occupiedSet, existingPointsOfColor, minDist, sizeX, sizeY, maxAttempts = 150) {
                 const isTooClose = (x, y) => {
                     for (let p of existingPointsOfColor) if (Math.abs(p.x - x) <= minDist && Math.abs(p.y - y) <= minDist) return true;
                     return false;
@@ -680,8 +680,8 @@
                 for (let attempt = 0; attempt < maxAttempts; attempt++) {
                     let startX, startY, found = false;
                     for (let sub = 0; sub < 40; sub++) {
-                        startX = Math.floor(Math.random() * size);
-                        startY = Math.floor(Math.random() * size);
+                        startX = Math.floor(Math.random() * sizeX);
+                        startY = Math.floor(Math.random() * sizeY);
                         const key = `${startX},${startY}`;
                         if (!occupiedSet.has(key) && !isTooClose(startX, startY)) { found = true; break; }
                     }
@@ -695,7 +695,7 @@
                         for (let p of frontier) {
                             for (let [dx, dy] of dirs) {
                                 const nx = p.x + dx, ny = p.y + dy, nKey = `${nx},${ny}`;
-                                if (nx >= 0 && nx < size && ny >= 0 && ny < size && !occupiedSet.has(nKey) && !used.has(nKey) && !isTooClose(nx, ny)) {
+                                if (nx >= 0 && nx < sizeX && ny >= 0 && ny < sizeY && !occupiedSet.has(nKey) && !used.has(nKey) && !isTooClose(nx, ny)) {
                                     neighbours.push({x: nx, y: ny, key: nKey});
                                 }
                             }
@@ -734,11 +734,11 @@
             }
             
             // ========== ГЕНЕРАЦИЯ ДЛЯ УРОВНЕЙ 20+: 9 цветов, мин 60% заполнения, запрет на 4 ==========
-            function generateHardLevel(level, size) {
+            function generateHardLevel(level, sizeX, sizeY) {
                 const MIN_DIST = (level >= 6) ? 3 : 2;
-                const totalCells = size * size; // 100
-                const minBalls = Math.floor(totalCells * 0.6); // 60
-                const maxBalls = Math.min(totalCells, 90); // не более 90
+                const totalCells = sizeX * sizeY;
+                const minBalls = Math.floor(totalCells * 0.9); // 90% заполнения
+                const maxBalls = Math.min(totalCells, Math.floor(totalCells * 0.95)); // не более 95%
                 let targetTotal = Math.floor(Math.random() * (maxBalls - minBalls + 1) + minBalls);
                 // 9 цветов, допустимые количества для цвета: 3,6,7,8,9,10
                 const allowedCounts = [3,6,7,8,9,10];
@@ -805,7 +805,7 @@
                 }
                 
                 let occupied = new Set();
-                let newGrid = Array(size).fill().map(() => Array(size).fill(null));
+                let newGrid = Array(sizeY).fill().map(() => Array(sizeX).fill(null));
                 let colorPointsMap = new Map();
                 const isTooCloseToExisting = (x, y, colorHex) => {
                     const points = colorPointsMap.get(colorHex) || [];
@@ -816,10 +816,10 @@
                 for (let group of groups) {
                     const colorHex = colorsPalette[group.colorIdx % colorsPalette.length];
                     const existingPoints = colorPointsMap.get(colorHex) || [];
-                    const positions = createChainWithDistance(colorHex, group.size, occupied, existingPoints, MIN_DIST, size, 150);
+                    const positions = createChainWithDistance(colorHex, group.size, occupied, existingPoints, MIN_DIST, sizeX, sizeY, 150);
                     if (!positions) {
                         let placed = 0;
-                        for (let y = 0; y < size && placed < group.size; y++) for (let x = 0; x < size && placed < group.size; x++) {
+                        for (let y = 0; y < sizeY && placed < group.size; y++) for (let x = 0; x < sizeX && placed < group.size; x++) {
                             const key = `${x},${y}`;
                             if (!occupied.has(key) && !newGrid[y][x] && !isTooCloseToExisting(x, y, colorHex)) {
                                 newGrid[y][x] = { color: colorHex, isDot: true };
@@ -828,7 +828,7 @@
                                 placed++;
                             }
                         }
-                        for (let y = 0; y < size && placed < group.size; y++) for (let x = 0; x < size && placed < group.size; x++) {
+                        for (let y = 0; y < sizeY && placed < group.size; y++) for (let x = 0; x < sizeX && placed < group.size; x++) {
                             const key = `${x},${y}`;
                             if (!occupied.has(key) && !newGrid[y][x]) {
                                 newGrid[y][x] = { color: colorHex, isDot: true };
@@ -847,7 +847,7 @@
                 
                 // Добивка до минимума 3 (на всякий случай)
                 const colorCounts = new Map();
-                for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+                for (let y = 0; y < sizeY; y++) for (let x = 0; x < sizeX; x++) {
                     const cell = newGrid[y][x];
                     if (cell && cell.isDot) colorCounts.set(cell.color, (colorCounts.get(cell.color) || 0) + 1);
                 }
@@ -855,7 +855,7 @@
                     if (cnt < 3) {
                         let need = 3 - cnt;
                         for (let attempt = 0; attempt < 40 && need > 0; attempt++) {
-                            for (let y = 0; y < size && need > 0; y++) for (let x = 0; x < size && need > 0; x++) {
+                            for (let y = 0; y < sizeY && need > 0; y++) for (let x = 0; x < sizeX && need > 0; x++) {
                                 if (!newGrid[y][x] && !isTooCloseToExisting(x, y, colorHex)) {
                                     newGrid[y][x] = { color: colorHex, isDot: true };
                                     const arr = colorPointsMap.get(colorHex) || []; arr.push({x,y}); colorPointsMap.set(colorHex, arr);
@@ -863,16 +863,16 @@
                                 }
                             }
                         }
-                        for (let y = 0; y < size && need > 0; y++) for (let x = 0; x < size && need > 0; x++) {
+                        for (let y = 0; y < sizeY && need > 0; y++) for (let x = 0; x < sizeX && need > 0; x++) {
                             if (!newGrid[y][x]) { newGrid[y][x] = { color: colorHex, isDot: true }; need--; }
                         }
                     }
                 }
                 
-                if (level >= 6 && size <= 10) {
+                if (level >= 6 && sizeX <= 10) {
                     const savedGrid = grid;
                     grid = newGrid;
-                    scatterSameColorBalls(3, size);
+                    scatterSameColorBalls(3, sizeX, sizeY);
                     const result = grid;
                     grid = savedGrid;
                     return result;
@@ -941,7 +941,7 @@
                 for (let group of groups) {
                     const colorHex = colorsPalette[group.colorIdx % colorsPalette.length];
                     const existingPoints = colorPointsMap.get(colorHex) || [];
-                    const positions = createChainWithDistance(colorHex, group.size, occupied, existingPoints, MIN_DIST, size, 120);
+                    const positions = createChainWithDistance(colorHex, group.size, occupied, existingPoints, MIN_DIST, size, size, 120);
                     if (!positions) {
                         let placed = 0;
                         for (let y = 0; y < size && placed < group.size; y++) for (let x = 0; x < size && placed < group.size; x++) {
@@ -994,7 +994,7 @@
                 if (level >= 6 && size <= 10) {
                     const savedGrid = grid;
                     grid = newGrid;
-                    scatterSameColorBalls(3, size);
+                    scatterSameColorBalls(3, size, size);
                     const result = grid;
                     grid = savedGrid;
                     return result;
@@ -1042,7 +1042,7 @@
                 if (initialLevelGrid) {
                     for (let y = 0; y < currentGridSizeY; y++)
                         for (let x = 0; x < currentGridSizeX; x++)
-                            grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
+                            grid[y][x] = initialLevelGrid[y]?.[x] ? { ...initialLevelGrid[y][x] } : null;
                     currentPath = null; currentColor = null;
                     updateStatusMessage(); draw(); historyStack = [];
                 } else {
