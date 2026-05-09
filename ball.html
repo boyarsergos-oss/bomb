@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-    <title>✨ Crystal Connect - Соединяй 3+ ✨</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
+    <title>💎 BRAWL GEMS - Match 3+ 💎</title>
     <style>
         * {
             box-sizing: border-box;
@@ -18,32 +18,29 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            font-family: 'Russo One', cursive;
+            background: linear-gradient(180deg, #ff6b35 0%, #f7c548 50%, #4ecdc4 100%);
+            background-size: 100% 200%;
+            animation: gradientBG 3s ease infinite;
+            font-family: 'Lilita One', cursive;
             color: white;
             touch-action: none;
             overflow: hidden;
             position: relative;
             text-shadow: 
-                0 0 10px rgba(255, 255, 255, 0.8),
-                0 0 20px rgba(255, 255, 255, 0.6),
-                0 0 30px rgba(255, 255, 255, 0.4),
-                2px 2px 0 #000,
-                -2px -2px 0 #000,
-                -2px 2px 0 #000,
-                2px -2px 0 #000;
+                3px 3px 0 #000,
+                -3px -3px 0 #000,
+                -3px 3px 0 #000,
+                3px -3px 0 #000;
         }
         
         @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+            0% { background-position: 0% 0%; }
+            50% { background-position: 0% 100%; }
+            100% { background-position: 0% 0%; }
         }
         
-        /* Фоновые плавающие частицы */
-        .bg-particles {
+        /* Фоновые паттерны в стиле Brawl Stars */
+        .bg-pattern {
             position: fixed;
             top: 0;
             left: 0;
@@ -51,62 +48,60 @@
             height: 100%;
             pointer-events: none;
             z-index: 0;
-            overflow: hidden;
-        }
-        
-        .bg-particle {
-            position: absolute;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
-            animation: floatParticle linear infinite;
-            opacity: 0.3;
-        }
-        
-        @keyframes floatParticle {
-            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-            10% { opacity: 0.3; }
-            90% { opacity: 0.3; }
-            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+            opacity: 0.1;
+            background-image: 
+                radial-gradient(circle at 20% 30%, #fff 2px, transparent 2px),
+                radial-gradient(circle at 80% 70%, #fff 2px, transparent 2px),
+                radial-gradient(circle at 40% 80%, #fff 1.5px, transparent 1.5px),
+                radial-gradient(circle at 60% 20%, #fff 1.5px, transparent 1.5px);
+            background-size: 100px 100px;
         }
         
         h1 {
             margin: 15px 0 10px;
-            font-size: 2.2rem;
-            letter-spacing: 3px;
-            text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(138, 43, 226, 0.5);
-            animation: titleGlow 2s ease-in-out infinite alternate;
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            text-shadow: 
+                4px 4px 0 #000,
+                -4px -4px 0 #000,
+                -4px 4px 0 #000,
+                4px -4px 0 #000,
+                0 0 30px rgba(255, 215, 0, 0.8);
+            animation: titleBounce 0.5s ease-in-out infinite alternate;
             z-index: 10;
-            font-weight: 300;
+            background: linear-gradient(180deg, #ffd700 0%, #ff8c00 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
         }
         
-        @keyframes titleGlow {
-            from { text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(138, 43, 226, 0.5), 0 0 60px rgba(0, 191, 255, 0.3); }
-            to { text-shadow: 0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(138, 43, 226, 0.8), 0 0 90px rgba(0, 191, 255, 0.5); }
+        @keyframes titleBounce {
+            from { transform: scale(1) rotate(-1deg); }
+            to { transform: scale(1.05) rotate(1deg); }
         }
         
         canvas {
-            border: 3px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
+            border: 4px solid #000;
+            border-radius: 15px;
             box-shadow: 
-                0 0 30px rgba(138, 43, 226, 0.4),
-                0 0 60px rgba(0, 191, 255, 0.2),
-                inset 0 0 40px rgba(255, 255, 255, 0.05);
-            background: rgba(30, 30, 50, 0.8);
-            backdrop-filter: blur(10px);
+                0 8px 0 #000,
+                0 0 0 4px #fff,
+                0 15px 40px rgba(0,0,0,0.4);
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             max-width: 100%;
             max-height: 65vh;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: transform 0.1s ease;
             position: relative;
             z-index: 10;
         }
         
         canvas:hover {
-            box-shadow: 
-                0 0 40px rgba(138, 43, 226, 0.6),
-                0 0 80px rgba(0, 191, 255, 0.3),
-                inset 0 0 50px rgba(255, 255, 255, 0.1);
-            transform: scale(1.01);
+            transform: scale(1.02);
+        }
+        
+        canvas:active {
+            transform: scale(0.98);
         }
         
         .controls {
@@ -119,22 +114,24 @@
         }
         
         button {
-            padding: 12px 22px;
-            font-size: 14px;
-            background: linear-gradient(135deg, rgba(110, 110, 240, 0.8), rgba(74, 74, 192, 0.8));
+            padding: 15px 25px;
+            font-size: 16px;
+            font-family: 'Lilita One', cursive;
+            background: linear-gradient(180deg, #3498db 0%, #2980b9 100%);
             color: white;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            border: 3px solid #000;
             border-radius: 12px;
             cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: bold;
+            transition: all 0.1s ease;
             box-shadow: 
-                0 4px 15px rgba(0,0,0,0.3),
-                0 0 20px rgba(110, 110, 240, 0.3);
-            backdrop-filter: blur(10px);
-            letter-spacing: 0.5px;
+                0 6px 0 #000,
+                0 0 0 3px #fff,
+                0 10px 20px rgba(0,0,0,0.3);
+            letter-spacing: 1px;
             position: relative;
             overflow: hidden;
+            text-transform: uppercase;
         }
         
         button::before {
@@ -144,9 +141,9 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
             transform: rotate(45deg);
-            transition: all 0.5s;
+            transition: all 0.3s;
         }
         
         button:hover::before {
@@ -154,54 +151,66 @@
         }
         
         button:hover {
-            background: linear-gradient(135deg, rgba(138, 138, 245, 0.9), rgba(106, 106, 224, 0.9));
-            transform: translateY(-3px) scale(1.02);
+            transform: translateY(-2px);
             box-shadow: 
-                0 8px 25px rgba(0,0,0,0.4),
-                0 0 30px rgba(110, 110, 240, 0.5);
-            border-color: rgba(255, 255, 255, 0.4);
+                0 8px 0 #000,
+                0 0 0 3px #fff,
+                0 15px 25px rgba(0,0,0,0.4);
         }
         
         button:active {
-            transform: translateY(-1px) scale(0.98);
+            transform: translateY(4px);
             box-shadow: 
-                0 2px 10px rgba(0,0,0,0.3),
-                0 0 15px rgba(110, 110, 240, 0.4);
+                0 2px 0 #000,
+                0 0 0 3px #fff,
+                0 5px 10px rgba(0,0,0,0.3);
+        }
+        
+        /* Разные цвета для кнопок */
+        button:nth-child(1) {
+            background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%);
+        }
+        button:nth-child(2) {
+            background: linear-gradient(180deg, #f39c12 0%, #d68910 100%);
+        }
+        button:nth-child(3) {
+            background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
         }
         
         .info {
             margin-top: 15px;
-            font-size: 18px;
+            font-size: 20px;
             text-align: center;
-            background: linear-gradient(135deg, rgba(42, 42, 58, 0.9), rgba(30, 30, 50, 0.9));
-            padding: 12px 25px;
+            background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%);
+            padding: 15px 30px;
             border-radius: 50px;
-            backdrop-filter: blur(15px);
-            font-weight: 500;
+            font-weight: bold;
             box-shadow: 
-                0 4px 20px rgba(0,0,0,0.4),
-                0 0 30px rgba(138, 43, 226, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.1);
+                0 6px 0 #000,
+                0 0 0 3px #fff,
+                0 15px 30px rgba(0,0,0,0.4);
+            border: 3px solid #000;
             z-index: 10;
-            letter-spacing: 0.5px;
-            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            transition: all 0.1s ease;
         }
         
         .info:hover {
-            box-shadow: 
-                0 6px 30px rgba(0,0,0,0.5),
-                0 0 40px rgba(138, 43, 226, 0.3);
             transform: translateY(-2px);
+            box-shadow: 
+                0 8px 0 #000,
+                0 0 0 3px #fff,
+                0 20px 35px rgba(0,0,0,0.5);
         }
         
         @media (max-width: 550px) {
-            h1 { font-size: 1.6rem; }
-            .info { font-size: 13px; padding: 10px 18px; }
-            button { padding: 8px 14px; font-size: 12px; }
+            h1 { font-size: 1.8rem; }
+            .info { font-size: 14px; padding: 12px 20px; }
+            button { padding: 12px 18px; font-size: 13px; }
             .controls { gap: 10px; }
         }
         
-        /* Эффект победы */
+        /* Эффект победы в стиле Brawl Stars */
         .victory-overlay {
             position: fixed;
             top: 0;
@@ -211,31 +220,45 @@
             pointer-events: none;
             z-index: 100;
             opacity: 0;
-            transition: opacity 0.5s;
+            transition: opacity 0.3s;
         }
         
         .victory-overlay.active {
             opacity: 1;
-            animation: victoryPulse 0.5s ease-out;
+            animation: victoryFlash 0.4s ease-out;
         }
         
-        @keyframes victoryPulse {
-            0% { background: radial-gradient(circle, rgba(255,215,0,0.5) 0%, transparent 70%); }
+        @keyframes victoryFlash {
+            0% { background: radial-gradient(circle, rgba(255,215,0,0.8) 0%, rgba(255,140,0,0.4) 50%, transparent 70%); }
             100% { background: transparent; }
+        }
+        
+        /* Звёзды на фоне */
+        .star {
+            position: fixed;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 20px;
+            animation: twinkle 2s ease-in-out infinite;
+            z-index: 0;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.2); }
         }
     </style>
 </head>
 <body>
-    <div class="bg-particles" id="bgParticles"></div>
+    <div class="bg-pattern"></div>
     <div class="victory-overlay" id="victoryOverlay"></div>
-    <h1 id="levelTitle">Уровень 1</h1>
+    <h1 id="levelTitle">⭐ LEVEL 1 ⭐</h1>
     <canvas id="game"></canvas>
     <div class="controls">
-        <button onclick="undoLastMove()">↩️ Отменить</button>
-        <button onclick="restartLevel()">🔄 Рестарт</button>
-        <button onclick="shuffleField()">🔀 Перемешать</button>
+        <button onclick="undoLastMove()">↩️ UNDO</button>
+        <button onclick="restartLevel()">🔄 RETRY</button>
+        <button onclick="shuffleField()">🔀 SHUFFLE</button>
     </div>
-    <div class="info" id="status">⚡ Соединяйте 3+ кристалла одного цвета ⚡</div>
+    <div class="info" id="status">💎 MATCH 3+ GEMS! 💎</div>
 
     <script>
         (function(){
@@ -490,7 +513,7 @@
             
             function undoLastMove() {
                 if (historyStack.length === 0) {
-                    document.getElementById('status').innerHTML = `❌ Нет ходов для отмены | Уровень ${currentLevel} | Счёт: ${score}`;
+                    document.getElementById('status').innerHTML = `❌ No moves to undo | LEVEL ${currentLevel} | SCORE: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1200);
                     return;
                 }
@@ -501,7 +524,7 @@
                 score = last.scoreSnapshot;
                 currentPath = null; currentColor = null;
                 updateStatusMessage(); draw();
-                document.getElementById('status').innerHTML = `↩️ Ход отменён | Уровень ${currentLevel} | Счёт: ${score}`;
+                document.getElementById('status').innerHTML = `↩️ Move undone | LEVEL ${currentLevel} | SCORE: ${score}`;
                 playTone(300, 'triangle', 0.1, 0.2);
                 setTimeout(() => updateStatusMessage(), 1500);
             }
@@ -509,11 +532,11 @@
             // ========== ПЕРЕМЕШИВАНИЕ (равномерно по полю) ==========
             function shuffleField() {
                 pushToHistory();
-                let balls = [];
+                let gems = [];
                 for (let y = 0; y < currentGridSize; y++) {
                     for (let x = 0; x < currentGridSize; x++) {
                         if (grid[y][x] && grid[y][x].isDot) {
-                            balls.push({ color: grid[y][x].color });
+                            gems.push({ color: grid[y][x].color });
                         }
                     }
                 }
@@ -532,14 +555,14 @@
                         grid[y][x] = null;
                     }
                 }
-                for (let i = 0; i < balls.length; i++) {
+                for (let i = 0; i < gems.length; i++) {
                     const pos = positions[i];
-                    grid[pos.y][pos.x] = { color: balls[i].color, isDot: true };
+                    grid[pos.y][pos.x] = { color: gems[i].color, isDot: true };
                 }
                 currentPath = null; currentColor = null;
                 draw();
                 playShuffleSound();
-                document.getElementById('status').innerHTML = `🃏 Шарики перемешаны по всему полю | Уровень ${currentLevel} | Счёт: ${score}`;
+                document.getElementById('status').innerHTML = `🃏 Shuffled | LEVEL ${currentLevel} | SCORE: ${score}`;
                 setTimeout(() => updateStatusMessage(), 1500);
             }
             
@@ -555,7 +578,7 @@
             }
             
             // ---------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ГЕНЕРАЦИИ ----------
-            function scatterSameColorBalls(minDist, size) {
+            function scatterSameColorGems(minDist, size) {
                 if (minDist <= 1) return;
                 let colorPoints = new Map();
                 for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
@@ -670,9 +693,9 @@
             function generateHardLevel(level, size) {
                 const MIN_DIST = (level >= 6) ? 3 : 2;
                 const totalCells = size * size; // 100
-                const minBalls = Math.floor(totalCells * 0.6); // 60
-                const maxBalls = Math.min(totalCells, 90); // не более 90
-                let targetTotal = Math.floor(Math.random() * (maxBalls - minBalls + 1) + minBalls);
+                const minGems = Math.floor(totalCells * 0.6); // 60
+                const maxGems = Math.min(totalCells, 90); // не более 90
+                let targetTotal = Math.floor(Math.random() * (maxGems - minGems + 1) + minGems);
                 // 9 цветов, допустимые количества для цвета: 3,6,7,8,9,10
                 const allowedCounts = [3,6,7,8,9,10];
                 let colorDemands = [];
@@ -681,51 +704,51 @@
                 for (let i = 0; i < numColors; i++) {
                     let idx = Math.floor(Math.random() * allowedCounts.length);
                     let amount = allowedCounts[idx];
-                    colorDemands.push({ colorIdx: i % colorsPalette.length, totalBalls: amount });
+                    colorDemands.push({ colorIdx: i % colorsPalette.length, totalGems: amount });
                 }
                 // Считаем сумму
-                let sum = colorDemands.reduce((s, d) => s + d.totalBalls, 0);
+                let sum = colorDemands.reduce((s, d) => s + d.totalGems, 0);
                 // Нужно подогнать сумму к targetTotal, меняя цвета по одному
                 let maxIter = 100;
                 while (sum !== targetTotal && maxIter-- > 0) {
                     if (sum < targetTotal) {
                         // увеличиваем какой-то цвет, но не более 10
-                        let candidates = colorDemands.filter(d => d.totalBalls < 10);
+                        let candidates = colorDemands.filter(d => d.totalGems < 10);
                         if (candidates.length === 0) break;
                         let idx = Math.floor(Math.random() * candidates.length);
-                        let old = candidates[idx].totalBalls;
+                        let old = candidates[idx].totalGems;
                         let possible = allowedCounts.filter(v => v > old && v <= 10);
                         if (possible.length === 0) continue;
                         let newVal = possible[Math.floor(Math.random() * possible.length)];
                         sum += (newVal - old);
-                        candidates[idx].totalBalls = newVal;
+                        candidates[idx].totalGems = newVal;
                     } else if (sum > targetTotal) {
                         // уменьшаем, но не менее 3
-                        let candidates = colorDemands.filter(d => d.totalBalls > 3);
+                        let candidates = colorDemands.filter(d => d.totalGems > 3);
                         if (candidates.length === 0) break;
                         let idx = Math.floor(Math.random() * candidates.length);
-                        let old = candidates[idx].totalBalls;
+                        let old = candidates[idx].totalGems;
                         let possible = allowedCounts.filter(v => v < old && v >= 3);
                         if (possible.length === 0) continue;
                         let newVal = possible[Math.floor(Math.random() * possible.length)];
                         sum += (newVal - old);
-                        candidates[idx].totalBalls = newVal;
+                        candidates[idx].totalGems = newVal;
                     }
                 }
                 // Если всё равно не сошлось, слегка подкрутим последний цвет
                 if (sum !== targetTotal) {
                     let diff = targetTotal - sum;
                     let idx = Math.floor(Math.random() * colorDemands.length);
-                    let newVal = colorDemands[idx].totalBalls + diff;
+                    let newVal = colorDemands[idx].totalGems + diff;
                     if (newVal >= 3 && newVal <= 10 && allowedCounts.includes(newVal)) {
-                        colorDemands[idx].totalBalls = newVal;
+                        colorDemands[idx].totalGems = newVal;
                     }
                 }
                 
                 // Разбиваем на группы
                 let groups = [];
                 for (let demand of colorDemands) {
-                    const subGroups = splitIntoGroups(demand.totalBalls);
+                    const subGroups = splitIntoGroups(demand.totalGems);
                     for (let sz of subGroups) {
                         groups.push({ colorIdx: demand.colorIdx, size: sz });
                     }
@@ -805,7 +828,7 @@
                 if (level >= 6 && size <= 10) {
                     const savedGrid = grid;
                     grid = newGrid;
-                    scatterSameColorBalls(3, size);
+                    scatterSameColorGems(3, size);
                     const result = grid;
                     grid = savedGrid;
                     return result;
@@ -817,12 +840,12 @@
             function generateNormalLevel(level, size) {
                 const MIN_DIST = (level >= 6) ? 3 : 2;
                 let colorDemands = [];
-                if (level === 1) colorDemands.push({ colorIdx: 0, totalBalls: 3 });
-                else if (level === 2) colorDemands.push({ colorIdx: 0, totalBalls: 5 });
-                else if (level === 3) colorDemands.push({ colorIdx: 0, totalBalls: 6 }, { colorIdx: 1, totalBalls: 4 });
-                else if (level === 4) colorDemands.push({ colorIdx: 0, totalBalls: 7 }, { colorIdx: 1, totalBalls: 5 });
-                else if (level === 5) colorDemands.push({ colorIdx: 0, totalBalls: 6 }, { colorIdx: 1, totalBalls: 6 }, { colorIdx: 2, totalBalls: 4 });
-                else if (level === 6) colorDemands.push({ colorIdx: 0, totalBalls: 7 }, { colorIdx: 1, totalBalls: 6 }, { colorIdx: 2, totalBalls: 5 });
+                if (level === 1) colorDemands.push({ colorIdx: 0, totalGems: 3 });
+                else if (level === 2) colorDemands.push({ colorIdx: 0, totalGems: 5 });
+                else if (level === 3) colorDemands.push({ colorIdx: 0, totalGems: 6 }, { colorIdx: 1, totalGems: 4 });
+                else if (level === 4) colorDemands.push({ colorIdx: 0, totalGems: 7 }, { colorIdx: 1, totalGems: 5 });
+                else if (level === 5) colorDemands.push({ colorIdx: 0, totalGems: 6 }, { colorIdx: 1, totalGems: 6 }, { colorIdx: 2, totalGems: 4 });
+                else if (level === 6) colorDemands.push({ colorIdx: 0, totalGems: 7 }, { colorIdx: 1, totalGems: 6 }, { colorIdx: 2, totalGems: 5 });
                 else {
                     let maxColors = 6; if (level > 15) maxColors = 7;
                     let colorsCount = Math.min(3 + Math.floor((level - 6) / 2), maxColors);
@@ -836,22 +859,22 @@
                         let total = perColor + add;
                         if (total > 10) total = 10;
                         if (level >= 8 && total === 5) total = 6;
-                        colorDemands.push({ colorIdx: i % colorsPalette.length, totalBalls: total });
+                        colorDemands.push({ colorIdx: i % colorsPalette.length, totalGems: total });
                     }
                 }
                 
                 for (let demand of colorDemands) {
                     let variation = Math.floor(Math.random() * 3) - 1;
-                    let newTotal = demand.totalBalls + variation;
+                    let newTotal = demand.totalGems + variation;
                     if (newTotal < 3) newTotal = 3;
                     if (newTotal > 10) newTotal = 10;
                     if (newTotal === 5) newTotal = (Math.random() < 0.5) ? 4 : 6;
-                    demand.totalBalls = newTotal;
+                    demand.totalGems = newTotal;
                 }
                 
                 let groups = [];
                 for (let demand of colorDemands) {
-                    const subGroups = splitIntoGroups(demand.totalBalls);
+                    const subGroups = splitIntoGroups(demand.totalGems);
                     for (let sz of subGroups) {
                         groups.push({ colorIdx: demand.colorIdx, size: sz });
                     }
@@ -927,7 +950,7 @@
                 if (level >= 6 && size <= 10) {
                     const savedGrid = grid;
                     grid = newGrid;
-                    scatterSameColorBalls(3, size);
+                    scatterSameColorGems(3, size);
                     const result = grid;
                     grid = savedGrid;
                     return result;
@@ -959,7 +982,7 @@
                 if (!keepBaseScore) baseScoreForLevel = score;
                 
                 // Обновляем заголовок с текущим уровнем
-                document.getElementById('levelTitle').textContent = `Уровень ${level}`;
+                document.getElementById('levelTitle').textContent = `LEVEL ${level}`;
                 
                 updateStatusMessage(); draw(); 
                 historyStack = [];
@@ -1036,7 +1059,7 @@
                 if (badColors.size > 0) {
                     lossHighlightColors = badColors;
                     playSadMusic();
-                    document.getElementById('status').innerHTML = `😭 Поражение! Остались шарики в количестве 2 или 1. Уровень перезапущен. 😭`;
+                    document.getElementById('status').innerHTML = `😭 DEFEAT. 😭`;
                     setTimeout(() => {
                         forceRestartCurrentLevel();
                     }, 800);
@@ -1056,7 +1079,7 @@
                     loadLevel(currentLevel, false);
                     spawnLevelCompleteFireworks();
                     playLevelCompleteSound();
-                    document.getElementById('status').innerHTML = `🎉 УРОВЕНЬ ${currentLevel-1} ПРОЙДЕН! → Уровень ${currentLevel} 🎉 | Счёт: ${score}`;
+                    document.getElementById('status').innerHTML = `🎉 LEVEL ${currentLevel-1} COMPLETE! → LEVEL ${currentLevel} 🎉 | SCORE: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1800);
                     draw();
                     return true;
@@ -1066,7 +1089,7 @@
             
             function updateStatusMessage() {
                 const totalDots = grid.flat().filter(cell => cell?.isDot).length;
-                document.getElementById('status').innerHTML = `🌟 Поле ${currentGridSize}×${currentGridSize} | 💎 Счёт: ${score} | 🎯 Шариков: ${totalDots}`;
+                document.getElementById('status').innerHTML = `🌟 Grid ${currentGridSize}×${currentGridSize} | 💎 SCORE: ${score} | 🎯 Gems: ${totalDots}`;
             }
             
             // ========== ОТРИСОВКА ==========
@@ -1129,7 +1152,7 @@
                     ctx.globalAlpha = 1.0;
                 }
                 
-                // Отрисовка шариков-кристаллов
+                // Отрисовка gems-gemов
                 for (let y = 0; y < currentGridSize; y++) {
                     for (let x = 0; x < currentGridSize; x++) {
                         const cell = grid[y][x];
@@ -1145,7 +1168,7 @@
                                 if (currentRadius < 2) currentRadius = 2;
                             }
                             
-                            // Пульсация для обычных шариков тоже
+                            // Пульсация для обычных gems тоже
                             if (!isBad) {
                                 const subtlePulse = 1 + 0.03 * Math.sin(pulsePhase + x * 0.3 + y * 0.3);
                                 currentRadius = radius * subtlePulse;
@@ -1158,7 +1181,7 @@
                             ctx.shadowBlur = isBad ? 15 : 10;
                             ctx.shadowColor = cell.color;
                             
-                            // Градиент кристалла
+                            // Градиент gemа
                             const gradient = ctx.createRadialGradient(
                                 cx - currentRadius*0.35, cy - currentRadius*0.35, currentRadius*0.1,
                                 cx, cy, currentRadius
@@ -1177,7 +1200,7 @@
                             ctx.arc(cx, cy, currentRadius, 0, Math.PI*2);
                             ctx.fill();
                             
-                            // Блик на кристалле
+                            // Блик на gemе
                             if (!isBad) {
                                 const highlightGradient = ctx.createRadialGradient(
                                     cx - currentRadius*0.35, cy - currentRadius*0.35, 0,
@@ -1325,7 +1348,7 @@
                     playPickupSound(dotsCount);
                     spawnParticles(px, py, currentColor, dotsCount * 4);
                     addFloatingText(px, py - 15, `+${addScore}`, currentColor);
-                    document.getElementById('status').innerHTML = `✅ Убрано ${dotsCount} шариков (+${addScore}) | Уровень ${currentLevel} | Счёт: ${score}`;
+                    document.getElementById('status').innerHTML = `✅ ${dotsCount} gems cleared (+${addScore}) | LEVEL ${currentLevel} | SCORE: ${score}`;
                     setTimeout(() => updateStatusMessage(), 800);
                     
                     const completed = checkLevelComplete();
@@ -1335,7 +1358,7 @@
                     draw();
                 } else {
                     playErrorSound();
-                    document.getElementById('status').innerHTML = `⚠️ Нужно минимум 3 шарика (соединено ${dotsCount}) | Уровень ${currentLevel} | Счёт: ${score}`;
+                    document.getElementById('status').innerHTML = `⚠️ Need 3+ gems (${dotsCount} connected) | LEVEL ${currentLevel} | SCORE: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1200);
                 }
                 currentPath = null; currentColor = null;
@@ -1372,19 +1395,17 @@
                 '#fd79a8'  // насыщенный розово-красный (вместо сине-фиолетового)
             ];
             
-            // ========== ФОНОВЫЕ ЧАСТИЦЫ ==========
-            function createBgParticles() {
-                const container = document.getElementById('bgParticles');
-                for (let i = 0; i < 30; i++) {
-                    const particle = document.createElement('div');
-                    particle.className = 'bg-particle';
-                    const size = Math.random() * 80 + 20;
-                    particle.style.width = size + 'px';
-                    particle.style.height = size + 'px';
-                    particle.style.left = Math.random() * 100 + '%';
-                    particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
-                    particle.style.animationDelay = (Math.random() * 10) + 's';
-                    container.appendChild(particle);
+            // ========== ЗВЁЗДЫ НА ФОНЕ ==========
+            function createStars() {
+                for (let i = 0; i < 20; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.innerHTML = '⭐';
+                    star.style.left = Math.random() * 100 + '%';
+                    star.style.top = Math.random() * 100 + '%';
+                    star.style.fontSize = (Math.random() * 20 + 15) + 'px';
+                    star.style.animationDelay = (Math.random() * 2) + 's';
+                    document.body.appendChild(star);
                 }
             }
             
@@ -1396,7 +1417,7 @@
             }
             
             function init() {
-                createBgParticles();
+                createStars();
                 resizeCanvas();
                 grid = Array(currentGridSize).fill().map(() => Array(currentGridSize).fill(null));
                 resetFullGame();
