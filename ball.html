@@ -1108,11 +1108,11 @@
                         ctx.lineTo(currentPath[i].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[i].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
                     ctx.stroke();
                     
-                    // Белая обводка для мультяшности
+                    // Обводка линии таким же цветом, как у шариков (затемнённый оттенок)
                     ctx.globalAlpha = 1.0;
                     ctx.lineWidth = CELL_SIZE * 0.65;
                     ctx.shadowBlur = 0;
-                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                    ctx.strokeStyle = adjustColor(currentColor, -60);
                     ctx.stroke();
                     
                     ctx.shadowBlur = 0;
