@@ -88,7 +88,7 @@
                 0 8px 0 #FF69B4,
                 0 15px 30px rgba(0,0,0,0.15),
                 inset 0 0 60px rgba(255,255,255,0.3);
-            background: linear-gradient(180deg, #FFE4E1 0%, #FFFACD 50%, #E0FFFF 100%);
+            background: #f0ece6;
             max-width: 100%;
             max-height: 65vh;
             cursor: pointer;
@@ -1077,15 +1077,15 @@
                 // Яркий мультяшный градиентный фон канваса
                 const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
                 bgGradient.addColorStop(0, '#FFF5E1');
-                bgGradient.addColorStop(0.5, '#E8F4FF');
-                bgGradient.addColorStop(1, '#FFF9E6');
+                bgGradient.addColorStop(0.5, '#f0ece6');
+                bgGradient.addColorStop(1, '#f0ece6');
                 ctx.fillStyle = bgGradient;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
                 pulsePhase = (pulsePhase + 0.1) % (Math.PI * 2);
                 
-                // Мультяшная сетка с закругленными ячейками - более яркая
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                // Мультяшная сетка с закругленными ячейками - черная
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
                 ctx.lineWidth = 2;
                 ctx.shadowBlur = 0;
                 for (let i = 0; i <= currentGridSize; i++) {
