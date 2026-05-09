@@ -539,7 +539,6 @@
             function undoLastMove() {
                 if (isVictoryAnimating) return;
                 if (historyStack.length === 0) {
-                    document.getElementById('status').innerHTML = `❌ Нет ходов для отмены | Уровень ${currentLevel} | Счёт: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1200);
                     return;
                 }
@@ -550,7 +549,6 @@
                 score = last.scoreSnapshot;
                 currentPath = null; currentColor = null;
                 updateStatusMessage(); draw();
-                document.getElementById('status').innerHTML = `↩️ Ход отменён | Уровень ${currentLevel} | Счёт: ${score}`;
                 playTone(300, 'triangle', 0.1, 0.2);
                 setTimeout(() => updateStatusMessage(), 1500);
             }
@@ -589,7 +587,6 @@
                 currentPath = null; currentColor = null;
                 draw();
                 playShuffleSound();
-                document.getElementById('status').innerHTML = `🃏 Шарики перемешаны по всему полю | Уровень ${currentLevel} | Счёт: ${score}`;
                 setTimeout(() => updateStatusMessage(), 1500);
             }
             
@@ -1088,7 +1085,6 @@
                 if (badColors.size > 0) {
                     lossHighlightColors = badColors;
                     playSadMusic();
-                    document.getElementById('status').innerHTML = `😭 Поражение! Остались шарики в количестве 2 или 1. Уровень перезапущен. 😭`;
                     setTimeout(() => {
                         forceRestartCurrentLevel();
                     }, 800);
@@ -1108,7 +1104,6 @@
                     initialLevelGrid = null;
                     spawnLevelCompleteFireworks();
                     playLevelCompleteSound();
-                    document.getElementById('status').innerHTML = `🎉 УРОВЕНЬ ${currentLevel-1} ПРОЙДЕН! → Уровень ${currentLevel} 🎉 | Счёт: ${score}`;
                     
                     // Ждём завершения анимации частиц перед загрузкой нового уровня
                     setTimeout(() => {
@@ -1368,7 +1363,6 @@
                     playPickupSound(dotsCount);
                     spawnParticles(px, py, currentColor, dotsCount * 4);
                     addFloatingText(px, py - 15, `+${addScore}`, currentColor);
-                    document.getElementById('status').innerHTML = `✅ Убрано ${dotsCount} шариков (+${addScore}) | Уровень ${currentLevel} | Счёт: ${score}`;
                     setTimeout(() => updateStatusMessage(), 800);
                     
                     const completed = checkLevelComplete();
@@ -1378,7 +1372,6 @@
                     draw();
                 } else {
                     playErrorSound();
-                    document.getElementById('status').innerHTML = `⚠️ Нужно минимум 3 шарика (соединено ${dotsCount}) | Уровень ${currentLevel} | Счёт: ${score}`;
                     setTimeout(() => updateStatusMessage(), 1200);
                 }
                 currentPath = null; currentColor = null;
