@@ -238,7 +238,8 @@
             const canvas = document.getElementById('game');
             const ctx = canvas.getContext('2d');
             
-            let currentGridSize = 8;
+            let currentGridSizeX = 8;
+            let currentGridSizeY = 8;
             let CELL_SIZE = 60;
             const OFFSET = 20;
             
@@ -430,8 +431,8 @@
 
             function spawnLevelCompleteFireworks() {
                 for (let i = 0; i < 100; i++) {
-                    const x = OFFSET + Math.random() * (currentGridSize * CELL_SIZE);
-                    const y = OFFSET + Math.random() * (currentGridSize * CELL_SIZE);
+                    const x = OFFSET + Math.random() * (currentGridSizeX * CELL_SIZE);
+                    const y = OFFSET + Math.random() * (currentGridSizeX * CELL_SIZE);
                     const color = colorsPalette[Math.floor(Math.random() * colorsPalette.length)];
                     levelCompleteParticles.push({
                         x, y, 
@@ -562,8 +563,8 @@
                     return;
                 }
                 const last = historyStack.pop();
-                for (let i = 0; i < currentGridSize; i++)
-                    for (let j = 0; j < currentGridSize; j++)
+                for (let y = 0; y < currentGridSizeY; y++)
+                    for (let x = 0; x < currentGridSizeX; x++)
                         grid[i][j] = last.gridSnapshot[i][j] ? { ...last.gridSnapshot[i][j] } : null;
                 score = last.scoreSnapshot;
                 currentPath = null; currentColor = null;
@@ -611,12 +612,12 @@
             
             function resizeCanvas() {
                 let maxSize = Math.min(window.innerWidth - 40, window.innerHeight - 200);
-                const minTotalSize = 30 * currentGridSize + OFFSET * 2;
+                const minTotalSize = 30 * currentGridSizeX + OFFSET * 2;
                 if (maxSize < minTotalSize) maxSize = minTotalSize;
-                const size = Math.floor(maxSize / currentGridSize) * currentGridSize;
+                const size = Math.floor(maxSize / currentGridSizeX) * currentGridSizeX;
                 canvas.width = size + OFFSET * 2;
                 canvas.height = size + OFFSET * 2;
-                CELL_SIZE = size / currentGridSize;
+                CELL_SIZE = size / currentGridSizeX;
                 if (CELL_SIZE < 20) CELL_SIZE = 20;
             }
             
@@ -1003,24 +1004,26 @@
             
             // ========== ЗАГРУЗКА УРОВНЯ С ВЫБОРОМ ГЕНЕРАТОРА ==========
             function loadLevel(level, keepBaseScore = false) {
-                let newSize = (level >= 20) ? 10 : 8;
-                if (newSize !== currentGridSize) {
-                    currentGridSize = newSize;
+                let newSizeX = (level >= 25) ? 15 : ((level >= 20) ? 10 : 8);
+                let newSizeY = (level >= 25) ? 10 : ((level >= 20) ? 10 : 8);
+                if (newSizeX !== currentGridSizeX || newSizeY !== currentGridSizeY) {
+                    currentGridSizeX = newSizeX;
+                    currentGridSizeY = newSizeY;
                     resizeCanvas();
                     historyStack = [];
                     initialLevelGrid = null;
                 }
                 let newGrid;
                 if (level >= 20) {
-                    newGrid = generateHardLevel(level, currentGridSize);
+                    newGrid = generateHardLevel(level, currentGridSizeX, currentGridSizeY);
                 } else {
-                    newGrid = generateNormalLevel(level, currentGridSize);
+                    newGrid = generateNormalLevel(level, currentGridSizeX, currentGridSizeY);
                 }
                 initialLevelGrid = newGrid.map(row => row.map(cell => cell ? { ...cell } : null));
-                grid = Array(currentGridSize).fill().map(() => Array(currentGridSize).fill(null));
-                for (let i = 0; i < currentGridSize; i++)
-                    for (let j = 0; j < currentGridSize; j++)
-                        grid[i][j] = newGrid[i]?.[j] ? { ...newGrid[i][j] } : null;
+                grid = Array(currentGridSizeY).fill().map(() => Array(currentGridSizeX).fill(null));
+                for (let y = 0; y < currentGridSizeY; y++)
+                    for (let x = 0; x < currentGridSizeX; x++)
+                        grid[y][x] = newGrid[y]?.[x] ? { ...newGrid[y][x] } : null;
                 currentPath = null; currentColor = null;
                 if (!keepBaseScore) baseScoreForLevel = score;
                 
@@ -1037,8 +1040,8 @@
                 isRestartingDueToLoss = true;
                 score = baseScoreForLevel;
                 if (initialLevelGrid) {
-                    for (let i = 0; i < currentGridSize; i++)
-                        for (let j = 0; j < currentGridSize; j++)
+                    for (let y = 0; y < currentGridSizeY; y++)
+                        for (let x = 0; x < currentGridSizeX; x++)
                             grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
                     currentPath = null; currentColor = null;
                     updateStatusMessage(); draw(); historyStack = [];
@@ -1053,8 +1056,8 @@
                 if (isVictoryAnimating) return;
                 score = baseScoreForLevel;
                 if (initialLevelGrid) {
-                    for (let i = 0; i < currentGridSize; i++)
-                        for (let j = 0; j < currentGridSize; j++)
+                    for (let y = 0; y < currentGridSizeY; y++)
+                        for (let x = 0; x < currentGridSizeX; x++)
                             grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
                     currentPath = null; currentColor = null;
                     updateStatusMessage(); draw(); historyStack = [];
@@ -1069,8 +1072,8 @@
                 if (confirm(`Сбросить уровень ${currentLevel}?`)) {
                     score = baseScoreForLevel;
                     if (initialLevelGrid) {
-                        for (let i = 0; i < currentGridSize; i++)
-                            for (let j = 0; j < currentGridSize; j++)
+                        for (let y = 0; y < currentGridSizeY; y++)
+                            for (let x = 0; x < currentGridSizeX; x++)
                                 grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
                         currentPath = null; currentColor = null;
                         updateStatusMessage(); draw(); historyStack = [];
@@ -1140,7 +1143,7 @@
             
             function updateStatusMessage() {
                 const totalDots = grid.flat().filter(cell => cell?.isDot).length;
-                document.getElementById('status').innerHTML = `🌟 Поле ${currentGridSize}×${currentGridSize} | 🎪 Счёт: ${score} | 🎈 Шариков: ${totalDots}`;
+                document.getElementById('status').innerHTML = `🌟 Поле ${currentGridSizeX}×${currentGridSizeY} | 🎪 Счёт: ${score} | 🎈 Шариков: ${totalDots}`;
             }
             
             // ========== ОТРИСОВКА ==========
@@ -1163,8 +1166,8 @@
                 ctx.shadowBlur = 0;
                 for (let i = 0; i <= currentGridSize; i++) {
                     const pos = i * CELL_SIZE + OFFSET;
-                    ctx.beginPath(); ctx.moveTo(pos, OFFSET); ctx.lineTo(pos, currentGridSize * CELL_SIZE + OFFSET); ctx.stroke();
-                    ctx.beginPath(); ctx.moveTo(OFFSET, pos); ctx.lineTo(currentGridSize * CELL_SIZE + OFFSET, pos); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(pos, OFFSET); ctx.lineTo(pos, currentGridSizeX * CELL_SIZE + OFFSET); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(OFFSET, pos); ctx.lineTo(currentGridSizeX * CELL_SIZE + OFFSET, pos); ctx.stroke();
                 }
                 
                 // Линия пути в мультяшном стиле
@@ -1272,10 +1275,10 @@
                 let canvasY = (clientY - rect.top) * scaleY;
                 const x = Math.floor((canvasX - OFFSET) / CELL_SIZE);
                 const y = Math.floor((canvasY - OFFSET) / CELL_SIZE);
-                return { x: Math.max(0, Math.min(currentGridSize-1, x)), y: Math.max(0, Math.min(currentGridSize-1, y)) };
+                return { x: Math.max(0, Math.min(currentGridSizeX-1, x)), y: Math.max(0, Math.min(currentGridSizeX-1, y)) };
             }
             function isValidMove(x, y) {
-                if (x < 0 || x >= currentGridSize || y < 0 || y >= currentGridSize) return false;
+                if (x < 0 || x >= currentGridSizeX || y < 0 || y >= currentGridSizeY) return false;
                 const cell = grid[y][x];
                 return !cell || (cell.isDot && cell.color === currentColor);
             }
@@ -1463,7 +1466,7 @@
             function init() {
                 createBgParticles();
                 resizeCanvas();
-                grid = Array(currentGridSize).fill().map(() => Array(currentGridSize).fill(null));
+                grid = Array(currentGridSizeY).fill().map(() => Array(currentGridSizeX).fill(null));
                 resetFullGame();
                 canvas.addEventListener('mousedown', startPath);
                 canvas.addEventListener('mousemove', movePath);
