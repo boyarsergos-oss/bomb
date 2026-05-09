@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Соединяй 3+ — яркие контрастные цвета</title>
+    <title>✨ Crystal Connect - Соединяй 3+ ✨</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+        
         body {
             margin: 0;
             padding: 0;
@@ -13,71 +17,218 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: #1e1e2e;
-            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
             color: white;
             touch-action: none;
             overflow: hidden;
+            position: relative;
         }
-        h1 { margin: 10px 0 5px; font-size: 1.8rem; letter-spacing: 1px; }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Фоновые плавающие частицы */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        
+        .bg-particle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
+            animation: floatParticle linear infinite;
+            opacity: 0.3;
+        }
+        
+        @keyframes floatParticle {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+        }
+        
+        h1 {
+            margin: 15px 0 10px;
+            font-size: 2.2rem;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(138, 43, 226, 0.5);
+            animation: titleGlow 2s ease-in-out infinite alternate;
+            z-index: 10;
+            font-weight: 300;
+        }
+        
+        @keyframes titleGlow {
+            from { text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(138, 43, 226, 0.5), 0 0 60px rgba(0, 191, 255, 0.3); }
+            to { text-shadow: 0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(138, 43, 226, 0.8), 0 0 90px rgba(0, 191, 255, 0.5); }
+        }
+        
         canvas {
-            border: 4px solid #4a4a6a;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            background: #2a2a3a;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            box-shadow: 
+                0 0 30px rgba(138, 43, 226, 0.4),
+                0 0 60px rgba(0, 191, 255, 0.2),
+                inset 0 0 40px rgba(255, 255, 255, 0.05);
+            background: rgba(30, 30, 50, 0.8);
+            backdrop-filter: blur(10px);
             max-width: 100%;
             max-height: 65vh;
             cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 10;
         }
+        
+        canvas:hover {
+            box-shadow: 
+                0 0 40px rgba(138, 43, 226, 0.6),
+                0 0 80px rgba(0, 191, 255, 0.3),
+                inset 0 0 50px rgba(255, 255, 255, 0.1);
+            transform: scale(1.01);
+        }
+        
         .controls {
-            margin-top: 15px;
+            margin-top: 20px;
             display: flex;
-            gap: 12px;
+            gap: 15px;
             flex-wrap: wrap;
             justify-content: center;
+            z-index: 10;
         }
+        
         button {
-            padding: 10px 18px;
+            padding: 12px 22px;
             font-size: 14px;
-            background: linear-gradient(135deg, #6e6ef0, #4a4ac0);
+            background: linear-gradient(135deg, rgba(110, 110, 240, 0.8), rgba(74, 74, 192, 0.8));
             color: white;
-            border: none;
-            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
             cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 4px 15px rgba(0,0,0,0.3),
+                0 0 20px rgba(110, 110, 240, 0.3);
+            backdrop-filter: blur(10px);
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
         }
-        button:hover { background: linear-gradient(135deg, #8a8af5, #6a6ae0); transform: scale(0.96);}
-        button:active { transform: scale(0.92); }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.5s;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:hover {
+            background: linear-gradient(135deg, rgba(138, 138, 245, 0.9), rgba(106, 106, 224, 0.9));
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 
+                0 8px 25px rgba(0,0,0,0.4),
+                0 0 30px rgba(110, 110, 240, 0.5);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(-1px) scale(0.98);
+            box-shadow: 
+                0 2px 10px rgba(0,0,0,0.3),
+                0 0 15px rgba(110, 110, 240, 0.4);
+        }
+        
         .info {
-            margin-top: 10px;
+            margin-top: 15px;
             font-size: 18px;
             text-align: center;
-            background: #2a2a3a;
-            padding: 8px 18px;
-            border-radius: 40px;
-            backdrop-filter: blur(4px);
-            font-weight: bold;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            background: linear-gradient(135deg, rgba(42, 42, 58, 0.9), rgba(30, 30, 50, 0.9));
+            padding: 12px 25px;
+            border-radius: 50px;
+            backdrop-filter: blur(15px);
+            font-weight: 500;
+            box-shadow: 
+                0 4px 20px rgba(0,0,0,0.4),
+                0 0 30px rgba(138, 43, 226, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
         }
+        
+        .info:hover {
+            box-shadow: 
+                0 6px 30px rgba(0,0,0,0.5),
+                0 0 40px rgba(138, 43, 226, 0.3);
+            transform: translateY(-2px);
+        }
+        
         @media (max-width: 550px) {
-            .info { font-size: 13px; }
-            button { padding: 6px 12px; font-size: 12px; }
+            h1 { font-size: 1.6rem; }
+            .info { font-size: 13px; padding: 10px 18px; }
+            button { padding: 8px 14px; font-size: 12px; }
+            .controls { gap: 10px; }
+        }
+        
+        /* Эффект победы */
+        .victory-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .victory-overlay.active {
+            opacity: 1;
+            animation: victoryPulse 0.5s ease-out;
+        }
+        
+        @keyframes victoryPulse {
+            0% { background: radial-gradient(circle, rgba(255,215,0,0.5) 0%, transparent 70%); }
+            100% { background: transparent; }
         }
     </style>
 </head>
 <body>
-    <h1>✨ СОЕДИНЯЙ 3+ ✨</h1>
+    <div class="bg-particles" id="bgParticles"></div>
+    <div class="victory-overlay" id="victoryOverlay"></div>
+    <h1>✨ CRYSTAL CONNECT ✨</h1>
     <canvas id="game"></canvas>
     <div class="controls">
         <button onclick="resetFullGame()">🆕 Новая игра</button>
-        <button onclick="undoLastMove()">↩️ Отменить ход</button>
-        <button onclick="restartLevel()">🔄 Рестарт уровня</button>
-        <button onclick="resetCurrentLevel()">⚠️ Сброс уровня</button>
-        <button onclick="shuffleField()">🃏 Перемешать</button>
+        <button onclick="undoLastMove()">↩️ Отменить</button>
+        <button onclick="restartLevel()">🔄 Рестарт</button>
+        <button onclick="resetCurrentLevel()">⚠️ Сброс</button>
+        <button onclick="shuffleField()">🃏 Микс</button>
     </div>
-    <div class="info" id="status">⚡ Соединяйте 3+ шарика (линию можно проводить назад) ⚡</div>
+    <div class="info" id="status">⚡ Соединяйте 3+ кристалла одного цвета ⚡</div>
 
     <script>
         (function(){
@@ -191,64 +342,136 @@
             let activeParticles = [];
             let levelCompleteParticles = [];
 
-            function spawnParticles(x, y, color, count = 12) {
+            function spawnParticles(x, y, color, count = 20) {
                 for (let i = 0; i < count; i++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const speed = 1.5 + Math.random() * 3;
+                    const speed = 2 + Math.random() * 5;
                     activeParticles.push({
-                        x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-                        life: 1.0, decay: 0.02 + Math.random() * 0.03, size: 2 + Math.random() * 4, color
+                        x, y, 
+                        vx: Math.cos(angle) * speed, 
+                        vy: Math.sin(angle) * speed,
+                        life: 1.0, 
+                        decay: 0.015 + Math.random() * 0.025, 
+                        size: 3 + Math.random() * 6, 
+                        color,
+                        sparkle: Math.random() > 0.5
                     });
                 }
             }
 
             function spawnLevelCompleteFireworks() {
-                for (let i = 0; i < 60; i++) {
+                for (let i = 0; i < 100; i++) {
                     const x = OFFSET + Math.random() * (currentGridSize * CELL_SIZE);
                     const y = OFFSET + Math.random() * (currentGridSize * CELL_SIZE);
                     const color = colorsPalette[Math.floor(Math.random() * colorsPalette.length)];
                     levelCompleteParticles.push({
-                        x, y, vx: (Math.random() - 0.5) * 5, vy: -Math.random() * 5 - 2,
-                        life: 1.0, decay: 0.015 + Math.random() * 0.02, size: 3 + Math.random() * 5, color
+                        x, y, 
+                        vx: (Math.random() - 0.5) * 8, 
+                        vy: -Math.random() * 8 - 3,
+                        life: 1.0, 
+                        decay: 0.012 + Math.random() * 0.018, 
+                        size: 4 + Math.random() * 7, 
+                        color,
+                        sparkle: true
                     });
                 }
             }
 
             function updateParticles() {
-                for (let p of activeParticles) { p.x += p.vx; p.y += p.vy; p.life -= p.decay; p.size *= 0.98; }
+                for (let p of activeParticles) { 
+                    p.x += p.vx; 
+                    p.y += p.vy; 
+                    p.vy += 0.05; // гравитация
+                    p.vx *= 0.98; // сопротивление воздуха
+                    p.life -= p.decay; 
+                    p.size *= 0.97; 
+                }
                 activeParticles = activeParticles.filter(p => p.life > 0);
-                for (let p of levelCompleteParticles) { p.x += p.vx; p.y += p.vy; p.life -= p.decay; p.vy += 0.1; }
+                for (let p of levelCompleteParticles) { 
+                    p.x += p.vx; 
+                    p.y += p.vy; 
+                    p.vy += 0.1; // гравитация для фейерверков
+                    p.life -= p.decay; 
+                    p.size *= 0.985;
+                }
                 levelCompleteParticles = levelCompleteParticles.filter(p => p.life > 0);
             }
 
             function drawParticles(ctx) {
                 for (let p of [...activeParticles, ...levelCompleteParticles]) {
                     ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
+                    
+                    if (p.sparkle && Math.random() > 0.7) {
+                        // Эффект мерцания
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = p.color;
+                    } else {
+                        ctx.shadowBlur = 0;
+                    }
+                    
+                    // Градиент для частицы
+                    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                    gradient.addColorStop(0, '#ffffff');
+                    gradient.addColorStop(0.3, p.color);
+                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                    
+                    ctx.fillStyle = gradient;
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 ctx.globalAlpha = 1.0;
+                ctx.shadowBlur = 0;
             }
 
             let floatingTexts = [];
             function addFloatingText(x, y, text, color = 'white') {
-                floatingTexts.push({ x, y, text, color, life: 1.0, vy: -2 });
+                floatingTexts.push({ 
+                    x: x + (Math.random() - 0.5) * 20, 
+                    y, 
+                    text, 
+                    color, 
+                    life: 1.0, 
+                    vy: -3 - Math.random() * 2,
+                    vx: (Math.random() - 0.5) * 2,
+                    scale: 1 + Math.random() * 0.3,
+                    rotation: (Math.random() - 0.5) * 0.3
+                });
             }
             function updateFloatingTexts() {
-                for (let t of floatingTexts) { t.y += t.vy; t.life -= 0.02; }
+                for (let t of floatingTexts) { 
+                    t.x += t.vx;
+                    t.y += t.vy; 
+                    t.vy *= 0.98;
+                    t.life -= 0.018; 
+                }
                 floatingTexts = floatingTexts.filter(t => t.life > 0);
             }
             function drawFloatingTexts(ctx) {
                 for (let t of floatingTexts) {
+                    ctx.save();
                     ctx.globalAlpha = t.life;
-                    ctx.fillStyle = t.color;
-                    ctx.font = 'bold 18px "Segoe UI"';
+                    ctx.translate(t.x, t.y);
+                    ctx.rotate(t.rotation);
+                    ctx.scale(t.scale, t.scale);
+                    
+                    // Тень текста
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = t.color;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 22px "Segoe UI"';
                     ctx.textAlign = 'center';
-                    ctx.fillText(t.text, t.x, t.y);
+                    ctx.fillText(t.text, 0, 0);
+                    
+                    // Основной цвет текста
+                    ctx.fillStyle = t.color;
+                    ctx.font = 'bold 20px "Segoe UI"';
+                    ctx.fillText(t.text, 0, 0);
+                    
+                    ctx.restore();
                 }
                 ctx.globalAlpha = 1.0;
+                ctx.shadowBlur = 0;
             }
 
             // ========== ИСТОРИЯ ==========
@@ -840,69 +1063,134 @@
             // ========== ОТРИСОВКА ==========
             function draw() {
                 if (CELL_SIZE <= 0) { resizeCanvas(); if (CELL_SIZE <= 0) CELL_SIZE = 30; }
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                pulsePhase = (pulsePhase + 0.15) % (Math.PI * 2);
-                ctx.strokeStyle = '#3a3a4a';
-                ctx.lineWidth = 2;
+                // Красивый градиентный фон канваса
+                const bgGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                bgGradient.addColorStop(0, 'rgba(25, 25, 45, 0.95)');
+                bgGradient.addColorStop(0.5, 'rgba(35, 35, 60, 0.95)');
+                bgGradient.addColorStop(1, 'rgba(25, 25, 45, 0.95)');
+                ctx.fillStyle = bgGradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                pulsePhase = (pulsePhase + 0.1) % (Math.PI * 2);
+                
+                // Сетка с эффектом свечения
+                ctx.strokeStyle = 'rgba(138, 43, 226, 0.15)';
+                ctx.lineWidth = 1;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = 'rgba(138, 43, 226, 0.3)';
                 for (let i = 0; i <= currentGridSize; i++) {
                     const pos = i * CELL_SIZE + OFFSET;
                     ctx.beginPath(); ctx.moveTo(pos, OFFSET); ctx.lineTo(pos, currentGridSize * CELL_SIZE + OFFSET); ctx.stroke();
                     ctx.beginPath(); ctx.moveTo(OFFSET, pos); ctx.lineTo(currentGridSize * CELL_SIZE + OFFSET, pos); ctx.stroke();
                 }
+                ctx.shadowBlur = 0;
                 
+                // Линия пути с красивым эффектом
                 if (currentPath && currentPath.length > 1) {
-                    const time = Date.now() / 300;
-                    const pulse = 0.9 + 0.1 * Math.sin(time);
+                    const time = Date.now() / 200;
+                    const pulse = 0.85 + 0.15 * Math.sin(time);
+                    
+                    // Внешнее свечение
                     ctx.strokeStyle = currentColor;
-                    ctx.lineWidth = CELL_SIZE * 0.65 * pulse;
+                    ctx.lineWidth = CELL_SIZE * 0.75 * pulse;
                     ctx.lineCap = "round"; ctx.lineJoin = "round";
-                    ctx.shadowBlur = 25; ctx.shadowColor = currentColor;
+                    ctx.shadowBlur = 35; ctx.shadowColor = currentColor;
+                    ctx.globalAlpha = 0.4;
                     ctx.beginPath();
                     ctx.moveTo(currentPath[0].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[0].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
                     for (let i = 1; i < currentPath.length; i++)
                         ctx.lineTo(currentPath[i].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[i].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
                     ctx.stroke();
+                    
+                    // Внутренняя яркая линия
+                    ctx.globalAlpha = 0.9;
+                    ctx.lineWidth = CELL_SIZE * 0.45 * pulse;
+                    ctx.shadowBlur = 20; ctx.shadowColor = '#ffffff';
+                    ctx.stroke();
+                    
+                    // Центральная белая линия
+                    ctx.globalAlpha = 1.0;
+                    ctx.lineWidth = CELL_SIZE * 0.2;
+                    ctx.shadowBlur = 10; ctx.shadowColor = '#ffffff';
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.stroke();
+                    
                     ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 1.0;
                 }
                 
+                // Отрисовка шариков-кристаллов
                 for (let y = 0; y < currentGridSize; y++) {
                     for (let x = 0; x < currentGridSize; x++) {
                         const cell = grid[y][x];
                         if (cell && cell.isDot) {
                             const cx = x * CELL_SIZE + CELL_SIZE/2 + OFFSET;
                             const cy = y * CELL_SIZE + CELL_SIZE/2 + OFFSET;
-                            let radius = CELL_SIZE * 0.38;
+                            let radius = CELL_SIZE * 0.4;
                             let isBad = lossHighlightColors.has(cell.color);
                             let currentRadius = radius;
+                            
                             if (isBad) {
-                                currentRadius = radius * (0.8 + 0.4 * Math.sin(pulsePhase * 2));
-                                if (currentRadius < 2) currentRadius = 2;
-                            } else {
+                                currentRadius = radius * (0.75 + 0.35 * Math.sin(pulsePhase * 3));
                                 if (currentRadius < 2) currentRadius = 2;
                             }
-                            ctx.shadowBlur = isBad ? 20 : 12;
+                            
+                            // Пульсация для обычных шариков тоже
+                            if (!isBad) {
+                                const subtlePulse = 1 + 0.03 * Math.sin(pulsePhase + x * 0.3 + y * 0.3);
+                                currentRadius = radius * subtlePulse;
+                            }
+                            
+                            // Многослойное свечение
+                            const glowIntensity = isBad ? (0.8 + 0.3 * Math.sin(pulsePhase * 2)) : 0.6;
+                            
+                            // Внешнее свечение
+                            ctx.shadowBlur = isBad ? 30 : 20;
                             ctx.shadowColor = cell.color;
-                            let glowIntensity = isBad ? (0.7 + 0.3 * Math.sin(pulsePhase * 2)) : 1;
-                            const gradient = ctx.createRadialGradient(cx - currentRadius*0.3, cy - currentRadius*0.4, currentRadius*0.1, cx, cy, currentRadius);
+                            
+                            // Градиент кристалла
+                            const gradient = ctx.createRadialGradient(
+                                cx - currentRadius*0.35, cy - currentRadius*0.35, currentRadius*0.1,
+                                cx, cy, currentRadius
+                            );
                             gradient.addColorStop(0, '#ffffff');
-                            gradient.addColorStop(0.3, cell.color);
+                            gradient.addColorStop(0.25, cell.color);
+                            gradient.addColorStop(0.6, cell.color);
                             if (isBad) {
-                                gradient.addColorStop(1, `rgba(255, 100, 100, ${glowIntensity * 0.8})`);
+                                gradient.addColorStop(1, 'rgba(255, 80, 80, 0.9)');
                             } else {
-                                gradient.addColorStop(1, '#000000');
+                                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
                             }
+                            
                             ctx.fillStyle = gradient;
                             ctx.beginPath();
                             ctx.arc(cx, cy, currentRadius, 0, Math.PI*2);
                             ctx.fill();
-                            ctx.shadowBlur = 0;
+                            
+                            // Блик на кристалле
                             if (!isBad) {
-                                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                                const highlightGradient = ctx.createRadialGradient(
+                                    cx - currentRadius*0.35, cy - currentRadius*0.35, 0,
+                                    cx - currentRadius*0.35, cy - currentRadius*0.35, currentRadius*0.3
+                                );
+                                highlightGradient.addColorStop(0, 'rgba(255,255,255,0.9)');
+                                highlightGradient.addColorStop(0.5, 'rgba(255,255,255,0.3)');
+                                highlightGradient.addColorStop(1, 'rgba(255,255,255,0)');
+                                
+                                ctx.fillStyle = highlightGradient;
                                 ctx.beginPath();
-                                ctx.arc(cx - radius*0.3, cy - radius*0.35, radius*0.25, 0, Math.PI*2);
+                                ctx.arc(cx - currentRadius*0.3, cy - currentRadius*0.3, currentRadius*0.35, 0, Math.PI*2);
                                 ctx.fill();
                             }
+                            
+                            // Дополнительный внутренний блик для объёма
+                            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                            ctx.beginPath();
+                            ctx.arc(cx + currentRadius*0.2, cy + currentRadius*0.2, currentRadius*0.15, 0, Math.PI*2);
+                            ctx.fill();
+                            
+                            ctx.shadowBlur = 0;
                         }
                     }
                 }
@@ -1077,6 +1365,22 @@
                 '#ff69b4'  // hot pink
             ];
             
+            // ========== ФОНОВЫЕ ЧАСТИЦЫ ==========
+            function createBgParticles() {
+                const container = document.getElementById('bgParticles');
+                for (let i = 0; i < 30; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'bg-particle';
+                    const size = Math.random() * 80 + 20;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
+                    particle.style.animationDelay = (Math.random() * 10) + 's';
+                    container.appendChild(particle);
+                }
+            }
+            
             function animationLoop() {
                 updateParticles();
                 updateFloatingTexts();
@@ -1085,6 +1389,7 @@
             }
             
             function init() {
+                createBgParticles();
                 resizeCanvas();
                 grid = Array(currentGridSize).fill().map(() => Array(currentGridSize).fill(null));
                 resetFullGame();
