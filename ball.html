@@ -975,19 +975,17 @@
             }
             
             function restartLevel() {
-                if (confirm(`Перезапустить уровень ${currentLevel}?`)) {
-                    score = baseScoreForLevel;
-                    if (initialLevelGrid) {
-                        for (let i = 0; i < currentGridSize; i++)
-                            for (let j = 0; j < currentGridSize; j++)
-                                grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
-                        currentPath = null; currentColor = null;
-                        updateStatusMessage(); draw(); historyStack = [];
-                    } else {
-                        loadLevel(currentLevel, true);
-                    }
-                    lossHighlightColors.clear();
+                score = baseScoreForLevel;
+                if (initialLevelGrid) {
+                    for (let i = 0; i < currentGridSize; i++)
+                        for (let j = 0; j < currentGridSize; j++)
+                            grid[i][j] = initialLevelGrid[i]?.[j] ? { ...initialLevelGrid[i][j] } : null;
+                    currentPath = null; currentColor = null;
+                    updateStatusMessage(); draw(); historyStack = [];
+                } else {
+                    loadLevel(currentLevel, true);
                 }
+                lossHighlightColors.clear();
             }
             
             function resetCurrentLevel() {
@@ -1336,15 +1334,13 @@
             }
             
             function resetFullGame() {
-                if (confirm("Начать новую игру? Весь прогресс будет потерян.")) {
-                    score = 0; currentLevel = 1; baseScoreForLevel = 0;
-                    currentGridSize = 8;
-                    initialLevelGrid = null;
-                    lossHighlightColors.clear();
-                    resizeCanvas();
-                    loadLevel(1, false);
-                    historyStack = [];
-                }
+                score = 0; currentLevel = 1; baseScoreForLevel = 0;
+                currentGridSize = 8;
+                initialLevelGrid = null;
+                lossHighlightColors.clear();
+                resizeCanvas();
+                loadLevel(1, false);
+                historyStack = [];
             }
             
             window.resetFullGame = resetFullGame;
