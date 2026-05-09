@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-    <title>✨ Crystal Connect - Соединяй 3+ ✨</title>
+    <title>🎈 Весёлые Шарики - Соединяй 3+ 🎈</title>
     <style>
         * {
             box-sizing: border-box;
@@ -18,31 +18,21 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            font-family: 'Russo One', cursive;
-            color: white;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F7FA 50%, #FFF9C4 100%);
+            background-size: 100% 100%;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Russo One', cursive;
+            color: #5D4E37;
             touch-action: none;
             overflow: hidden;
             position: relative;
             text-shadow: 
-                0 0 10px rgba(255, 255, 255, 0.8),
-                0 0 20px rgba(255, 255, 255, 0.6),
-                0 0 30px rgba(255, 255, 255, 0.4),
-                2px 2px 0 #000,
-                -2px -2px 0 #000,
-                -2px 2px 0 #000,
-                2px -2px 0 #000;
+                2px 2px 0 #fff,
+                -2px -2px 0 #fff,
+                -2px 2px 0 #fff,
+                2px -2px 0 #fff;
         }
         
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-        
-        /* Фоновые плавающие частицы */
+        /* Фоновые плавающие облачка */
         .bg-particles {
             position: fixed;
             top: 0;
@@ -57,42 +47,48 @@
         .bg-particle {
             position: absolute;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 70%, transparent 100%);
             animation: floatParticle linear infinite;
-            opacity: 0.3;
+            opacity: 0.6;
+            box-shadow: 0 4px 15px rgba(255,255,255,0.5);
         }
         
         @keyframes floatParticle {
             0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-            10% { opacity: 0.3; }
-            90% { opacity: 0.3; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
             100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
         }
         
         h1 {
             margin: 15px 0 10px;
-            font-size: 2.2rem;
-            letter-spacing: 3px;
-            text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(138, 43, 226, 0.5);
-            animation: titleGlow 2s ease-in-out infinite alternate;
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            color: #FF6B9D;
+            text-shadow: 
+                3px 3px 0 #fff,
+                -3px -3px 0 #fff,
+                -3px 3px 0 #fff,
+                3px -3px 0 #fff,
+                4px 4px 0 rgba(255,107,157,0.3);
+            animation: titleBounce 2s ease-in-out infinite alternate;
             z-index: 10;
-            font-weight: 300;
+            font-weight: bold;
         }
         
-        @keyframes titleGlow {
-            from { text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(138, 43, 226, 0.5), 0 0 60px rgba(0, 191, 255, 0.3); }
-            to { text-shadow: 0 0 30px rgba(255,255,255,0.8), 0 0 60px rgba(138, 43, 226, 0.8), 0 0 90px rgba(0, 191, 255, 0.5); }
+        @keyframes titleBounce {
+            from { transform: translateY(0) scale(1); }
+            to { transform: translateY(-5px) scale(1.02); }
         }
         
         canvas {
-            border: 3px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
+            border: 5px solid #FFB6C1;
+            border-radius: 25px;
             box-shadow: 
-                0 0 30px rgba(138, 43, 226, 0.4),
-                0 0 60px rgba(0, 191, 255, 0.2),
-                inset 0 0 40px rgba(255, 255, 255, 0.05);
-            background: rgba(30, 30, 50, 0.8);
-            backdrop-filter: blur(10px);
+                0 8px 0 #FF69B4,
+                0 15px 30px rgba(0,0,0,0.15),
+                inset 0 0 60px rgba(255,255,255,0.3);
+            background: linear-gradient(180deg, #FFE4E1 0%, #FFFACD 50%, #E0FFFF 100%);
             max-width: 100%;
             max-height: 65vh;
             cursor: pointer;
@@ -103,10 +99,10 @@
         
         canvas:hover {
             box-shadow: 
-                0 0 40px rgba(138, 43, 226, 0.6),
-                0 0 80px rgba(0, 191, 255, 0.3),
-                inset 0 0 50px rgba(255, 255, 255, 0.1);
-            transform: scale(1.01);
+                0 8px 0 #FF69B4,
+                0 20px 40px rgba(0,0,0,0.2),
+                inset 0 0 80px rgba(255,255,255,0.4);
+            transform: scale(1.02) translateY(-3px);
         }
         
         .controls {
@@ -119,34 +115,34 @@
         }
         
         button {
-            padding: 12px 22px;
-            font-size: 14px;
-            background: linear-gradient(135deg, rgba(110, 110, 240, 0.8), rgba(74, 74, 192, 0.8));
+            padding: 14px 28px;
+            font-size: 16px;
+            background: linear-gradient(180deg, #FFB6C1 0%, #FF69B4 100%);
             color: white;
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
+            border: none;
+            border-radius: 50px;
             cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: bold;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 
-                0 4px 15px rgba(0,0,0,0.3),
-                0 0 20px rgba(110, 110, 240, 0.3);
-            backdrop-filter: blur(10px);
-            letter-spacing: 0.5px;
+                0 6px 0 #C71585,
+                0 10px 20px rgba(0,0,0,0.15);
+            letter-spacing: 1px;
             position: relative;
             overflow: hidden;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
         }
         
         button::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            transform: rotate(45deg);
-            transition: all 0.5s;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
         }
         
         button:hover::before {
@@ -154,50 +150,50 @@
         }
         
         button:hover {
-            background: linear-gradient(135deg, rgba(138, 138, 245, 0.9), rgba(106, 106, 224, 0.9));
-            transform: translateY(-3px) scale(1.02);
+            background: linear-gradient(180deg, #FFC0CB 0%, #FF85A8 100%);
+            transform: translateY(-4px) scale(1.05);
             box-shadow: 
-                0 8px 25px rgba(0,0,0,0.4),
-                0 0 30px rgba(110, 110, 240, 0.5);
-            border-color: rgba(255, 255, 255, 0.4);
+                0 8px 0 #C71585,
+                0 15px 30px rgba(0,0,0,0.2);
         }
         
         button:active {
-            transform: translateY(-1px) scale(0.98);
+            transform: translateY(2px) scale(0.98);
             box-shadow: 
-                0 2px 10px rgba(0,0,0,0.3),
-                0 0 15px rgba(110, 110, 240, 0.4);
+                0 2px 0 #C71585,
+                0 5px 10px rgba(0,0,0,0.15);
         }
         
         .info {
             margin-top: 15px;
             font-size: 18px;
             text-align: center;
-            background: linear-gradient(135deg, rgba(42, 42, 58, 0.9), rgba(30, 30, 50, 0.9));
-            padding: 12px 25px;
+            background: linear-gradient(180deg, #FFFACD 0%, #FFE4B5 100%);
+            padding: 15px 30px;
             border-radius: 50px;
-            backdrop-filter: blur(15px);
-            font-weight: 500;
+            font-weight: bold;
             box-shadow: 
-                0 4px 20px rgba(0,0,0,0.4),
-                0 0 30px rgba(138, 43, 226, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.1);
+                0 6px 0 #DEB887,
+                0 10px 20px rgba(0,0,0,0.1);
+            border: 3px solid #FFD700;
             z-index: 10;
             letter-spacing: 0.5px;
             transition: all 0.3s ease;
+            color: #8B4513;
+            text-shadow: 2px 2px 0 #fff;
         }
         
         .info:hover {
             box-shadow: 
-                0 6px 30px rgba(0,0,0,0.5),
-                0 0 40px rgba(138, 43, 226, 0.3);
-            transform: translateY(-2px);
+                0 8px 0 #DEB887,
+                0 15px 30px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
         }
         
         @media (max-width: 550px) {
-            h1 { font-size: 1.6rem; }
-            .info { font-size: 13px; padding: 10px 18px; }
-            button { padding: 8px 14px; font-size: 12px; }
+            h1 { font-size: 1.8rem; }
+            .info { font-size: 14px; padding: 12px 20px; }
+            button { padding: 10px 18px; font-size: 13px; }
             .controls { gap: 10px; }
         }
         
@@ -220,7 +216,7 @@
         }
         
         @keyframes victoryPulse {
-            0% { background: radial-gradient(circle, rgba(255,215,0,0.5) 0%, transparent 70%); }
+            0% { background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%); }
             100% { background: transparent; }
         }
     </style>
@@ -235,7 +231,7 @@
         <button onclick="restartLevel()">🔄 Рестарт</button>
         <button onclick="shuffleField()">🔀 Перемешать</button>
     </div>
-    <div class="info" id="status">⚡ Соединяйте 3+ кристалла одного цвета ⚡</div>
+    <div class="info" id="status">🎈 Соединяйте 3+ шарика одного цвета 🎈</div>
 
     <script>
         (function(){
@@ -408,23 +404,25 @@
                 for (let p of [...activeParticles, ...levelCompleteParticles]) {
                     ctx.globalAlpha = p.life;
                     
-                    if (p.sparkle && Math.random() > 0.7) {
-                        // Эффект мерцания
-                        ctx.shadowBlur = 15;
-                        ctx.shadowColor = p.color;
-                    } else {
-                        ctx.shadowBlur = 0;
-                    }
+                    // Мультяшные частицы с обводкой
+                    ctx.shadowBlur = 5;
+                    ctx.shadowColor = p.color;
                     
-                    // Градиент для частицы
-                    const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
-                    gradient.addColorStop(0, '#ffffff');
-                    gradient.addColorStop(0.3, p.color);
-                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-                    
-                    ctx.fillStyle = gradient;
+                    // Основной цвет частицы
+                    ctx.fillStyle = p.color;
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Белая обводка для мультяшности
+                    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    
+                    // Блик на частице
+                    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                    ctx.beginPath();
+                    ctx.arc(p.x - p.size*0.3, p.y - p.size*0.3, p.size*0.3, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 ctx.globalAlpha = 1.0;
@@ -462,17 +460,20 @@
                     ctx.rotate(t.rotation);
                     ctx.scale(t.scale, t.scale);
                     
-                    // Тень текста
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = t.color;
+                    // Мультяшный текст с обводкой
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
                     ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 22px "Segoe UI"';
+                    ctx.font = 'bold 24px "Comic Sans MS", "Chalkboard SE", cursive';
                     ctx.textAlign = 'center';
-                    ctx.fillText(t.text, 0, 0);
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(t.text, 2, 2);
                     
-                    // Основной цвет текста
+                    // Основной цвет текста с обводкой
+                    ctx.strokeStyle = t.color;
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(t.text, 0, 0);
                     ctx.fillStyle = t.color;
-                    ctx.font = 'bold 20px "Segoe UI"';
                     ctx.fillText(t.text, 0, 0);
                     
                     ctx.restore();
@@ -1066,7 +1067,7 @@
             
             function updateStatusMessage() {
                 const totalDots = grid.flat().filter(cell => cell?.isDot).length;
-                document.getElementById('status').innerHTML = `🌟 Поле ${currentGridSize}×${currentGridSize} | 💎 Счёт: ${score} | 🎯 Шариков: ${totalDots}`;
+                document.getElementById('status').innerHTML = `🌟 Поле ${currentGridSize}×${currentGridSize} | 🎪 Счёт: ${score} | 🎈 Шариков: ${totalDots}`;
             }
             
             // ========== ОТРИСОВКА ==========
@@ -1083,60 +1084,49 @@
                 
                 pulsePhase = (pulsePhase + 0.1) % (Math.PI * 2);
                 
-                // Сетка с эффектом свечения
-                ctx.strokeStyle = 'rgba(138, 43, 226, 0.15)';
-                ctx.lineWidth = 1;
-                ctx.shadowBlur = 5;
-                ctx.shadowColor = 'rgba(138, 43, 226, 0.3)';
+                // Мультяшная сетка с закругленными ячейками
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 0;
                 for (let i = 0; i <= currentGridSize; i++) {
                     const pos = i * CELL_SIZE + OFFSET;
                     ctx.beginPath(); ctx.moveTo(pos, OFFSET); ctx.lineTo(pos, currentGridSize * CELL_SIZE + OFFSET); ctx.stroke();
                     ctx.beginPath(); ctx.moveTo(OFFSET, pos); ctx.lineTo(currentGridSize * CELL_SIZE + OFFSET, pos); ctx.stroke();
                 }
-                ctx.shadowBlur = 0;
                 
-                // Линия пути с красивым эффектом
+                // Линия пути в мультяшном стиле
                 if (currentPath && currentPath.length > 1) {
-                    const time = Date.now() / 200;
-                    const pulse = 0.85 + 0.15 * Math.sin(time);
-                    
-                    // Внешнее свечение
+                    // Основной цвет линии
                     ctx.strokeStyle = currentColor;
-                    ctx.lineWidth = CELL_SIZE * 0.75 * pulse;
+                    ctx.lineWidth = CELL_SIZE * 0.5;
                     ctx.lineCap = "round"; ctx.lineJoin = "round";
-                    ctx.shadowBlur = 35; ctx.shadowColor = currentColor;
-                    ctx.globalAlpha = 0.4;
+                    ctx.shadowBlur = 8; ctx.shadowColor = currentColor;
+                    ctx.globalAlpha = 0.9;
                     ctx.beginPath();
                     ctx.moveTo(currentPath[0].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[0].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
                     for (let i = 1; i < currentPath.length; i++)
                         ctx.lineTo(currentPath[i].x * CELL_SIZE + CELL_SIZE/2 + OFFSET, currentPath[i].y * CELL_SIZE + CELL_SIZE/2 + OFFSET);
                     ctx.stroke();
                     
-                    // Внутренняя яркая линия
-                    ctx.globalAlpha = 0.9;
-                    ctx.lineWidth = CELL_SIZE * 0.45 * pulse;
-                    ctx.shadowBlur = 20; ctx.shadowColor = '#ffffff';
-                    ctx.stroke();
-                    
-                    // Центральная белая линия
+                    // Белая обводка для мультяшности
                     ctx.globalAlpha = 1.0;
-                    ctx.lineWidth = CELL_SIZE * 0.2;
-                    ctx.shadowBlur = 10; ctx.shadowColor = '#ffffff';
-                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = CELL_SIZE * 0.65;
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
                     ctx.stroke();
                     
                     ctx.shadowBlur = 0;
                     ctx.globalAlpha = 1.0;
                 }
                 
-                // Отрисовка шариков-кристаллов
+                // Отрисовка весёлых шариков
                 for (let y = 0; y < currentGridSize; y++) {
                     for (let x = 0; x < currentGridSize; x++) {
                         const cell = grid[y][x];
                         if (cell && cell.isDot) {
                             const cx = x * CELL_SIZE + CELL_SIZE/2 + OFFSET;
                             const cy = y * CELL_SIZE + CELL_SIZE/2 + OFFSET;
-                            let radius = CELL_SIZE * 0.4;
+                            let radius = CELL_SIZE * 0.42;
                             let isBad = lossHighlightColors.has(cell.color);
                             let currentRadius = radius;
                             
@@ -1147,57 +1137,50 @@
                             
                             // Пульсация для обычных шариков тоже
                             if (!isBad) {
-                                const subtlePulse = 1 + 0.03 * Math.sin(pulsePhase + x * 0.3 + y * 0.3);
+                                const subtlePulse = 1 + 0.04 * Math.sin(pulsePhase + x * 0.3 + y * 0.3);
                                 currentRadius = radius * subtlePulse;
                             }
                             
-                            // Многослойное свечение
-                            const glowIntensity = isBad ? (0.8 + 0.3 * Math.sin(pulsePhase * 2)) : 0.6;
-                            
                             // Внешнее свечение
-                            ctx.shadowBlur = isBad ? 30 : 20;
+                            ctx.shadowBlur = isBad ? 25 : 15;
                             ctx.shadowColor = cell.color;
                             
-                            // Градиент кристалла
+                            // Основной цвет шарика с мультяшным градиентом
                             const gradient = ctx.createRadialGradient(
-                                cx - currentRadius*0.35, cy - currentRadius*0.35, currentRadius*0.1,
+                                cx - currentRadius*0.3, cy - currentRadius*0.3, currentRadius*0.1,
                                 cx, cy, currentRadius
                             );
                             gradient.addColorStop(0, '#ffffff');
-                            gradient.addColorStop(0.25, cell.color);
-                            gradient.addColorStop(0.6, cell.color);
-                            if (isBad) {
-                                gradient.addColorStop(1, 'rgba(255, 80, 80, 0.9)');
-                            } else {
-                                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
-                            }
+                            gradient.addColorStop(0.2, cell.color);
+                            gradient.addColorStop(0.7, cell.color);
+                            gradient.addColorStop(1, adjustColor(cell.color, -40));
                             
                             ctx.fillStyle = gradient;
                             ctx.beginPath();
                             ctx.arc(cx, cy, currentRadius, 0, Math.PI*2);
                             ctx.fill();
                             
-                            // Блик на кристалле
+                            // Блик на шарике (мультяшный стиль)
                             if (!isBad) {
-                                const highlightGradient = ctx.createRadialGradient(
-                                    cx - currentRadius*0.35, cy - currentRadius*0.35, 0,
-                                    cx - currentRadius*0.35, cy - currentRadius*0.35, currentRadius*0.3
-                                );
-                                highlightGradient.addColorStop(0, 'rgba(255,255,255,0.9)');
-                                highlightGradient.addColorStop(0.5, 'rgba(255,255,255,0.3)');
-                                highlightGradient.addColorStop(1, 'rgba(255,255,255,0)');
-                                
-                                ctx.fillStyle = highlightGradient;
+                                // Главный блик
+                                ctx.fillStyle = 'rgba(255,255,255,0.9)';
                                 ctx.beginPath();
-                                ctx.arc(cx - currentRadius*0.3, cy - currentRadius*0.3, currentRadius*0.35, 0, Math.PI*2);
+                                ctx.ellipse(cx - currentRadius*0.35, cy - currentRadius*0.35, currentRadius*0.25, currentRadius*0.18, -Math.PI/4, 0, Math.PI*2);
+                                ctx.fill();
+                                
+                                // Дополнительный маленький блик
+                                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                                ctx.beginPath();
+                                ctx.arc(cx - currentRadius*0.2, cy - currentRadius*0.25, currentRadius*0.1, 0, Math.PI*2);
                                 ctx.fill();
                             }
                             
-                            // Дополнительный внутренний блик для объёма
-                            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                            // Контур шарика для мультяшности
+                            ctx.strokeStyle = adjustColor(cell.color, -60);
+                            ctx.lineWidth = 2;
                             ctx.beginPath();
-                            ctx.arc(cx + currentRadius*0.2, cy + currentRadius*0.2, currentRadius*0.15, 0, Math.PI*2);
-                            ctx.fill();
+                            ctx.arc(cx, cy, currentRadius, 0, Math.PI*2);
+                            ctx.stroke();
                             
                             ctx.shadowBlur = 0;
                         }
@@ -1358,19 +1341,29 @@
             window.resetCurrentLevel = resetCurrentLevel;
             window.shuffleField = shuffleField;
             
-            // ========== НОВАЯ ПАЛИТРА: КОНТРАСТНЫЕ, ЧЁТКО РАЗЛИЧИМЫЕ ЦВЕТА ==========
+            // ========== Мультяшная палитра: яркие, сочные цвета ==========
             const colorsPalette = [
-                '#e74c3c', // ярко-красный
-                '#3498db', // насыщенный синий
-                '#2ecc71', // изумрудный зелёный (не сливается с жёлтым)
-                '#f1c40f', // яркий золотисто-жёлтый
-                '#e84393', // розово-маджента
-                '#e67e22', // оранжевый
-                '#9b59b6', // фиолетовый
-                '#ecf0f1', // светлый, почти белый, но с голубоватым отливом (отличается от фона)
-                '#1abc9c', // бирюзовый
-                '#ff69b4'  // hot pink
+                '#FF6B6B', // яркий красный
+                '#4ECDC4', // бирюзовый
+                '#FFE66D', // солнечный жёлтый
+                '#95E1D3', // мятный
+                '#F38181', // коралловый
+                '#AA96DA', // лавандовый
+                '#FCBAD3', // нежно-розовый
+                '#A8D8EA', // небесно-голубой
+                '#FFAA71'  // персиковый
             ];
+            
+            // Функция для затемнения/осветления цвета (для мультяшных эффектов)
+            function adjustColor(hex, amount) {
+                let r = parseInt(hex.slice(1, 3), 16);
+                let g = parseInt(hex.slice(3, 5), 16);
+                let b = parseInt(hex.slice(5, 7), 16);
+                r = Math.max(0, Math.min(255, r + amount));
+                g = Math.max(0, Math.min(255, g + amount));
+                b = Math.max(0, Math.min(255, b + amount));
+                return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            }
             
             // ========== ФОНОВЫЕ ЧАСТИЦЫ ==========
             function createBgParticles() {
