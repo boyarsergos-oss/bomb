@@ -343,7 +343,6 @@
 
             // ========== ЧАСТИЦЫ ==========
             let activeParticles = [];
-            let levelCompleteParticles = [];
 
             function spawnParticles(x, y, color, count = 20) {
                 for (let i = 0; i < count; i++) {
@@ -363,21 +362,12 @@
             }
 
             function spawnLevelCompleteFireworks() {
-                for (let i = 0; i < 100; i++) {
-                    const x = OFFSET + Math.random() * (currentGridSize * CELL_SIZE);
-                    const y = OFFSET + Math.random() * (currentGridSize * CELL_SIZE);
-                    const color = colorsPalette[Math.floor(Math.random() * colorsPalette.length)];
-                    levelCompleteParticles.push({
-                        x, y, 
-                        vx: (Math.random() - 0.5) * 8, 
-                        vy: -Math.random() * 8 - 3,
-                        life: 1.0, 
-                        decay: 0.012 + Math.random() * 0.018, 
-                        size: 4 + Math.random() * 7, 
-                        color,
-                        sparkle: true
-                    });
-                }
+                // Лёгкий эффект: просто активируем CSS-оверлей вместо 100 частиц
+                const overlay = document.getElementById('victoryOverlay');
+                overlay.classList.remove('active');
+                void overlay.offsetWidth; // триггер рефлоу для перезапуска анимации
+                overlay.classList.add('active');
+                setTimeout(() => overlay.classList.remove('active'), 600);
             }
 
             function updateParticles() {
@@ -390,18 +380,10 @@
                     p.size *= 0.97; 
                 }
                 activeParticles = activeParticles.filter(p => p.life > 0);
-                for (let p of levelCompleteParticles) { 
-                    p.x += p.vx; 
-                    p.y += p.vy; 
-                    p.vy += 0.1; // гравитация для фейерверков
-                    p.life -= p.decay; 
-                    p.size *= 0.985;
-                }
-                levelCompleteParticles = levelCompleteParticles.filter(p => p.life > 0);
             }
 
             function drawParticles(ctx) {
-                for (let p of [...activeParticles, ...levelCompleteParticles]) {
+                for (let p of activeParticles) {
                     ctx.globalAlpha = p.life;
                     
                     // Мультяшные частицы с обводкой
