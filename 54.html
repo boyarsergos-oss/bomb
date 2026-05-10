@@ -96,9 +96,10 @@
             width: 36px; height: 36px; cursor: pointer; vertical-align: middle; flex-shrink: 0;
             transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
             -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
         }
-        .mute-icon:hover { transform: scale(1.1); }
-        .mute-icon:active { transform: scale(0.95); }
+        .mute-icon:hover { transform: translateY(-50%) scale(1.1); }
+        .mute-icon:active { transform: translateY(-50%) scale(0.95); }
         .mute-icon svg { width: 32px; height: 32px; fill: #2ecc71; display: block; transition: fill 0.2s; }
         .mute-icon.muted svg { fill: #e74c3c; }
         .mute-icon-cross { display: none; stroke: #e74c3c; stroke-width: 2.5; }
@@ -119,7 +120,7 @@
     <div class="game-root" id="gameRoot">
         <div style="display: flex; align-items: center; justify-content: center; position: relative; width: 100%;">
             <h1 id="levelTitle" style="margin: 0;">Уровень 1</h1>
-            <span class="mute-icon" id="muteBtn" title="Включить/выключить звук" style="position: absolute; right: 350px;">
+            <span class="mute-icon" id="muteBtn" title="Включить/выключить звук">
                 <svg viewBox="0 0 24 24">
                     <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                     <line class="mute-icon-cross" x1="2" y1="2" x2="22" y2="22"/>
