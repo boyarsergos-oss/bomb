@@ -96,7 +96,7 @@
             width: 44px; height: 44px; border-radius: 50%;
             background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
             border: none; cursor: pointer; box-shadow: 0 6px 0 #1e8449, 0 10px 20px rgba(0,0,0,0.15);
-            transition: all 0.15s ease; margin-left: 10px; vertical-align: middle;
+            transition: all 0.15s ease; vertical-align: middle; flex-shrink: 0;
             -webkit-tap-highlight-color: rgba(46,204,113,0.3);
             -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
         }
@@ -125,7 +125,10 @@
     <div class="bg-particles" id="bgParticles"></div>
     <div class="victory-overlay" id="victoryOverlay"></div>
     <div class="game-root" id="gameRoot">
-        <h1 id="levelTitle" style="display: inline-flex; align-items: center;">Уровень 1<button class="mute-btn" id="muteBtn" title="Включить/выключить звук"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></button></h1>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <h1 id="levelTitle" style="margin: 0; display: inline-flex; align-items: center;">Уровень 1</h1>
+            <button class="mute-btn" id="muteBtn" title="Включить/выключить звук"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></button>
+        </div>
         <canvas id="game"></canvas>
         <div class="controls">
             <button data-action="undo">↩️ Отменить</button>
@@ -537,7 +540,12 @@
                 for (let i = 0; i < gridRows; i++) for (let j = 0; j < gridCols; j++) grid[i][j] = newGrid[i]?.[j] ? { ...newGrid[i][j] } : null;
                 currentPath = null; currentColor = null;
                 if (!keepBaseScore) baseScoreForLevel = score;
-                document.getElementById('levelTitle').textContent = `Уровень ${level}`;
+                const levelTitleEl = document.getElementById('levelTitle');
+                levelTitleEl.textContent = `Уровень ${level}`;
+                const muteBtn = document.getElementById('muteBtn');
+                if (muteBtn && !levelTitleEl.contains(muteBtn)) {
+                    levelTitleEl.parentNode.appendChild(muteBtn);
+                }
                 updateStatusMessage(); redrawNeeded = true; 
                 historyStack = []; lossHighlightColors.clear();
                 draw();
@@ -796,11 +804,12 @@
             });
 
             // Обработчик кнопки отключения звука
-            const muteBtn = document.getElementById('muteBtn');
             const muteSvgPath = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
             const muteOffSvgPath = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
             
             function updateMuteButton() {
+                const muteBtn = document.getElementById('muteBtn');
+                if (!muteBtn) return;
                 if (isMuted) {
                     muteBtn.classList.add('muted');
                     muteBtn.querySelector('svg').innerHTML = muteOffSvgPath;
@@ -812,25 +821,29 @@
                 }
             }
             
-            muteBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                isMuted = !isMuted;
-                updateMuteButton();
-            });
-            muteBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                muteBtn.classList.add('touch-active');
-            }, { passive: false });
-            muteBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                muteBtn.classList.remove('touch-active');
-                isMuted = !isMuted;
-                updateMuteButton();
-            }, { passive: false });
-            muteBtn.addEventListener('touchcancel', (e) => {
-                e.preventDefault();
-                muteBtn.classList.remove('touch-active');
-            }, { passive: false });
+            // Обработчики кнопки звука (вызываем сразу, т.к. DOM уже загружен)
+            const muteBtnInit = document.getElementById('muteBtn');
+            if (muteBtnInit) {
+                muteBtnInit.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    isMuted = !isMuted;
+                    updateMuteButton();
+                });
+                muteBtnInit.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    muteBtnInit.classList.add('touch-active');
+                }, { passive: false });
+                muteBtnInit.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    muteBtnInit.classList.remove('touch-active');
+                    isMuted = !isMuted;
+                    updateMuteButton();
+                }, { passive: false });
+                muteBtnInit.addEventListener('touchcancel', (e) => {
+                    e.preventDefault();
+                    muteBtnInit.classList.remove('touch-active');
+                }, { passive: false });
+            }
             
             window.resetFullGame = resetFullGame;
             window.undoLastMove = undoLastMove;
@@ -881,6 +894,10 @@
                 document.addEventListener('touchend', endPath);
                 canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); lastMovePos = null; pendingMoveEvent = null; currentPath = null; currentColor = null; redrawNeeded = true; });
                 window.addEventListener('resize', () => { resizeCanvas(); });
+                
+                // Инициализация кнопки звука после загрузки DOM
+                updateMuteButton();
+                
                 animationLoop();
             }
 
