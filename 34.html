@@ -6,14 +6,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
     <title>🎈 Весёлые Шарики - Соединяй 3+ 🎈</title>
     <style>
-        * { box-sizing: border-box; }
-        body { 
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; }
+        body {
             margin: 0; padding: 0; 
             background: linear-gradient(180deg, #87CEEB 0%, #E0F7FA 50%, #FFF9C4 100%); 
             font-family: 'Comic Sans MS', 'Chalkboard SE', 'Russo One', cursive; 
             color: #5D4E37; touch-action: pan-x pan-y; overflow: hidden;
             height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center;
             position: relative;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .bg-particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
         .bg-particle { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 70%, transparent 100%); animation: floatParticle linear infinite; opacity: 0.6; box-shadow: 0 4px 15px rgba(255,255,255,0.5); }
@@ -43,7 +45,7 @@
         button { 
             padding: 14px 28px; font-size: 16px; background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
             color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold;
-            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; transition: all 0.08s cubic-bezier(0.34, 1.56, 0.64, 1);
             box-shadow: 0 6px 0 #1e8449, 0 10px 20px rgba(0,0,0,0.15), inset 0 -3px 10px rgba(0,0,0,0.1); letter-spacing: 1px;
             position: relative; overflow: hidden; text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
             touch-action: manipulation; -webkit-tap-highlight-color: transparent; white-space: nowrap;
@@ -52,8 +54,8 @@
         }
         button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); transition: left 0.4s ease-out; }
         button:hover::before { left: 100%; }
-        button::after { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%); border-radius: 50%; transform: translate(-50%, -50%); transition: width 0.4s ease-out, height 0.4s ease-out; opacity: 0; }
-        button:active::after { width: 200px; height: 200px; opacity: 1; transition: width 0s, height 0s; }
+        button::after { content: ''; position: absolute; top: 50%; left: 50%; width: 0; height: 0; background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%); border-radius: 50%; transform: translate(-50%, -50%); transition: width 0.2s ease-out, height 0.2s ease-out; opacity: 0; }
+        button:active::after { width: 150px; height: 150px; opacity: 1; transition: width 0.1s ease-out, height 0.1s ease-out; }
         button:hover { 
             background: linear-gradient(180deg, #3be684 0%, #2ecc71 100%); transform: translateY(-3px) scale(1.06);
             box-shadow: 0 8px 0 #1e8449, 0 18px 35px rgba(0,0,0,0.25), inset 0 -2px 8px rgba(0,0,0,0.15);
@@ -690,6 +692,13 @@
                 btn.addEventListener('touchstart', function(e) {
                     e.preventDefault();
                     handler();
+                    // Мгновенная визуальная обратная связь
+                    btn.style.transform = 'translateY(3px) scale(0.96)';
+                    btn.style.boxShadow = '0 2px 0 #1e8449, 0 4px 8px rgba(0,0,0,0.12), inset 0 3px 10px rgba(0,0,0,0.15)';
+                    setTimeout(function() {
+                        btn.style.transform = '';
+                        btn.style.boxShadow = '';
+                    }, 100);
                 }, { passive: false });
                 btn.addEventListener('contextmenu', function(e) {
                     e.preventDefault();
