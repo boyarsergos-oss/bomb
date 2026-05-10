@@ -109,8 +109,10 @@
             transform: translateY(4px) scale(0.97);
             box-shadow: 0 2px 0 #1e8449, 0 4px 8px rgba(0,0,0,0.15);
         }
-        .mute-btn svg { width: 24px; height: 24px; fill: white; }
+        .mute-btn svg { width: 24px; height: 24px; fill: white; display: block; }
         .mute-btn.muted svg { opacity: 0.5; }
+        .mute-icon-cross { display: none; stroke: white; stroke-width: 2; }
+        .mute-btn.muted .mute-icon-cross { display: block; }
         @keyframes victoryPulse { 0% { background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%); } 100% { background: transparent; } }
         @media (max-width: 500px) {
             .info { white-space: normal; word-break: break-word; font-size: 0.8rem; padding: 8px 16px; }
@@ -127,7 +129,13 @@
     <div class="game-root" id="gameRoot">
         <div style="display: flex; align-items: center; gap: 10px;">
             <h1 id="levelTitle" style="margin: 0; display: inline-flex; align-items: center;">Уровень 1</h1>
-            <button class="mute-btn" id="muteBtn" title="Включить/выключить звук"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></button>
+            <button class="mute-btn" id="muteBtn" title="Включить/выключить звук">
+                <svg viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                    <line class="mute-icon-cross" x1="2" y1="2" x2="22" y2="22"/>
+                    <line class="mute-icon-cross" x1="22" y1="2" x2="2" y2="22"/>
+                </svg>
+            </button>
         </div>
         <canvas id="game"></canvas>
         <div class="controls">
