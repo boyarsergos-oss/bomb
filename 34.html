@@ -14,6 +14,11 @@
             color: #5D4E37; touch-action: pan-x pan-y; overflow: hidden;
             height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center;
             position: relative;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
         .bg-particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
         .bg-particle { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.4) 70%, transparent 100%); animation: floatParticle linear infinite; opacity: 0.6; box-shadow: 0 4px 15px rgba(255,255,255,0.5); }
@@ -26,12 +31,20 @@
             margin: 0; font-size: 2rem; letter-spacing: 2px; color: #2ecc71;
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 2px 4px rgba(0,0,0,0.2);
             font-weight: bold; z-index: 10; animation: titleBounce 2s ease-in-out infinite alternate; white-space: nowrap;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         @keyframes titleBounce { from { transform: translateY(0) scale(1); } to { transform: translateY(-5px) scale(1.02); } }
         canvas { 
             border: 5px solid #78909C; border-radius: 25px; 
             box-shadow: 0 8px 0 #546E7A, 0 15px 30px rgba(0,0,0,0.15), inset 0 0 60px rgba(255,255,255,0.3);
             background: #f0ece6; cursor: pointer; position: relative; z-index: 10; touch-action: none; display: block;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         canvas:hover { 
             box-shadow: 0 8px 0 #546E7A, 0 20px 40px rgba(0,0,0,0.2), inset 0 0 80px rgba(255,255,255,0.4);
@@ -43,19 +56,24 @@
         button { 
             padding: 14px 28px; font-size: 16px; background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
             color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold;
-            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; transition: all 0.15s ease;
             box-shadow: 0 6px 0 #1e8449, 0 10px 20px rgba(0,0,0,0.15); letter-spacing: 1px;
             position: relative; overflow: hidden; text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
             touch-action: manipulation; -webkit-tap-highlight-color: rgba(46,204,113,0.3); white-space: nowrap;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
         button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); transition: left 0.5s; }
         button:hover::before { left: 100%; }
         button:hover { 
-            background: linear-gradient(180deg, #3be684 0%, #2ecc71 100%); transform: translateY(-4px) scale(1.05);
+            background: linear-gradient(180deg, #3be684 0%, #2ecc71 100%); transform: translateY(-2px) scale(1.03);
             box-shadow: 0 8px 0 #1e8449, 0 15px 30px rgba(0,0,0,0.2);
         }
-        button:active { 
-            transform: translateY(2px) scale(0.98); box-shadow: 0 2px 0 #1e8449, 0 5px 10px rgba(0,0,0,0.15);
+        button:active, button.touch-active { 
+            transform: translateY(4px) scale(0.97); box-shadow: 0 2px 0 #1e8449, 0 4px 8px rgba(0,0,0,0.15);
         }
         .info { 
             margin-top: 5px; font-size: 18px; text-align: center;
@@ -63,6 +81,10 @@
             border-radius: 50px; font-weight: bold; box-shadow: 0 6px 0 #DEB887, 0 10px 20px rgba(0,0,0,0.1);
             border: 3px solid #FFD700; z-index: 10; letter-spacing: 0.5px; transition: all 0.3s ease;
             color: #8B4513; text-shadow: 2px 2px 0 #fff; white-space: nowrap;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
         .info:hover { box-shadow: 0 8px 0 #DEB887, 0 15px 30px rgba(0,0,0,0.15); transform: translateY(-3px); }
         .victory-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; opacity: 0; transition: opacity 0.5s; }
@@ -82,10 +104,10 @@
         <h1 id="levelTitle">Уровень 1</h1>
         <canvas id="game"></canvas>
         <div class="controls">
-            <button>↩️ Отменить</button>
-            <button>🔄 Рестарт</button>
-            <button>🔀 Перемешать</button>
-            <button>➡️ Пропустить уровень</button>
+            <button data-action="undo">↩️ Отменить</button>
+            <button data-action="restart">🔄 Рестарт</button>
+            <button data-action="shuffle">🔀 Перемешать</button>
+            <button data-action="skip">➡️ Пропустить уровень</button>
         </div>
         <div class="info" id="status">🎈 Соединяйте 3+ шарика одного цвета 🎈</div>
     </div>
@@ -681,10 +703,39 @@
             // ---------- ИНИЦИАЛИЗАЦИЯ ----------
             function resetFullGame() { score = 0; currentLevel = 1; baseScoreForLevel = 0; gridRows = 8; gridCols = 8; initialLevelGrid = null; lossHighlightColors.clear(); resizeCanvas(); loadLevel(1, false); historyStack = []; currentPath = null; currentColor = null; draw(); }
             
-            document.querySelectorAll('.controls button')[0].onclick = () => undoLastMove();
-            document.querySelectorAll('.controls button')[1].onclick = () => restartLevel();
-            document.querySelectorAll('.controls button')[2].onclick = () => shuffleField();
-            document.querySelectorAll('.controls button')[3].onclick = () => skipLevel();
+            // Обработчики кнопок с поддержкой touch-событий
+            const buttons = document.querySelectorAll('.controls button');
+            buttons.forEach(btn => {
+                const action = btn.getAttribute('data-action');
+                
+                const handleAction = (e) => {
+                    e.preventDefault();
+                    if (action === 'undo') undoLastMove();
+                    else if (action === 'restart') restartLevel();
+                    else if (action === 'shuffle') shuffleField();
+                    else if (action === 'skip') skipLevel();
+                };
+                
+                // Убираем стандартный onclick
+                btn.onclick = null;
+                
+                // Добавляем обработчики для мыши и тача
+                btn.addEventListener('click', handleAction);
+                btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    btn.classList.add('touch-active');
+                }, { passive: false });
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    btn.classList.remove('touch-active');
+                    handleAction(e);
+                }, { passive: false });
+                btn.addEventListener('touchcancel', (e) => {
+                    e.preventDefault();
+                    btn.classList.remove('touch-active');
+                }, { passive: false });
+            });
+            
             window.resetFullGame = resetFullGame;
             window.undoLastMove = undoLastMove;
             window.restartLevel = restartLevel;
@@ -712,6 +763,15 @@
                 resizeCanvas();
                 grid = Array(gridRows).fill().map(() => Array(gridCols).fill(null));
                 resetFullGame();
+                
+                // Pointer events для универсальной поддержки мыши и тача
+                canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); canvas.setPointerCapture(e.pointerId); startPath(e); });
+                canvas.addEventListener('pointermove', (e) => { if (e.buttons > 0) { pendingMoveEvent = e; } });
+                canvas.addEventListener('pointerup', (e) => { e.preventDefault(); endPath(e); });
+                canvas.addEventListener('pointercancel', (e) => { e.preventDefault(); currentPath = null; currentColor = null; redrawNeeded = true; });
+                canvas.addEventListener('pointerleave', (e) => { if (e.buttons === 0) { currentPath = null; currentColor = null; redrawNeeded = true; } });
+                
+                // Старые обработчики для совместимости
                 canvas.addEventListener('mousedown', startPath);
                 canvas.addEventListener('mousemove', (e) => { pendingMoveEvent = e; });
                 document.addEventListener('mouseup', endPath);
