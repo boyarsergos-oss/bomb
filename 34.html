@@ -6,12 +6,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
     <title>🎈 Весёлые Шарики - Соединяй 3+ 🎈</title>
     <style>
-        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; }
+        * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; touch-action: none; }
         body {
             margin: 0; padding: 0; 
             background: linear-gradient(180deg, #87CEEB 0%, #E0F7FA 50%, #FFF9C4 100%); 
             font-family: 'Comic Sans MS', 'Chalkboard SE', 'Russo One', cursive; 
-            color: #5D4E37; touch-action: pan-x pan-y; overflow: hidden;
+            color: #5D4E37; overflow: hidden;
             height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center;
             position: relative;
             -webkit-touch-callout: none;
@@ -48,7 +48,7 @@
             font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; transition: all 0.08s cubic-bezier(0.34, 1.56, 0.64, 1);
             box-shadow: 0 6px 0 #1e8449, 0 10px 20px rgba(0,0,0,0.15), inset 0 -3px 10px rgba(0,0,0,0.1); letter-spacing: 1px;
             position: relative; overflow: hidden; text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
-            touch-action: manipulation; -webkit-tap-highlight-color: transparent; white-space: nowrap;
+            touch-action: none; -webkit-tap-highlight-color: transparent; white-space: nowrap;
             user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
             -webkit-touch-callout: none;
         }
@@ -691,8 +691,8 @@
                 btn.addEventListener('click', handler);
                 btn.addEventListener('touchstart', function(e) {
                     e.preventDefault();
+                    e.stopPropagation();
                     handler();
-                    // Мгновенная визуальная обратная связь
                     btn.style.transform = 'translateY(3px) scale(0.96)';
                     btn.style.boxShadow = '0 2px 0 #1e8449, 0 4px 8px rgba(0,0,0,0.12), inset 0 3px 10px rgba(0,0,0,0.15)';
                     setTimeout(function() {
@@ -711,6 +711,14 @@
             }
             
             const buttons = document.querySelectorAll('.controls button');
+            buttons.forEach(function(btn) {
+                btn.addEventListener('touchstart', function(e) {
+                    e.stopPropagation();
+                }, { passive: false });
+                btn.addEventListener('mousedown', function(e) {
+                    e.stopPropagation();
+                });
+            });
             setupButton(buttons[0], () => undoLastMove());
             setupButton(buttons[1], () => restartLevel());
             setupButton(buttons[2], () => shuffleField());
@@ -742,13 +750,37 @@
                 resizeCanvas();
                 grid = Array(gridRows).fill().map(() => Array(gridCols).fill(null));
                 resetFullGame();
-                canvas.addEventListener('mousedown', startPath);
+                
+                // Mouse events for drawing
+                canvas.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    startPath(e);
+                });
                 canvas.addEventListener('mousemove', (e) => { pendingMoveEvent = e; });
                 document.addEventListener('mouseup', endPath);
-                canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPath(e); });
-                canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pendingMoveEvent = e; });
-                document.addEventListener('touchend', (e) => { e.preventDefault(); endPath(e); });
-                canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); currentPath = null; currentColor = null; redrawNeeded = true; });
+                
+                // Touch events for drawing - with proper isolation from buttons
+                canvas.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    startPath(e);
+                }, { passive: false });
+                canvas.addEventListener('touchmove', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pendingMoveEvent = e;
+                }, { passive: false });
+                document.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    endPath(e);
+                }, { passive: false });
+                canvas.addEventListener('touchcancel', function(e) {
+                    e.preventDefault();
+                    currentPath = null;
+                    currentColor = null;
+                    redrawNeeded = true;
+                }, { passive: false });
+                
                 window.addEventListener('resize', () => { resizeCanvas(); });
                 animationLoop();
             }
