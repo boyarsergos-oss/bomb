@@ -602,6 +602,9 @@
             function countDotsOnPath(path) { let cnt = 0; path.forEach(p => { if (grid[p.y][p.x]?.isDot && grid[p.y][p.x].color === currentColor) cnt++; }); return cnt; }
             function removeDotsOnPath(path) { path.forEach(p => { if (grid[p.y][p.x]?.isDot && grid[p.y][p.x].color === currentColor) grid[p.y][p.x] = null; }); }
 
+            // Переменная для отслеживания последней позиции при перетаскивании
+            let lastMovePos = null;
+
             function startPath(e) { 
                 if (isVictoryAnimating) return;
                 e.preventDefault(); 
@@ -626,6 +629,11 @@
                 const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
                 const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0);
                 const pos = getGridPos(clientX, clientY);
+                
+                // Игнорируем микро-движения (дрожание пальца)
+                if (lastMovePos && lastMovePos.x === pos.x && lastMovePos.y === pos.y) return;
+                lastMovePos = { x: pos.x, y: pos.y };
+                
                 const last = currentPath[currentPath.length - 1];
                 if (last.x === pos.x && last.y === pos.y) return;
                 const dx = pos.x - last.x, dy = pos.y - last.y;
@@ -681,6 +689,8 @@
                     e.preventDefault();
                     e.stopPropagation();
                 }
+                // Сбрасываем последнюю позицию при завершении пути
+                lastMovePos = null;
                 if (!currentPath || currentPath.length < 2) { 
                     currentPath = null; currentColor = null;
                     redrawNeeded = true;
@@ -780,8 +790,8 @@
                 canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); canvas.setPointerCapture(e.pointerId); startPath(e); });
                 canvas.addEventListener('pointermove', (e) => { if (e.buttons > 0) { pendingMoveEvent = e; } });
                 canvas.addEventListener('pointerup', endPath);
-                canvas.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); currentPath = null; currentColor = null; redrawNeeded = true; });
-                canvas.addEventListener('pointerleave', (e) => { if (e.buttons === 0) { currentPath = null; currentColor = null; redrawNeeded = true; } });
+                canvas.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); lastMovePos = null; currentPath = null; currentColor = null; redrawNeeded = true; });
+                canvas.addEventListener('pointerleave', (e) => { if (e.buttons === 0) { lastMovePos = null; currentPath = null; currentColor = null; redrawNeeded = true; } });
                 
                 // Отключаем контекстное меню и выделение на канвасе
                 canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; });
@@ -795,7 +805,7 @@
                 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPath(e); });
                 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pendingMoveEvent = e; });
                 document.addEventListener('touchend', endPath);
-                canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); currentPath = null; currentColor = null; redrawNeeded = true; });
+                canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); lastMovePos = null; currentPath = null; currentColor = null; redrawNeeded = true; });
                 window.addEventListener('resize', () => { resizeCanvas(); });
                 animationLoop();
             }
