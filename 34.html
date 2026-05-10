@@ -91,35 +91,25 @@
         .info:hover { box-shadow: 0 8px 0 #DEB887, 0 15px 30px rgba(0,0,0,0.15); transform: translateY(-3px); }
         .victory-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; opacity: 0; transition: opacity 0.5s; }
         .victory-overlay.active { opacity: 1; animation: victoryPulse 0.5s ease-out; }
-        .mute-btn {
+        .mute-icon {
             display: inline-flex; align-items: center; justify-content: center;
-            width: 44px; height: 44px; border-radius: 50%;
-            background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%);
-            border: none; cursor: pointer; box-shadow: 0 6px 0 #1e8449, 0 10px 20px rgba(0,0,0,0.15);
-            transition: all 0.15s ease; vertical-align: middle; flex-shrink: 0;
-            -webkit-tap-highlight-color: rgba(46,204,113,0.3);
+            width: 36px; height: 36px; cursor: pointer; vertical-align: middle; flex-shrink: 0;
+            transition: all 0.15s ease; -webkit-tap-highlight-color: transparent;
             -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
         }
-        .mute-btn:hover {
-            background: linear-gradient(180deg, #3be684 0%, #2ecc71 100%);
-            transform: translateY(-2px) scale(1.03);
-            box-shadow: 0 8px 0 #1e8449, 0 15px 30px rgba(0,0,0,0.2);
-        }
-        .mute-btn:active, .mute-btn.touch-active {
-            transform: translateY(4px) scale(0.97);
-            box-shadow: 0 2px 0 #1e8449, 0 4px 8px rgba(0,0,0,0.15);
-        }
-        .mute-btn svg { width: 24px; height: 24px; fill: white; display: block; }
-        .mute-btn.muted svg { opacity: 0.5; }
-        .mute-icon-cross { display: none; stroke: white; stroke-width: 2; }
-        .mute-btn.muted .mute-icon-cross { display: block; }
+        .mute-icon:hover { transform: scale(1.1); }
+        .mute-icon:active { transform: scale(0.95); }
+        .mute-icon svg { width: 32px; height: 32px; fill: #2ecc71; display: block; transition: fill 0.2s; }
+        .mute-icon.muted svg { fill: #e74c3c; }
+        .mute-icon-cross { display: none; stroke: #e74c3c; stroke-width: 2.5; }
+        .mute-icon.muted .mute-icon-cross { display: block; }
         @keyframes victoryPulse { 0% { background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%); } 100% { background: transparent; } }
         @media (max-width: 500px) {
             .info { white-space: normal; word-break: break-word; font-size: 0.8rem; padding: 8px 16px; }
             h1 { font-size: 1.6rem; white-space: normal; text-align: center; }
             button { padding: 8px 14px; font-size: 0.75rem; }
-            .mute-btn { width: 36px; height: 36px; }
-            .mute-btn svg { width: 20px; height: 20px; }
+            .mute-icon { width: 32px; height: 32px; }
+            .mute-icon svg { width: 28px; height: 28px; }
         }
     </style>
 </head>
@@ -129,13 +119,13 @@
     <div class="game-root" id="gameRoot">
         <div style="display: flex; align-items: center; gap: 10px;">
             <h1 id="levelTitle" style="margin: 0; display: inline-flex; align-items: center;">Уровень 1</h1>
-            <button class="mute-btn" id="muteBtn" title="Включить/выключить звук">
+            <span class="mute-icon" id="muteBtn" title="Включить/выключить звук">
                 <svg viewBox="0 0 24 24">
                     <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                     <line class="mute-icon-cross" x1="2" y1="2" x2="22" y2="22"/>
                     <line class="mute-icon-cross" x1="22" y1="2" x2="2" y2="22"/>
                 </svg>
-            </button>
+            </span>
         </div>
         <canvas id="game"></canvas>
         <div class="controls">
