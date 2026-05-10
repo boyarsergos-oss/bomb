@@ -11,7 +11,7 @@
             margin: 0; padding: 0; 
             background: linear-gradient(180deg, #87CEEB 0%, #E0F7FA 50%, #FFF9C4 100%); 
             font-family: 'Comic Sans MS', 'Chalkboard SE', 'Russo One', cursive; 
-            color: #5D4E37; touch-action: pan-x pan-y; overflow: hidden;
+            color: #5D4E37; touch-action: none; overflow: hidden;
             height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center;
             position: relative;
             -webkit-user-select: none;
@@ -45,6 +45,8 @@
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
         canvas:hover { 
             box-shadow: 0 8px 0 #546E7A, 0 20px 40px rgba(0,0,0,0.2), inset 0 0 80px rgba(255,255,255,0.4);
@@ -527,8 +529,8 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 if (bgCanvas) ctx.drawImage(bgCanvas, 0, 0);
 
-                // Путь
-                if (currentPath && currentPath.length > 1) {
+                // Путь - рисуем только если есть активный путь и цвет
+                if (currentPath && currentPath.length > 1 && currentColor) {
                     ctx.strokeStyle = currentColor;
                     ctx.lineWidth = CELL_SIZE * 0.5;
                     ctx.lineCap = "round";
@@ -586,7 +588,7 @@
             // ---------- ВВОД С ТРОТТЛИНГОМ ----------
             let pendingMoveEvent = null;
             function processMoveEvent() {
-                if (pendingMoveEvent && currentPath) {
+                if (pendingMoveEvent && currentPath && currentColor) {
                     movePath(pendingMoveEvent);
                     pendingMoveEvent = null;
                     redrawNeeded = true;
@@ -603,6 +605,7 @@
             function startPath(e) { 
                 if (isVictoryAnimating) return;
                 e.preventDefault(); 
+                e.stopPropagation();
                 const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0); 
                 const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0); 
                 const pos = getGridPos(clientX, clientY); 
@@ -674,6 +677,10 @@
             }
 
             function endPath(e) { 
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
                 if (!currentPath || currentPath.length < 2) { 
                     currentPath = null; currentColor = null;
                     redrawNeeded = true;
@@ -699,6 +706,11 @@
                 currentPath = null; currentColor = null;
                 redrawNeeded = true;
             }
+
+            // Обработчик для предотвращения выделения и стандартного поведения на всём документе
+            document.addEventListener('selectstart', (e) => { e.preventDefault(); return false; });
+            document.addEventListener('dragstart', (e) => { e.preventDefault(); return false; });
+            document.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; });
 
             // ---------- ИНИЦИАЛИЗАЦИЯ ----------
             function resetFullGame() { score = 0; currentLevel = 1; baseScoreForLevel = 0; gridRows = 8; gridCols = 8; initialLevelGrid = null; lossHighlightColors.clear(); resizeCanvas(); loadLevel(1, false); historyStack = []; currentPath = null; currentColor = null; draw(); }
@@ -767,9 +779,14 @@
                 // Pointer events для универсальной поддержки мыши и тача
                 canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); canvas.setPointerCapture(e.pointerId); startPath(e); });
                 canvas.addEventListener('pointermove', (e) => { if (e.buttons > 0) { pendingMoveEvent = e; } });
-                canvas.addEventListener('pointerup', (e) => { e.preventDefault(); endPath(e); });
-                canvas.addEventListener('pointercancel', (e) => { e.preventDefault(); currentPath = null; currentColor = null; redrawNeeded = true; });
+                canvas.addEventListener('pointerup', endPath);
+                canvas.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); currentPath = null; currentColor = null; redrawNeeded = true; });
                 canvas.addEventListener('pointerleave', (e) => { if (e.buttons === 0) { currentPath = null; currentColor = null; redrawNeeded = true; } });
+                
+                // Отключаем контекстное меню и выделение на канвасе
+                canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; });
+                canvas.addEventListener('dragstart', (e) => { e.preventDefault(); return false; });
+                canvas.addEventListener('selectstart', (e) => { e.preventDefault(); return false; });
                 
                 // Старые обработчики для совместимости
                 canvas.addEventListener('mousedown', startPath);
@@ -777,7 +794,7 @@
                 document.addEventListener('mouseup', endPath);
                 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPath(e); });
                 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pendingMoveEvent = e; });
-                document.addEventListener('touchend', (e) => { e.preventDefault(); endPath(e); });
+                document.addEventListener('touchend', endPath);
                 canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); currentPath = null; currentColor = null; redrawNeeded = true; });
                 window.addEventListener('resize', () => { resizeCanvas(); });
                 animationLoop();
