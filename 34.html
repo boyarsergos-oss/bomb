@@ -681,10 +681,19 @@
             // ---------- ИНИЦИАЛИЗАЦИЯ ----------
             function resetFullGame() { score = 0; currentLevel = 1; baseScoreForLevel = 0; gridRows = 8; gridCols = 8; initialLevelGrid = null; lossHighlightColors.clear(); resizeCanvas(); loadLevel(1, false); historyStack = []; currentPath = null; currentColor = null; draw(); }
             
-            document.querySelectorAll('.controls button')[0].onclick = () => undoLastMove();
-            document.querySelectorAll('.controls button')[1].onclick = () => restartLevel();
-            document.querySelectorAll('.controls button')[2].onclick = () => shuffleField();
-            document.querySelectorAll('.controls button')[3].onclick = () => skipLevel();
+            function setupButton(btn, handler) {
+                btn.addEventListener('click', handler);
+                btn.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    handler();
+                }, { passive: false });
+            }
+            
+            const buttons = document.querySelectorAll('.controls button');
+            setupButton(buttons[0], () => undoLastMove());
+            setupButton(buttons[1], () => restartLevel());
+            setupButton(buttons[2], () => shuffleField());
+            setupButton(buttons[3], () => skipLevel());
             window.resetFullGame = resetFullGame;
             window.undoLastMove = undoLastMove;
             window.restartLevel = restartLevel;
