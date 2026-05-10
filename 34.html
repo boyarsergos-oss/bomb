@@ -592,6 +592,9 @@
                     movePath(pendingMoveEvent);
                     pendingMoveEvent = null;
                     redrawNeeded = true;
+                } else if (!currentPath) {
+                    // Если путь не активен, сбрасываем pendingMoveEvent
+                    pendingMoveEvent = null;
                 }
             }
 
@@ -609,6 +612,9 @@
                 if (isVictoryAnimating) return;
                 e.preventDefault(); 
                 e.stopPropagation();
+                // Сбрасываем lastMovePos и pendingMoveEvent при начале нового пути
+                lastMovePos = null;
+                pendingMoveEvent = null;
                 const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0); 
                 const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0); 
                 const pos = getGridPos(clientX, clientY); 
@@ -616,22 +622,25 @@
                 if (cell && cell.isDot) { 
                     currentColor = cell.color; 
                     currentPath = [pos]; 
+                    // Инициализируем lastMovePos текущей позицией
+                    lastMovePos = { x: pos.x, y: pos.y };
                     playTone(300, 'sine', 0.1, 0.2);
                     redrawNeeded = true;
                 } else { 
                     currentPath = null; currentColor = null;
+                    lastMovePos = null;
                     redrawNeeded = true;
                 } 
             }
 
             function movePath(e) {
-                if (!currentPath) return;
+                if (!currentPath || !lastMovePos) return;
                 const clientX = e.clientX ?? (e.touches ? e.touches[0].clientX : 0);
                 const clientY = e.clientY ?? (e.touches ? e.touches[0].clientY : 0);
                 const pos = getGridPos(clientX, clientY);
                 
                 // Игнорируем микро-движения (дрожание пальца)
-                if (lastMovePos && lastMovePos.x === pos.x && lastMovePos.y === pos.y) return;
+                if (lastMovePos.x === pos.x && lastMovePos.y === pos.y) return;
                 lastMovePos = { x: pos.x, y: pos.y };
                 
                 const last = currentPath[currentPath.length - 1];
@@ -788,10 +797,10 @@
                 
                 // Pointer events для универсальной поддержки мыши и тача
                 canvas.addEventListener('pointerdown', (e) => { e.preventDefault(); canvas.setPointerCapture(e.pointerId); startPath(e); });
-                canvas.addEventListener('pointermove', (e) => { if (e.buttons > 0) { pendingMoveEvent = e; } });
+                canvas.addEventListener('pointermove', (e) => { if (e.buttons > 0 && currentPath) { pendingMoveEvent = e; } });
                 canvas.addEventListener('pointerup', endPath);
-                canvas.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); lastMovePos = null; currentPath = null; currentColor = null; redrawNeeded = true; });
-                canvas.addEventListener('pointerleave', (e) => { if (e.buttons === 0) { lastMovePos = null; currentPath = null; currentColor = null; redrawNeeded = true; } });
+                canvas.addEventListener('pointercancel', (e) => { e.preventDefault(); e.stopPropagation(); lastMovePos = null; pendingMoveEvent = null; currentPath = null; currentColor = null; redrawNeeded = true; });
+                canvas.addEventListener('pointerleave', (e) => { if (e.buttons === 0) { lastMovePos = null; pendingMoveEvent = null; currentPath = null; currentColor = null; redrawNeeded = true; } });
                 
                 // Отключаем контекстное меню и выделение на канвасе
                 canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; });
@@ -800,12 +809,12 @@
                 
                 // Старые обработчики для совместимости
                 canvas.addEventListener('mousedown', startPath);
-                canvas.addEventListener('mousemove', (e) => { pendingMoveEvent = e; });
+                canvas.addEventListener('mousemove', (e) => { if (currentPath) { pendingMoveEvent = e; } });
                 document.addEventListener('mouseup', endPath);
                 canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startPath(e); });
-                canvas.addEventListener('touchmove', (e) => { e.preventDefault(); pendingMoveEvent = e; });
+                canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (currentPath) { pendingMoveEvent = e; } });
                 document.addEventListener('touchend', endPath);
-                canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); lastMovePos = null; currentPath = null; currentColor = null; redrawNeeded = true; });
+                canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); lastMovePos = null; pendingMoveEvent = null; currentPath = null; currentColor = null; redrawNeeded = true; });
                 window.addEventListener('resize', () => { resizeCanvas(); });
                 animationLoop();
             }
