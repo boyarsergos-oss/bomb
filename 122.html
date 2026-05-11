@@ -1079,6 +1079,25 @@
                 document.addEventListener('touchend', endPath);
                 canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); lastMovePos = null; pendingMoveEvent = null; currentPath = null; currentColor = null; redrawNeeded = true; });
                 window.addEventListener('resize', () => { resizeCanvas(); });
+                
+                // Обработчик для восстановления видимости после сворачивания браузера
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) {
+                        // Страница стала видимой - перерисовываем всё
+                        resizeCanvas();
+                        redrawNeeded = true;
+                    }
+                });
+                
+                // Обработчик для события pageshow (возврат из кэша браузера)
+                window.addEventListener('pageshow', (event) => {
+                    if (event.persisted) {
+                        // Страница загружена из кэша - перерисовываем всё
+                        resizeCanvas();
+                        redrawNeeded = true;
+                    }
+                });
+                
                 animationLoop();
             }
 
