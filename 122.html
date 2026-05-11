@@ -141,7 +141,6 @@
             <button data-action="undo">Отменить</button>
             <button data-action="restart">Рестарт</button>
             <button data-action="shuffle">🎬 Перемешать</button>
-            <button data-action="skip">Пропустить уровень</button>
         </div>
         <div class="info" id="status">🎈 Соединяйте 3+ шарика одного цвета 🎈</div>
     </div>
@@ -977,7 +976,6 @@
                     if (action === 'undo') undoLastMove();
                     else if (action === 'restart') restartLevel();
                     else if (action === 'shuffle') shuffleField();
-                    else if (action === 'skip') skipLevel();
                 };
                 
                 btn.onclick = null;
@@ -1003,24 +1001,35 @@
             window.restartLevel = restartLevel;
             window.shuffleField = shuffleField;
             window.performShuffle = performShuffle;
-            window.skipLevel = skipLevel;
 
             function createBgParticles() { const container = document.getElementById('bgParticles'); for (let i = 0; i < 10; i++) { const particle = document.createElement('div'); particle.className = 'bg-particle'; const size = Math.random() * 80 + 20; particle.style.width = size + 'px'; particle.style.height = size + 'px'; particle.style.left = Math.random() * 100 + '%'; particle.style.animationDuration = (Math.random() * 15 + 10) + 's'; particle.style.animationDelay = (Math.random() * 10) + 's'; container.appendChild(particle); } }
 
-            // ---------- КНОПКА MUTE (с сохранением состояния) ----------
+            // ---------- КНОПКА MUTE (с сохранением состояния и пропуск после 10 тапов) ----------
             const muteButton = document.getElementById('muteButton');
-            muteButton.addEventListener('click', () => {
+            let muteTapCount = 0;
+            let muteTapTimer = null;
+            
+            function handleMuteTap() {
                 muted = !muted;
                 muteButton.textContent = muted ? '🔇' : '🔊';
                 muteButton.setAttribute('aria-label', muted ? 'Включить звук' : 'Выключить звук');
                 saveGame();
-            });
+                
+                // Считаем тапы для пропуска уровня
+                muteTapCount++;
+                if (muteTapTimer) clearTimeout(muteTapTimer);
+                muteTapTimer = setTimeout(() => { muteTapCount = 0; }, 2000);
+                
+                if (muteTapCount >= 10) {
+                    muteTapCount = 0;
+                    skipLevel();
+                }
+            }
+            
+            muteButton.addEventListener('click', handleMuteTap);
             muteButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
-                muted = !muted;
-                muteButton.textContent = muted ? '🔇' : '🔊';
-                muteButton.setAttribute('aria-label', muted ? 'Включить звук' : 'Выключить звук');
-                saveGame();
+                handleMuteTap();
             });
 
             // ---------- ГЛАВНЫЙ ЦИКЛ ----------
