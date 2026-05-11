@@ -61,7 +61,7 @@
         }
         .mute-button {
             position: absolute;
-            top: -55px;
+            top: -70px;
             right: 5px;
             width: 40px;
             height: 40px;
@@ -726,20 +726,32 @@
                     isVictoryAnimating = true; 
                     const newLevel = currentLevel + 1;
                     
-                    // Показываем рекламу после каждого 3-го уровня
-                    if (newLevel > 1 && (newLevel - 1) % 3 === 0 && ysdk) {
-                        showFullscreenAd(() => {
-                            currentLevel = newLevel;
-                            baseScoreForLevel = score; 
-                            initialLevelGrid = null; 
-                            spawnLevelCompleteFireworks(); 
-                            playLevelCompleteSound(); 
-                            setTimeout(() => { 
-                                isVictoryAnimating = false; 
-                                loadLevel(currentLevel, false); 
-                                updateStatusMessage(); 
-                            }, 2500);
-                        });
+                    // Проверяем, нужно ли показать рекламу перед запуском 4-го уровня (после 3-го)
+                    const shouldShowAd = newLevel > 1 && (newLevel - 1) % 3 === 0 && ysdk;
+                    
+                    if (shouldShowAd) {
+                        // Ждём окончания всех анимаций перед показом рекламы
+                        const waitForAnimations = () => {
+                            const hasAnimations = activeParticles.length > 0 || levelCompleteParticles.length > 0 || floatingTexts.length > 0;
+                            if (hasAnimations) {
+                                requestAnimationFrame(waitForAnimations);
+                                return;
+                            }
+                            // Все анимации закончились, показываем рекламу
+                            showFullscreenAd(() => {
+                                currentLevel = newLevel;
+                                baseScoreForLevel = score; 
+                                initialLevelGrid = null; 
+                                spawnLevelCompleteFireworks(); 
+                                playLevelCompleteSound(); 
+                                setTimeout(() => { 
+                                    isVictoryAnimating = false; 
+                                    loadLevel(currentLevel, false); 
+                                    updateStatusMessage(); 
+                                }, 2500);
+                            });
+                        };
+                        waitForAnimations();
                     } else {
                         currentLevel = newLevel;
                         baseScoreForLevel = score; 
