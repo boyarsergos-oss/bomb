@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
     <title>🎈 Весёлые Шарики - Соединяй 3+ 🎈</title>
+    <script src="https://yandex.ru/games/sdk/v2"></script>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -150,6 +151,82 @@
 
     <script>
         (function(){
+            // ---------- YANDEX GAMES SDK ----------
+            let ysdk = null;
+            let player = null;
+            let adShownOnStart = false;
+            
+            function initYandexSDK() {
+                return new Promise((resolve, reject) => {
+                    if (window.YaGames) {
+                        YaGames.init().then(ysdkInstance => {
+                            ysdk = ysdkInstance;
+                            console.log('Yandex SDK initialized');
+                            resolve(ysdk);
+                        }).catch(err => {
+                            console.warn('Yandex SDK init error:', err);
+                            resolve(null);
+                        });
+                    } else {
+                        console.warn('Yandex SDK not available');
+                        resolve(null);
+                    }
+                });
+            }
+            
+            function showFullscreenAd(callback) {
+                if (ysdk) {
+                    ysdk.adv.showFullscreenAdv({
+                        callbacks: {
+                            onClose: function(wasShown) {
+                                console.log('Ad closed, wasShown:', wasShown);
+                                if (callback) callback();
+                            },
+                            onError: function(error) {
+                                console.warn('Ad error:', error);
+                                if (callback) callback();
+                            }
+                        }
+                    });
+                } else {
+                    if (callback) callback();
+                }
+            }
+            
+            function showRewardedAd(callback) {
+                if (ysdk) {
+                    ysdk.adv.showRewardedVideo({
+                        callbacks: {
+                            onOpen: () => { console.log('Rewarded video opened'); },
+                            onRewarded: () => { 
+                                console.log('Rewarded!');
+                                if (callback) callback(true);
+                            },
+                            onClose: () => { 
+                                console.log('Rewarded video closed');
+                            },
+                            onError: (e) => { 
+                                console.warn('Rewarded video error:', e);
+                                if (callback) callback(false);
+                            }
+                        }
+                    });
+                } else {
+                    if (callback) callback(false);
+                }
+            }
+            
+            // Инициализация SDK и показ рекламы при старте
+            initYandexSDK().then(() => {
+                // Показываем рекламу перед запуском игры
+                if (!adShownOnStart && ysdk) {
+                    adShownOnStart = true;
+                    showFullscreenAd(() => {
+                        console.log('Startup ad shown');
+                    });
+                }
+            });
+            
             // ---------- ГЛОБАЛЬНОЕ МАСШТАБИРОВАНИЕ ----------
             const root = document.getElementById('gameRoot');
             function updateGlobalScale() {
@@ -424,6 +501,25 @@
             }
             function shuffleField() {
                 if (isVictoryAnimating) return;
+                
+                // Показываем рекламу за вознаграждение при нажатии кнопки "Перемешать"
+                if (ysdk) {
+                    showRewardedAd((rewarded) => {
+                        if (rewarded) {
+                            // Игрок посмотрел рекламу - выполняем перемешивание
+                            performShuffle();
+                        } else {
+                            // Реклама не была показана или ошибка - всё равно перемешиваем (fallback)
+                            performShuffle();
+                        }
+                    });
+                } else {
+                    // SDK не доступен - просто перемешиваем
+                    performShuffle();
+                }
+            }
+            
+            function performShuffle() {
                 pushToHistory();
                 let balls = [];
                 for (let y = 0; y < gridRows; y++) for (let x = 0; x < gridCols; x++) if (grid[y][x] && grid[y][x].isDot) balls.push({ color: grid[y][x].color });
@@ -621,7 +717,45 @@
 
             function getColorsWithTwoOrOne() { const colorCount = new Map(); for (let y = 0; y < gridRows; y++) for (let x = 0; x < gridCols; x++) { const cell = grid[y][x]; if (cell && cell.isDot) colorCount.set(cell.color, (colorCount.get(cell.color) || 0) + 1); } const bad = new Set(); for (let [color, cnt] of colorCount.entries()) if (cnt === 2 || cnt === 1) bad.add(color); return bad; }
             function checkLossAndRestart() { const bad = getColorsWithTwoOrOne(); if (bad.size > 0) { lossHighlightColors = bad; playSadMusic(); setTimeout(() => forceRestartCurrentLevel(), 800); return true; } return false; }
-            function checkLevelComplete() { let anyDot = false; for (let y = 0; y < gridRows; y++) for (let x = 0; x < gridCols; x++) if (grid[y][x]?.isDot) { anyDot = true; break; } if (!anyDot) { isVictoryAnimating = true; currentLevel++; baseScoreForLevel = score; initialLevelGrid = null; spawnLevelCompleteFireworks(); playLevelCompleteSound(); setTimeout(() => { isVictoryAnimating = false; loadLevel(currentLevel, false); updateStatusMessage(); }, 2500); return true; } return false; }
+            function checkLevelComplete() { 
+                let anyDot = false; 
+                for (let y = 0; y < gridRows; y++) 
+                    for (let x = 0; x < gridCols; x++) 
+                        if (grid[y][x]?.isDot) { anyDot = true; break; } 
+                if (!anyDot) { 
+                    isVictoryAnimating = true; 
+                    const newLevel = currentLevel + 1;
+                    
+                    // Показываем рекламу после каждого 3-го уровня
+                    if (newLevel > 1 && (newLevel - 1) % 3 === 0 && ysdk) {
+                        showFullscreenAd(() => {
+                            currentLevel = newLevel;
+                            baseScoreForLevel = score; 
+                            initialLevelGrid = null; 
+                            spawnLevelCompleteFireworks(); 
+                            playLevelCompleteSound(); 
+                            setTimeout(() => { 
+                                isVictoryAnimating = false; 
+                                loadLevel(currentLevel, false); 
+                                updateStatusMessage(); 
+                            }, 2500);
+                        });
+                    } else {
+                        currentLevel = newLevel;
+                        baseScoreForLevel = score; 
+                        initialLevelGrid = null; 
+                        spawnLevelCompleteFireworks(); 
+                        playLevelCompleteSound(); 
+                        setTimeout(() => { 
+                            isVictoryAnimating = false; 
+                            loadLevel(currentLevel, false); 
+                            updateStatusMessage(); 
+                        }, 2500);
+                    }
+                    return true; 
+                } 
+                return false; 
+            }
             function updateStatusMessage() { const totalDots = grid.flat().filter(cell => cell?.isDot).length; document.getElementById('status').innerHTML = `🌟 Поле ${gridRows}×${gridCols} | 🎪 Счёт: ${score} | 🎈 Шариков: ${totalDots}`; }
 
             // ---------- ОТРИСОВКА ----------
@@ -859,6 +993,7 @@
             window.undoLastMove = undoLastMove;
             window.restartLevel = restartLevel;
             window.shuffleField = shuffleField;
+            window.performShuffle = performShuffle;
             window.skipLevel = skipLevel;
 
             function createBgParticles() { const container = document.getElementById('bgParticles'); for (let i = 0; i < 10; i++) { const particle = document.createElement('div'); particle.className = 'bg-particle'; const size = Math.random() * 80 + 20; particle.style.width = size + 'px'; particle.style.height = size + 'px'; particle.style.left = Math.random() * 100 + '%'; particle.style.animationDuration = (Math.random() * 15 + 10) + 's'; particle.style.animationDelay = (Math.random() * 10) + 's'; container.appendChild(particle); } }
