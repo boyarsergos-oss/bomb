@@ -22,14 +22,12 @@ venv/
 dist/
 build/
 target/
-coverage/
-htmlcov/
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-*.swo
+# Caches
+.mypy_cache/
+.pytest_cache/
+.gradle/
+__pycache__/
 
 # Editors
 .vscode/
@@ -40,17 +38,14 @@ htmlcov/
 # System files
 .DS_Store
 Thumbs.db
-.git/
 
-# Cache directories
-.mypy_cache/
-.pytest_cache/
-.gradle/
-.cargo/
-zig-cache/
-julia-*/
+# Logs and temp files
+*.log
+*.tmp
 
 # Coverage
+coverage/
+htmlcov/
 .coverage
 
 # Compressed files
