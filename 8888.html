@@ -1175,8 +1175,11 @@
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') {
                         // Пересоздаём фон и кэш шариков, так как они могли потеряться при сворачивании
-                        resizeCanvas();
+                        // Важно: не меняем размеры canvas, а только перерисовываем содержимое
+                        createBackground();
+                        cacheBallImages();
                         redrawNeeded = true;
+                        // Принудительно вызываем draw() немедленно
                         draw();
                     }
                 });
@@ -1184,7 +1187,9 @@
                 // Дополнительная обработка для мобильных браузеров (iOS Safari и др.)
                 window.addEventListener('pageshow', (e) => {
                     if (e.persisted) {
-                        resizeCanvas();
+                        // Пересоздаём фон и кэш шариков без изменения размеров
+                        createBackground();
+                        cacheBallImages();
                         redrawNeeded = true;
                         draw();
                     }
