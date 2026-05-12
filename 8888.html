@@ -1174,6 +1174,17 @@
                 // ИСПРАВЛЕНИЕ БАГА: при возврате вкладки на мобильном устройстве принудительно перерисовываем поле
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') {
+                        // Пересоздаём фон и кэш шариков, так как они могли потеряться при сворачивании
+                        resizeCanvas();
+                        redrawNeeded = true;
+                        draw();
+                    }
+                });
+                
+                // Дополнительная обработка для мобильных браузеров (iOS Safari и др.)
+                window.addEventListener('pageshow', (e) => {
+                    if (e.persisted) {
+                        resizeCanvas();
                         redrawNeeded = true;
                         draw();
                     }
