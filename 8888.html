@@ -227,32 +227,33 @@
             let player = null;
             let adShownOnStart = false;
             
-            function initYandexSDK() {
-                return new Promise((resolve, reject) => {
+            // Auto-detect language from Yandex SDK BEFORE game starts
+            async function detectLanguageFromSDK() {
+                try {
                     if (window.YaGames) {
-                        YaGames.init().then(ysdkInstance => {
-                            ysdk = ysdkInstance;
-                            console.log('Yandex SDK initialized');
-                            
-                            // Auto-detect language from SDK
-                            const sdkLang = ysdk.environment.i18n.lang;
-                            console.log('Detected language:', sdkLang);
-                            if (sdkLang && translations[sdkLang]) {
-                                setLanguage(sdkLang);
-                            } else if (sdkLang === 'ru') {
-                                setLanguage('ru');
-                            }
-                            
-                            resolve(ysdk);
-                        }).catch(err => {
-                            console.warn('Yandex SDK init error:', err);
-                            resolve(null);
-                        });
+                        const ysdkInstance = await YaGames.init();
+                        ysdk = ysdkInstance;
+                        console.log('Yandex SDK initialized');
+                        
+                        // Auto-detect language from SDK - MUST happen at launch, not during gameplay
+                        const sdkLang = ysdk.environment.i18n.lang;
+                        console.log('Detected language:', sdkLang);
+                        
+                        if (sdkLang && translations[sdkLang]) {
+                            setLanguage(sdkLang);
+                        } else if (sdkLang === 'ru') {
+                            setLanguage('ru');
+                        }
+                        
+                        return ysdk;
                     } else {
                         console.warn('Yandex SDK not available');
-                        resolve(null);
+                        return null;
                     }
-                });
+                } catch (err) {
+                    console.warn('Yandex SDK init error:', err);
+                    return null;
+                }
             }
             
             function showFullscreenAd(callback) {
@@ -298,7 +299,8 @@
             }
             
             // Инициализация SDK и показ рекламы при старте
-            initYandexSDK().then(() => {
+            // Auto-detect language happens during SDK initialization (before game starts)
+            detectLanguageFromSDK().then(() => {
                 // Показываем рекламу перед запуском игры
                 if (!adShownOnStart && ysdk) {
                     adShownOnStart = true;
