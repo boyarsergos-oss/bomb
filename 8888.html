@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&display=swap" rel="stylesheet">
-    <title>🎈 Весёлые Шарики - Соединяй 3+ 🎈</title>
+    <title id="gameTitle">🎈 Весёлые Шарики - Соединяй 3+ 🎈</title>
     <script src="https://yandex.ru/games/sdk/v2"></script>
     <style>
         * { box-sizing: border-box; }
@@ -147,6 +147,81 @@
 
     <script>
         (function(){
+            // ---------- TRANSLATIONS / ÇEVİRİLER / ПЕРЕВОДЫ ----------
+            const translations = {
+                ru: {
+                    gameTitle: "🎈 Весёлые Шарики - Соединяй 3+ 🎈",
+                    title: "Уровень",
+                    muteOn: "Выключить звук",
+                    muteOff: "Включить звук",
+                    undo: "Отменить",
+                    restart: "Рестарт",
+                    shuffle: "Перемешать",
+                    statusDefault: "🎈 Соединяйте 3+ шарика одного цвета 🎈",
+                    statusTemplate: "🌟 Поле {rows}×{cols} | 🎪 Счёт: {score} | 🎈 Шариков: {dots}",
+                    skipText: "Пропуск!"
+                },
+                en: {
+                    gameTitle: "🎈 Fun Balls - Connect 3+ 🎈",
+                    title: "Level",
+                    muteOn: "Mute sound",
+                    muteOff: "Unmute sound",
+                    undo: "Undo",
+                    restart: "Restart",
+                    shuffle: "Shuffle",
+                    statusDefault: "🎈 Connect 3+ balls of the same color 🎈",
+                    statusTemplate: "🌟 Board {rows}×{cols} | 🎪 Score: {score} | 🎈 Balls: {dots}",
+                    skipText: "Skip!"
+                },
+                tr: {
+                    gameTitle: "🎈 Eğlenceli Toplar - 3+ Bağla 🎈",
+                    title: "Seviye",
+                    muteOn: "Sesi kapat",
+                    muteOff: "Sesi aç",
+                    undo: "Geri al",
+                    restart: "Yeniden başlat",
+                    shuffle: "Karıştır",
+                    statusDefault: "🎈 Aynı renkte 3+ topu bağlayın 🎈",
+                    statusTemplate: "🌟 Tahta {rows}×{cols} | 🎪 Skor: {score} | 🎈 Toplar: {dots}",
+                    skipText: "Atla!"
+                }
+            };
+            
+            let currentLang = 'ru';
+            
+            function t(key) {
+                return translations[currentLang][key] || translations['ru'][key];
+            }
+            
+            function updateAllTexts() {
+                // Update page title
+                document.getElementById('gameTitle').textContent = t('gameTitle');
+                
+                // Update level title
+                document.getElementById('levelTitle').textContent = `${t('title')} ${currentLevel}`;
+                
+                // Update buttons
+                document.querySelector('button[data-action="undo"]').textContent = t('undo');
+                document.querySelector('button[data-action="restart"]').textContent = t('restart');
+                document.querySelector('button[data-action="shuffle"]').textContent = `🎬 ${t('shuffle')}`;
+                
+                // Update mute button aria-label
+                const muteBtn = document.getElementById('muteButton');
+                muteBtn.setAttribute('aria-label', muted ? t('muteOff') : t('muteOn'));
+                
+                // Update status
+                updateStatusMessage();
+            }
+            
+            function setLanguage(lang) {
+                if (translations[lang]) {
+                    currentLang = lang;
+                    document.documentElement.lang = lang;
+                    document.documentElement.setAttribute('data-lang', lang);
+                    updateAllTexts();
+                }
+            }
+            
             // ---------- YANDEX GAMES SDK ----------
             let ysdk = null;
             let player = null;
@@ -158,6 +233,16 @@
                         YaGames.init().then(ysdkInstance => {
                             ysdk = ysdkInstance;
                             console.log('Yandex SDK initialized');
+                            
+                            // Auto-detect language from SDK
+                            const sdkLang = ysdk.environment.i18n.lang;
+                            console.log('Detected language:', sdkLang);
+                            if (sdkLang && translations[sdkLang]) {
+                                setLanguage(sdkLang);
+                            } else if (sdkLang === 'ru') {
+                                setLanguage('ru');
+                            }
+                            
                             resolve(ysdk);
                         }).catch(err => {
                             console.warn('Yandex SDK init error:', err);
@@ -297,8 +382,7 @@
                     // подстройка размера canvas
                     resizeCanvas(); // пересчитает CELL_SIZE, создаст фон и кэш шариков
                     // обновляем заголовок и статус
-                    document.getElementById('levelTitle').textContent = `Уровень ${currentLevel}`;
-                    updateStatusMessage();
+                    updateAllTexts();
                     currentPath = null; currentColor = null;
                     lossHighlightColors.clear();
                     historyStack = []; // историю не сохраняем, начинаем заново
@@ -700,9 +784,9 @@
                 for (let i = 0; i < gridRows; i++) for (let j = 0; j < gridCols; j++) grid[i][j] = newGrid[i]?.[j] ? { ...newGrid[i][j] } : null;
                 currentPath = null; currentColor = null;
                 if (!keepBaseScore) baseScoreForLevel = score;
-                document.getElementById('levelTitle').textContent = `Уровень ${level}`;
-                updateStatusMessage(); redrawNeeded = true; 
+                updateAllTexts();
                 historyStack = []; lossHighlightColors.clear();
+                redrawNeeded = true;
                 draw();
                 saveGame();
             }
@@ -764,7 +848,12 @@
                 } 
                 return false; 
             }
-            function updateStatusMessage() { const totalDots = grid.flat().filter(cell => cell?.isDot).length; document.getElementById('status').innerHTML = `🌟 Поле ${gridRows}×${gridCols} | 🎪 Счёт: ${score} | 🎈 Шариков: ${totalDots}`; }
+            function updateStatusMessage() { 
+                const totalDots = grid.flat().filter(cell => cell?.isDot).length; 
+                const template = t('statusTemplate');
+                const html = template.replace('{rows}', gridRows).replace('{cols}', gridCols).replace('{score}', score).replace('{dots}', totalDots);
+                document.getElementById('status').innerHTML = html; 
+            }
 
             // ---------- ОТРИСОВКА ----------
             function draw() { 
@@ -1012,7 +1101,7 @@
             function handleMuteTap() {
                 muted = !muted;
                 muteButton.textContent = muted ? '🔇' : '🔊';
-                muteButton.setAttribute('aria-label', muted ? 'Включить звук' : 'Выключить звук');
+                muteButton.setAttribute('aria-label', muted ? t('muteOff') : t('muteOn'));
                 saveGame();
                 
                 // Считаем тапы для пропуска уровня
