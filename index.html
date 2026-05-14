@@ -341,7 +341,10 @@
             
             // ---------- ГЛОБАЛЬНОЕ МАСШТАБИРОВАНИЕ ----------
             const root = document.getElementById('gameRoot');
+            let initialScaleSet = false;
             function updateGlobalScale() {
+                if (initialScaleSet) return; // устанавливаем масштаб только один раз при старте
+                
                 const w = window.innerWidth, h = window.innerHeight;
                 const rootW = root.scrollWidth, rootH = root.scrollHeight;
                 let scale = Math.min(w / rootW, h / rootH);
@@ -351,8 +354,8 @@
                 scale = Math.min(scale, 1.0);
                 
                 root.style.transform = `scale(${scale})`;
+                initialScaleSet = true;
             }
-            window.addEventListener('resize', updateGlobalScale);
             updateGlobalScale();
 
             // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
