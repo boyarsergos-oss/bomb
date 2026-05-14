@@ -344,19 +344,22 @@
             let baseScale = 1;
             let scaleInitialized = false;
             function updateGlobalScale() {
-                // Вызываем только один раз при старте игры
-                if (scaleInitialized) return;
-                
                 const w = window.innerWidth, h = window.innerHeight;
                 const rootW = root.scrollWidth, rootH = root.scrollHeight;
                 let scale = Math.min(w / rootW, h / rootH);
                 scale = Math.min(scale, 1.5);
                 
-                baseScale = scale;
-                scaleInitialized = true;
+                // После первого запуска разрешаем только уменьшение масштаба, но не увеличение
+                if (scaleInitialized) {
+                    scale = Math.min(scale, baseScale);
+                } else {
+                    baseScale = scale;
+                    scaleInitialized = true;
+                }
+                
                 root.style.transform = `scale(${scale})`;
             }
-            // Не слушаем resize - масштаб фиксируется при старте и не меняется
+            window.addEventListener('resize', updateGlobalScale);
             updateGlobalScale();
 
             // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
