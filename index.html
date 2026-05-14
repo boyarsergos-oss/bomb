@@ -341,22 +341,29 @@
             
             // ---------- ГЛОБАЛЬНОЕ МАСШТАБИРОВАНИЕ ----------
             const root = document.getElementById('gameRoot');
-            let initialScaleSet = false;
+            let baseScale = null;
+            
             function updateGlobalScale() {
-                if (initialScaleSet) return; // устанавливаем масштаб только один раз при старте
-                
                 const w = window.innerWidth, h = window.innerHeight;
                 const rootW = root.scrollWidth, rootH = root.scrollHeight;
                 let scale = Math.min(w / rootW, h / rootH);
                 
-                // ГЛАВНОЕ ИСПРАВЛЕНИЕ: никогда не позволяем масштабу быть больше 1
-                // Это предотвращает "приближение" игры после рекламы или обновления страницы
+                // Ограничиваем масштаб единицей - игра не должна увеличиваться больше оригинального размера
                 scale = Math.min(scale, 1.0);
                 
+                // После первого вычисления сохраняем базовый масштаб и не позволяем ему увеличиваться
+                if (baseScale === null) {
+                    baseScale = scale;
+                } else {
+                    // Разрешаем только уменьшение масштаба, но не увеличение сверх базового
+                    scale = Math.min(scale, baseScale);
+                }
+                
                 root.style.transform = `scale(${scale})`;
-                initialScaleSet = true;
             }
-            updateGlobalScale();
+            
+            // Вызываем после небольшой задержки, чтобы все элементы успели отрендериться
+            setTimeout(updateGlobalScale, 100);
 
             // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
             const canvas = document.getElementById('game');
@@ -1228,7 +1235,10 @@
                 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (currentPath) { pendingMoveEvent = e; } });
                 document.addEventListener('touchend', endPath);
                 canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); lastMovePos = null; pendingMoveEvent = null; currentPath = null; currentColor = null; redrawNeeded = true; });
-                window.addEventListener('resize', () => { resizeCanvas(); });
+                window.addEventListener('resize', () => { 
+                    resizeCanvas();
+                    updateGlobalScale();
+                });
                 
                 // ИСПРАВЛЕНИЕ БАГА МОБИЛЬНОЙ ВЕРСИИ: показываем заглушку при возвращении в игру
                 document.addEventListener('visibilitychange', () => {
