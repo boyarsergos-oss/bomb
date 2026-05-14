@@ -291,10 +291,17 @@
                         callbacks: {
                             onClose: function(wasShown) {
                                 console.log('Ad closed, wasShown:', wasShown);
+                                // После закрытия рекламы обновляем масштаб с небольшой задержкой
+                                setTimeout(() => {
+                                    updateGlobalScale();
+                                }, 100);
                                 if (callback) callback();
                             },
                             onError: function(error) {
                                 console.warn('Ad error:', error);
+                                setTimeout(() => {
+                                    updateGlobalScale();
+                                }, 100);
                                 if (callback) callback();
                             }
                         }
@@ -315,9 +322,16 @@
                             },
                             onClose: () => { 
                                 console.log('Rewarded video closed');
+                                // После закрытия рекламы обновляем масштаб с небольшой задержкой
+                                setTimeout(() => {
+                                    updateGlobalScale();
+                                }, 100);
                             },
                             onError: (e) => { 
                                 console.warn('Rewarded video error:', e);
+                                setTimeout(() => {
+                                    updateGlobalScale();
+                                }, 100);
                                 if (callback) callback(false);
                             }
                         }
@@ -341,15 +355,28 @@
             
             // ---------- ГЛОБАЛЬНОЕ МАСШТАБИРОВАНИЕ ----------
             const root = document.getElementById('gameRoot');
+            let currentScale = 1;
             function updateGlobalScale() {
                 const w = window.innerWidth, h = window.innerHeight;
-                const rootW = root.scrollWidth, rootH = root.scrollHeight;
+                // Используем фиксированные размеры вместо scrollWidth/scrollHeight для стабильности
+                const rootW = 1000; // ширина gameRoot по CSS
+                const rootH = Math.max(h * 0.9, 600); // примерная высота с учетом контента
                 let scale = Math.min(w / rootW, h / rootH);
                 scale = Math.min(scale, 1.5);
-                root.style.transform = `scale(${scale})`;
+                scale = Math.max(scale, 0.5); // минимальный масштаб
+                // Применяем масштаб только если он изменился значительно (защита от дребезга)
+                if (Math.abs(scale - currentScale) > 0.01) {
+                    currentScale = scale;
+                    root.style.transform = `scale(${scale})`;
+                }
             }
             window.addEventListener('resize', updateGlobalScale);
-            updateGlobalScale();
+            // Вызываем после полной загрузки DOM
+            if (document.readyState === 'complete') {
+                updateGlobalScale();
+            } else {
+                window.addEventListener('load', updateGlobalScale);
+            }
 
             // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
             const canvas = document.getElementById('game');
@@ -657,7 +684,7 @@
                 canvas.height = CELL_SIZE * gridRows + OFFSET * 2;
                 createBackground();
                 cacheBallImages();
-                updateGlobalScale();
+                // Не вызываем updateGlobalScale здесь, чтобы избежать циклического изменения размеров
                 redrawNeeded = true;
             }
 
@@ -1158,6 +1185,10 @@
             function showResumeOverlay() {
                 if (!resumeOverlay) return;
                 resumeOverlay.style.display = 'flex';
+                // При показе оверлея обновляем масштаб для корректного отображения
+                setTimeout(() => {
+                    updateGlobalScale();
+                }, 50);
             }
             
             function hideResumeOverlay() {
@@ -1221,7 +1252,11 @@
                 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (currentPath) { pendingMoveEvent = e; } });
                 document.addEventListener('touchend', endPath);
                 canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); lastMovePos = null; pendingMoveEvent = null; currentPath = null; currentColor = null; redrawNeeded = true; });
-                window.addEventListener('resize', () => { resizeCanvas(); });
+                window.addEventListener('resize', () => { 
+                    // При ресайзе обновляем и canvas, и глобальный масштаб
+                    resizeCanvas();
+                    updateGlobalScale();
+                });
                 
                 // ИСПРАВЛЕНИЕ БАГА МОБИЛЬНОЙ ВЕРСИИ: показываем заглушку при возвращении в игру
                 document.addEventListener('visibilitychange', () => {
@@ -1234,6 +1269,11 @@
                 window.addEventListener('pageshow', (e) => {
                     if (e.persisted) {
                         showResumeOverlay();
+                    } else {
+                        // При обычной загрузке страницы тоже обновляем масштаб
+                        setTimeout(() => {
+                            updateGlobalScale();
+                        }, 50);
                     }
                 });
 
@@ -1243,9 +1283,18 @@
             // Запускаем инициализацию только после загрузки всех шрифтов,
             // чтобы размеры текста (и, как следствие, масштаб canvas) были стабильны при каждом обновлении.
             if (document.fonts && document.fonts.ready) {
-                document.fonts.ready.then(() => init());
+                document.fonts.ready.then(() => {
+                    init();
+                    // После полной инициализации ещё раз обновляем масштаб
+                    setTimeout(() => {
+                        updateGlobalScale();
+                    }, 100);
+                });
             } else {
                 init();
+                setTimeout(() => {
+                    updateGlobalScale();
+                }, 100);
             }
         })();
     </script>
