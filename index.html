@@ -8,12 +8,12 @@
     <script src="https://yandex.ru/games/sdk/v2"></script>
     <style>
         * { box-sizing: border-box; }
-        body { 
+        html, body { 
             margin: 0; padding: 0; 
             background: linear-gradient(180deg, #87CEEB 0%, #E0F7FA 50%, #FFF9C4 100%); 
             font-family: 'Comic Sans MS', 'Chalkboard SE', 'Russo One', cursive; 
             color: #5D4E37; touch-action: none; overflow: hidden;
-            height: 100vh; width: 100vw; display: flex; align-items: center; justify-content: center;
+            height: 100%; width: 100%; display: flex; align-items: center; justify-content: center;
             position: relative;
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -27,13 +27,14 @@
         .game-root {
             transform-origin: center center; display: flex; flex-direction: column; align-items: center;
             justify-content: center; gap: 0.8rem; will-change: transform; width: 1000px; margin: 0 auto;
+            transform: scale(1); /* Фиксированный масштаб для Яндекс Игр */
         }
         h1 { 
             margin: 0; 
             font-size: clamp(1.6rem, 2.5vw, 2.4rem);  
             letter-spacing: 2px; color: #2ecc71;
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 2px 4px rgba(0,0,0,0.2);
-            font-weight: bold; z-index: 10; animation: titleBounce 2s ease-in-out infinite alternate; white-space: nowrap;
+            font-weight: bold; z-index: 10; /* animation: titleBounce 2s ease-in-out infinite alternate; */ white-space: nowrap;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
@@ -53,7 +54,7 @@
         }
         canvas:hover { 
             box-shadow: 0 8px 0 #546E7A, 0 20px 40px rgba(0,0,0,0.2), inset 0 0 80px rgba(255,255,255,0.4);
-            transform: scale(1.02) translateY(-3px);
+            /* transform: scale(1.02) translateY(-3px); */ /* Отключено для Яндекс Игр - размер не должен меняться */
         }
         .canvas-container {
             position: relative;
@@ -99,11 +100,13 @@
         button::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); transition: left 0.5s; }
         button:hover::before { left: 100%; }
         button:hover { 
-            background: linear-gradient(180deg, #3be684 0%, #2ecc71 100%); transform: translateY(-2px) scale(1.03);
+            background: linear-gradient(180deg, #3be684 0%, #2ecc71 100%);
+            /* transform: translateY(-2px) scale(1.03); */ /* Отключено для Яндекс Игр - размер не должен меняться */
             box-shadow: 0 8px 0 #1e8449, 0 15px 30px rgba(0,0,0,0.2);
         }
         button:active, button.touch-active { 
-            transform: translateY(4px) scale(0.97); box-shadow: 0 2px 0 #1e8449, 0 4px 8px rgba(0,0,0,0.15);
+            /* transform: translateY(4px) scale(0.97); */ /* Отключено для Яндекс Игр - размер не должен меняться */
+            box-shadow: 0 2px 0 #1e8449, 0 4px 8px rgba(0,0,0,0.15);
         }
         .info { 
             margin-top: 5px; font-size: 18px; text-align: center;
@@ -116,7 +119,7 @@
             -ms-user-select: none;
             user-select: none;
         }
-        .info:hover { box-shadow: 0 8px 0 #DEB887, 0 15px 30px rgba(0,0,0,0.15); transform: translateY(-3px); }
+        .info:hover { box-shadow: 0 8px 0 #DEB887, 0 15px 30px rgba(0,0,0,0.15); /* transform: translateY(-3px); */ /* Отключено для Яндекс Игр */ }
         .victory-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; opacity: 0; transition: opacity 0.5s; }
         .victory-overlay.active { opacity: 1; animation: victoryPulse 0.5s ease-out; }
         @keyframes victoryPulse { 0% { background: radial-gradient(circle, rgba(255,215,0,0.6) 0%, transparent 70%); } 100% { background: transparent; } }
@@ -341,14 +344,26 @@
             
             // ---------- ГЛОБАЛЬНОЕ МАСШТАБИРОВАНИЕ ----------
             const root = document.getElementById('gameRoot');
+            let globalScaleInitialized = false;
+            
             function updateGlobalScale() {
-                const w = window.innerWidth, h = window.innerHeight;
-                const rootW = root.scrollWidth, rootH = root.scrollHeight;
-                let scale = Math.min(w / rootW, h / rootH);
-                scale = Math.min(scale, 1.5);
+                // Для Яндекс Игр: рассчитываем масштаб ОДИН раз при загрузке
+                // и больше не меняем его при ресайзе окна
+                if (globalScaleInitialized) return;
+                
+                const maxWidth = 1000;
+                const maxHeight = window.innerHeight * 0.85;
+                const gameWidth = 60 * gridCols + OFFSET * 2 + 100; // ширина канваса + отступы
+                const gameHeight = 60 * gridRows + OFFSET * 2 + 150; // высота канваса + заголовок + кнопки
+                
+                const scaleX = maxWidth / gameWidth;
+                const scaleY = maxHeight / gameHeight;
+                const scale = Math.min(scaleX, scaleY, 1.0);
+                
                 root.style.transform = `scale(${scale})`;
+                globalScaleInitialized = true;
             }
-            window.addEventListener('resize', updateGlobalScale);
+            // Вызываем один раз при старте, слушатель resize НЕ добавляем
             updateGlobalScale();
 
             // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
@@ -646,18 +661,14 @@
             }
 
             function resizeCanvas() {
-                const maxWidth = window.innerWidth - 40;
-                const maxHeight = window.innerHeight - 200;
-                const cellW = maxWidth / gridCols;
-                const cellH = maxHeight / gridRows;
-                let cellSize = Math.min(cellW, cellH);
-                if (cellSize < 25) cellSize = 25;
-                CELL_SIZE = Math.floor(cellSize);
+                // Фиксированный размер канваса для Яндекс Игр
+                // Используем фиксированные размеры, чтобы игра не менялась при ресайзе
+                const fixedCellSize = 60;
+                CELL_SIZE = fixedCellSize;
                 canvas.width = CELL_SIZE * gridCols + OFFSET * 2;
                 canvas.height = CELL_SIZE * gridRows + OFFSET * 2;
                 createBackground();
                 cacheBallImages();
-                updateGlobalScale();
                 redrawNeeded = true;
             }
 
@@ -1221,7 +1232,8 @@
                 canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (currentPath) { pendingMoveEvent = e; } });
                 document.addEventListener('touchend', endPath);
                 canvas.addEventListener('touchcancel', (e) => { e.preventDefault(); lastMovePos = null; pendingMoveEvent = null; currentPath = null; currentColor = null; redrawNeeded = true; });
-                window.addEventListener('resize', () => { resizeCanvas(); });
+                // Убираем слушатель resize, чтобы размер игры не менялся при обновлении страницы (требование Яндекс Игр)
+                // window.addEventListener('resize', () => { resizeCanvas(); });
                 
                 // ИСПРАВЛЕНИЕ БАГА МОБИЛЬНОЙ ВЕРСИИ: показываем заглушку при возвращении в игру
                 document.addEventListener('visibilitychange', () => {
