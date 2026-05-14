@@ -344,14 +344,26 @@
             
             // ---------- ГЛОБАЛЬНОЕ МАСШТАБИРОВАНИЕ ----------
             const root = document.getElementById('gameRoot');
+            let globalScaleInitialized = false;
+            
             function updateGlobalScale() {
-                // Отключаем динамическое масштабирование для Яндекс Игр
-                // Игра должна иметь фиксированный размер
-                const scale = 1.0;
+                // Для Яндекс Игр: рассчитываем масштаб ОДИН раз при загрузке
+                // и больше не меняем его при ресайзе окна
+                if (globalScaleInitialized) return;
+                
+                const maxWidth = 1000;
+                const maxHeight = window.innerHeight * 0.85;
+                const gameWidth = 60 * gridCols + OFFSET * 2 + 100; // ширина канваса + отступы
+                const gameHeight = 60 * gridRows + OFFSET * 2 + 150; // высота канваса + заголовок + кнопки
+                
+                const scaleX = maxWidth / gameWidth;
+                const scaleY = maxHeight / gameHeight;
+                const scale = Math.min(scaleX, scaleY, 1.0);
+                
                 root.style.transform = `scale(${scale})`;
+                globalScaleInitialized = true;
             }
-            // Убираем слушатель resize, чтобы масштаб не менялся при обновлении страницы
-            // window.addEventListener('resize', updateGlobalScale);
+            // Вызываем один раз при старте, слушатель resize НЕ добавляем
             updateGlobalScale();
 
             // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
