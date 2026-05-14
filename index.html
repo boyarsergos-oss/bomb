@@ -341,11 +341,24 @@
             
             // ---------- ГЛОБАЛЬНОЕ МАСШТАБИРОВАНИЕ ----------
             const root = document.getElementById('gameRoot');
+            let baseScale = 1;
+            let scaleInitialized = false;
             function updateGlobalScale() {
                 const w = window.innerWidth, h = window.innerHeight;
                 const rootW = root.scrollWidth, rootH = root.scrollHeight;
                 let scale = Math.min(w / rootW, h / rootH);
                 scale = Math.min(scale, 1.5);
+                // Фиксируем масштаб, чтобы он не "уплывал" после рекламы или частых обновлений
+                if (!scaleInitialized) {
+                    baseScale = scale;
+                    scaleInitialized = true;
+                } else {
+                    // Разрешаем только уменьшение масштаба если окно стало меньше,
+                    // но не увеличиваем больше базового значения
+                    if (scale > baseScale) {
+                        scale = baseScale;
+                    }
+                }
                 root.style.transform = `scale(${scale})`;
             }
             window.addEventListener('resize', updateGlobalScale);
