@@ -344,24 +344,19 @@
             let baseScale = 1;
             let scaleInitialized = false;
             function updateGlobalScale() {
+                // Вызываем только один раз при старте игры
+                if (scaleInitialized) return;
+                
                 const w = window.innerWidth, h = window.innerHeight;
                 const rootW = root.scrollWidth, rootH = root.scrollHeight;
                 let scale = Math.min(w / rootW, h / rootH);
                 scale = Math.min(scale, 1.5);
-                // Фиксируем масштаб, чтобы он не "уплывал" после рекламы или частых обновлений
-                if (!scaleInitialized) {
-                    baseScale = scale;
-                    scaleInitialized = true;
-                } else {
-                    // Разрешаем только уменьшение масштаба если окно стало меньше,
-                    // но не увеличиваем больше базового значения
-                    if (scale > baseScale) {
-                        scale = baseScale;
-                    }
-                }
+                
+                baseScale = scale;
+                scaleInitialized = true;
                 root.style.transform = `scale(${scale})`;
             }
-            window.addEventListener('resize', updateGlobalScale);
+            // Не слушаем resize - масштаб фиксируется при старте и не меняется
             updateGlobalScale();
 
             // ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ----------
@@ -670,7 +665,7 @@
                 canvas.height = CELL_SIZE * gridRows + OFFSET * 2;
                 createBackground();
                 cacheBallImages();
-                updateGlobalScale();
+                // updateGlobalScale() больше не вызывается - масштаб фиксирован при старте
                 redrawNeeded = true;
             }
 
