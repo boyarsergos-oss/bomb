@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Bridge Defense: Ultimate Tower Defence</title>
+    <title>Building Defense: Ultimate Tower Defence</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #000; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
@@ -98,7 +98,7 @@
 <div id="ui-layer">
     <div id="top-bar" class="hud-panel">
         <div class="stat-box">
-            <div>ЗДОРОВЬЕ МОСТА</div>
+            <div>ЗДОРОВЬЕ ЗДАНИЯ</div>
             <div class="health-bar"><div id="bridge-health" class="health-fill"></div></div>
         </div>
         <div class="stat-box" style="text-align: right;">
@@ -209,7 +209,7 @@
 
 <div id="game-over">
     <h1 id="go-title">GAME OVER</h1>
-    <p id="go-reason">Зомби прорвались!</p>
+    <p id="go-reason">Здание разрушено!</p>
     <button class="restart" onclick="location.reload()">ИГРАТЬ СНОВА</button>
 </div>
 
@@ -223,6 +223,8 @@ let clock = new THREE.Clock();
 let raycaster = new THREE.Raycaster();
 let mouse = new THREE.Vector2();
 let bridgeMesh;
+let buildingMesh;
+let ground;
 let units = [];
 let zombies = [];
 let bullets = [];
@@ -350,16 +352,16 @@ function init() {
     fillLight.position.set(-10, 20, -10);
     scene.add(fillLight);
 
-    // Окружение (Вода)
-    const waterGeo = new THREE.PlaneGeometry(200, 200);
-    const waterMat = new THREE.MeshStandardMaterial({ color: 0x0066cc, roughness: 0.3, metalness: 0.5 });
-    const water = new THREE.Mesh(waterGeo, waterMat);
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = -2;
-    scene.add(water);
+    // Окружение (Земля/Трава)
+    const groundGeo = new THREE.PlaneGeometry(200, 200);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x3a7a3a, roughness: 0.8 });
+    ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.5;
+    scene.add(ground);
 
-    // Мост
-    createBridge();
+    // Здание (трёхэтажное)
+    createBuilding();
 
     // Управление стратегией (простое следование за мышью для камеры)
     document.addEventListener('mousemove', onDocumentMouseMove, false);
@@ -371,69 +373,96 @@ function init() {
     updateUI();
 }
 
-function createBridge() {
-    // Дорога - более красивая текстура
-    const geo = new THREE.BoxGeometry(10, 2, 60);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.7 });
-    bridgeMesh = new THREE.Mesh(geo, mat);
-    bridgeMesh.position.y = 0;
-    bridgeMesh.receiveShadow = true;
-    scene.add(bridgeMesh);
-
-    // Перила
-    const railGeo = new THREE.BoxGeometry(0.8, 1.5, 60);
-    const railMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, metalness: 0.3 });
+function createBuilding() {
+    // Основное здание - трёхэтажное прямоугольное строение
+    const buildingWidth = 20;
+    const buildingDepth = 15;
+    const floorHeight = 4;
+    const totalHeight = floorHeight * 3;
     
-    const railLeft = new THREE.Mesh(railGeo, railMat);
-    railLeft.position.set(-4.5, 0.75, 0);
-    railLeft.castShadow = true;
-    scene.add(railLeft);
-
-    const railRight = new THREE.Mesh(railGeo, railMat);
-    railRight.position.set(4.5, 0.75, 0);
-    railRight.castShadow = true;
-    scene.add(railRight);
-
-    // Столбы перил
-    for(let x of [-4.5, 4.5]) {
-        for(let z = -28; z <= 28; z+=8) {
-            const postGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
-            const post = new THREE.Mesh(postGeo, railMat);
-            post.position.set(x, 0.75, z);
-            post.castShadow = true;
-            scene.add(post);
+    // Основной корпус здания
+    const buildingGeo = new THREE.BoxGeometry(buildingWidth, totalHeight, buildingDepth);
+    const buildingMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.7 });
+    buildingMesh = new THREE.Mesh(buildingGeo, buildingMat);
+    buildingMesh.position.set(0, totalHeight / 2, 0);
+    buildingMesh.castShadow = true;
+    buildingMesh.receiveShadow = true;
+    scene.add(buildingMesh);
+    
+    // Этажи (декоративные полосы)
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x666666 });
+    for (let i = 1; i <= 3; i++) {
+        const floorBand = new THREE.Mesh(
+            new THREE.BoxGeometry(buildingWidth + 0.2, 0.3, buildingDepth + 0.2),
+            floorMat
+        );
+        floorBand.position.set(0, i * floorHeight - floorHeight / 2, 0);
+        scene.add(floorBand);
+    }
+    
+    // Окна для каждого этажа
+    const windowMat = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x446688, emissiveIntensity: 0.3 });
+    const windowGeo = new THREE.PlaneGeometry(1.5, 2);
+    
+    for (let floor = 0; floor < 3; floor++) {
+        const y = floor * floorHeight + floorHeight / 2;
+        // Передняя сторона
+        for (let x = -buildingWidth / 2 + 2; x < buildingWidth / 2 - 1; x += 3) {
+            const window = new THREE.Mesh(windowGeo, windowMat);
+            window.position.set(x, y, buildingDepth / 2 + 0.1);
+            scene.add(window);
+        }
+        // Задняя сторона
+        for (let x = -buildingWidth / 2 + 2; x < buildingWidth / 2 - 1; x += 3) {
+            const window = new THREE.Mesh(windowGeo, windowMat.clone());
+            window.material.color = new THREE.Color(0x88ccff);
+            window.position.set(x, y, -buildingDepth / 2 - 0.1);
+            window.rotation.y = Math.PI;
+            scene.add(window);
+        }
+        // Левая сторона
+        for (let z = -buildingDepth / 2 + 2; z < buildingDepth / 2 - 1; z += 3) {
+            const window = new THREE.Mesh(windowGeo, windowMat.clone());
+            window.material.color = new THREE.Color(0x88ccff);
+            window.position.set(-buildingWidth / 2 - 0.1, y, z);
+            window.rotation.y = Math.PI / 2;
+            scene.add(window);
+        }
+        // Правая сторона
+        for (let z = -buildingDepth / 2 + 2; z < buildingDepth / 2 - 1; z += 3) {
+            const window = new THREE.Mesh(windowGeo, windowMat.clone());
+            window.material.color = new THREE.Color(0x88ccff);
+            window.position.set(buildingWidth / 2 + 0.1, y, z);
+            window.rotation.y = -Math.PI / 2;
+            scene.add(window);
         }
     }
-
-    // Опоры моста
-    for(let z = -25; z <= 25; z+=25) {
-        const supGeo = new THREE.CylinderGeometry(2, 2, 12, 16);
-        const supMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.9 });
-        const sup = new THREE.Mesh(supGeo, supMat);
-        sup.position.set(0, -6, z);
-        sup.castShadow = true;
-        scene.add(sup);
-    }
     
-    // Декор - фонари на мосту
-    const lampPostMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-    const lampLightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
-    for(let z of [-20, 0, 20]) {
-        const poleGeo = new THREE.CylinderGeometry(0.2, 0.2, 4, 8);
-        const pole = new THREE.Mesh(poleGeo, lampPostMat);
-        pole.position.set(-3.5, 2, z);
-        scene.add(pole);
-        
-        const lampGeo = new THREE.SphereGeometry(0.4, 8, 8);
-        const lamp = new THREE.Mesh(lampGeo, lampLightMat);
-        lamp.position.set(0, 1.5, 0);
-        pole.add(lamp);
-        
-        // Свет от фонаря
-        const lampLight = new THREE.PointLight(0xffffaa, 0.5, 10);
-        lampLight.position.set(0, 1.5, 0);
-        pole.add(lampLight);
-    }
+    // Крыша
+    const roofGeo = new THREE.ConeGeometry(Math.sqrt(buildingWidth * buildingWidth + buildingDepth * buildingDepth) / 2, 3, 4);
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x5a3a2a, roughness: 0.9 });
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.set(0, totalHeight + 1.5, 0);
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true;
+    scene.add(roof);
+    
+    // Дверь на первом этаже (вход)
+    const doorGeo = new THREE.PlaneGeometry(3, 4);
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a });
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.set(0, 2, buildingDepth / 2 + 0.1);
+    scene.add(door);
+    
+    // Освещение внутри здания (светящиеся окна)
+    const interiorLight = new THREE.PointLight(0xffffaa, 0.5, 30);
+    interiorLight.position.set(0, totalHeight / 2, 0);
+    scene.add(interiorLight);
+}
+
+// Функция-заглушка для совместимости (если где-то вызывается createBridge)
+function createBridge() {
+    createBuilding();
 }
 
 // --- Логика Стратегии ---
@@ -471,7 +500,9 @@ function onDocumentMouseDown(event) {
     if (event.button !== 0) return; // Только ЛКМ
 
     raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObject(bridgeMesh);
+    
+    // Проверяем пересечения с землёй и зданием
+    const intersects = raycaster.intersectObjects([ground, buildingMesh].filter(o => o));
 
     if (intersects.length > 0) {
         const point = intersects[0].point;
@@ -500,7 +531,12 @@ function placeUnit(type, position) {
     // Группа меша
     const group = new THREE.Group();
     group.position.copy(position);
-    group.position.y = 1.5; // На поверхности моста
+    // Корректируем Y для установки на земле или у здания
+    if (position.y < 1) {
+        group.position.y = 1.5; // На земле
+    } else {
+        group.position.y = position.y + 1.5;
+    }
 
     // Визуализация (разная для каждого типа)
     let mesh;
@@ -591,8 +627,8 @@ window.startGame = function() {
     
     controls.lock();
     
-    // Reset camera for FPS
-    camera.position.set(0, 2, 25); // Start at one end of the bridge
+    // Reset camera for FPS - старт внутри здания на первом этаже
+    camera.position.set(0, 6, 10); // Начальная позиция внутри здания (первый этаж)
     camera.rotation.set(0, 0, 0);
     
     // Add camera to scene so weapon attached to it will be visible
@@ -751,7 +787,12 @@ document.addEventListener('contextmenu', (event) => {
 function spawnZombie() {
     if (zombiesToSpawn <= 0) return;
 
-    const zPos = new THREE.Vector3((Math.random() - 0.5) * 8, 0, 30); // Spawn far end
+    // Спавн зомби со всех сторон карты - вокруг здания
+    const angle = Math.random() * Math.PI * 2; // Случайный угол
+    const distance = 40 + Math.random() * 20; // Расстояние от центра (здания)
+    const x = Math.cos(angle) * distance;
+    const z = Math.sin(angle) * distance;
+    const zPos = new THREE.Vector3(x, 0, z);
     
     // Выбор типа зомби - БОЛЬШЕ разнообразия и чаще элитные враги
     let zombieType = 'normal';
@@ -981,11 +1022,21 @@ function updatePhysics(dt) {
         if (keys['KeyA']) controls.moveRight(-speed);
         if (keys['KeyD']) controls.moveRight(speed);
         
-        // Boundary check (stay on bridge roughly)
+        // Boundary check (ограничение карты - можно бегать по всей территории вокруг здания)
         const pos = controls.getObject().position;
-        pos.x = Math.max(-4, Math.min(4, pos.x));
-        pos.z = Math.max(-28, Math.min(28, pos.z));
-        pos.y = 2; // Keep player at fixed height
+        pos.x = Math.max(-45, Math.min(45, pos.x)); // Ограничение по X
+        pos.z = Math.max(-45, Math.min(45, pos.z)); // Ограничение по Z
+        // Высота игрока может меняться в зависимости от этажа здания
+        if (pos.y < 0.5) pos.y = 0.5; // Минимальная высота (земля)
+        if (pos.y > 14) pos.y = 14; // Максимальная высота (крыша здания)
+        
+        // Проверка нахождения внутри здания для переключения этажей (лестница)
+        if (Math.abs(pos.x) < 10 && Math.abs(pos.z) < 7.5) {
+            // Игрок внутри здания - может подниматься/спускаться
+            if (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD']) {
+                // Разрешаем свободное движение по высоте внутри здания
+            }
+        }
         
         // Player Shooting
         if (keys['Mouse0']) {
@@ -1244,9 +1295,11 @@ function updatePhysics(dt) {
             if (player.hp <= 0) endGame(false);
         }
 
-        // Reached End (Bridge Health) - БОЛЬШЕ урона мосту!
-        if (z.mesh.position.z < -25) {
-            bridgeHealth -= 15 + wave; // Больше урона с каждой волной
+        // Reached Building (Здание Health) - Зомби атакуют здание!
+        const distToBuilding = Math.sqrt(z.mesh.position.x * z.mesh.position.x + z.mesh.position.z * z.mesh.position.z);
+        if (distToBuilding < 12 && z.mesh.position.y < 1) {
+            // Зомби достиг здания и атакует его
+            bridgeHealth -= 8 + wave; // Больше урона с каждой волной
             updateUI();
             createExplosion(z.mesh.position, 0xff0000);
             scene.remove(z.mesh);
@@ -1374,7 +1427,7 @@ function endGame(win) {
     } else {
         title.innerText = "ПОРАЖЕНИЕ";
         title.style.color = "#f00";
-        reason.innerText = bridgeHealth <= 0 ? "Мост разрушен!" : "Вы погибли!";
+        reason.innerText = bridgeHealth <= 0 ? "Здание разрушено!" : "Вы погибли!";
     }
 }
 
