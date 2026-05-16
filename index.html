@@ -124,7 +124,7 @@ const UNIT_STATS = {
 };
 
 // Игрок
-const player = { hp: 100, speed: 10, canShoot: true, lastShot: 0 };
+const player = { hp: 100, speed: 10, canShoot: true, lastShot: 0, weapon: null };
 const keys = {};
 
 // DOM элементы
@@ -392,9 +392,68 @@ window.startGame = function() {
     camera.position.set(0, 2, 25); // Start at one end of the bridge
     camera.rotation.set(0, 0, 0);
     
+    // Create player weapon
+    createPlayerWeapon();
+    
     zombiesToSpawn = 30 + (wave * 15); // Увеличенная орда
     showMessage("ОБОРОНА НАЧАЛАСЬ! ЗОМБИ АТАКУЮТ!", "#0f0");
 };
+
+function createPlayerWeapon() {
+    // Создаем модель оружия (автомат)
+    const weaponGroup = new THREE.Group();
+    
+    // Основной корпус оружия
+    const bodyGeo = new THREE.BoxGeometry(0.15, 0.2, 0.6);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.3 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    weaponGroup.add(body);
+    
+    // Ствол
+    const barrelGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8);
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 });
+    const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0.05, -0.4);
+    weaponGroup.add(barrel);
+    
+    // Рукоятка
+    const gripGeo = new THREE.BoxGeometry(0.12, 0.25, 0.15);
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.7 });
+    const grip = new THREE.Mesh(gripGeo, gripMat);
+    grip.position.set(0, -0.15, 0.2);
+    grip.rotation.x = 0.3;
+    weaponGroup.add(grip);
+    
+    // Приклад
+    const stockGeo = new THREE.BoxGeometry(0.1, 0.15, 0.4);
+    const stock = new THREE.Mesh(stockGeo, gripMat);
+    stock.position.set(0, -0.05, 0.4);
+    weaponGroup.add(stock);
+    
+    // Магазин
+    const magGeo = new THREE.BoxGeometry(0.12, 0.3, 0.15);
+    const magMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.5 });
+    const mag = new THREE.Mesh(magGeo, magMat);
+    mag.position.set(0, -0.2, 0.05);
+    mag.rotation.x = -0.2;
+    weaponGroup.add(mag);
+    
+    // Прицел
+    const sightGeo = new THREE.BoxGeometry(0.05, 0.08, 0.05);
+    const sightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const sight = new THREE.Mesh(sightGeo, sightMat);
+    sight.position.set(0, 0.12, -0.2);
+    weaponGroup.add(sight);
+    
+    // Позиционируем оружие перед камерой
+    weaponGroup.position.set(0.3, -0.25, -0.5);
+    weaponGroup.rotation.y = -0.1;
+    
+    // Добавляем оружие к камере
+    camera.add(weaponGroup);
+    player.weapon = weaponGroup;
+}
 
 // --- Логика Шутера и Игры ---
 
@@ -553,6 +612,18 @@ function updatePhysics(dt) {
         if (keys['Mouse0']) {
             const now = Date.now();
             if (now - player.lastShot > 150) { // Fire rate
+                // Calculate muzzle position (end of barrel)
+                const muzzlePos = new THREE.Vector3();
+                const weaponWorldPos = new THREE.Vector3();
+                
+                // Get world position of weapon
+                player.weapon.getWorldPosition(weaponWorldPos);
+                
+                // Calculate muzzle position based on weapon orientation
+                const forward = new THREE.Vector3(0, 0, -1);
+                forward.applyQuaternion(player.weapon.getWorldQuaternion(new THREE.Quaternion()));
+                muzzlePos.copy(weaponWorldPos).add(forward.multiplyScalar(0.5));
+                
                 // Raycast from center screen
                 const shootRay = new THREE.Raycaster();
                 shootRay.setFromCamera(new THREE.Vector2(0,0), camera);
@@ -579,14 +650,22 @@ function updatePhysics(dt) {
                 }
 
                 if (hit) {
-                    createBullet(camera.position, hit.point, 25, true);
+                    createBullet(muzzlePos, hit.point, 25, true);
                     hit.zombie.hp -= 25;
                     if(hit.zombie.hp <= 0) killZombie(hit.zombie);
                 } else {
                     // Shoot into distance if nothing hit
                     const target = camera.position.clone().add(shootRay.ray.direction.multiplyScalar(50));
-                    createBullet(camera.position, target, 0, true);
+                    createBullet(muzzlePos, target, 0, true);
                 }
+                
+                // Weapon recoil animation
+                player.weapon.position.z += 0.1;
+                setTimeout(() => {
+                    if(player.weapon) {
+                        player.weapon.position.z = -0.5;
+                    }
+                }, 100);
                 
                 player.lastShot = now;
                 elAmmo.innerText = Math.max(0, parseInt(elAmmo.innerText) - 1);
