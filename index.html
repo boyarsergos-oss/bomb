@@ -145,7 +145,7 @@ const UNIT_STATS = {
 };
 
 // Игрок
-const player = { hp: 100, speed: 10, canShoot: true, lastShot: 0, weapon: null };
+const player = { hp: 100, speed: 10, canShoot: true, lastShot: 0, weapon: null, isAiming: false, baseFov: 60 };
 const keys = {};
 
 // DOM элементы
@@ -463,12 +463,20 @@ function createPlayerWeapon() {
     mag.rotation.x = -0.2;
     weaponGroup.add(mag);
     
-    // Прицел
-    const sightGeo = new THREE.BoxGeometry(0.05, 0.08, 0.05);
-    const sightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const sight = new THREE.Mesh(sightGeo, sightMat);
-    sight.position.set(0, 0.12, -0.2);
-    weaponGroup.add(sight);
+    // Прицел (коллиматор) - красный круг с точкой
+    const sightRingGeo = new THREE.TorusGeometry(0.03, 0.005, 8, 16);
+    const sightRingMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const sightRing = new THREE.Mesh(sightRingGeo, sightRingMat);
+    sightRing.position.set(0, 0.12, -0.15);
+    sightRing.rotation.x = Math.PI / 2;
+    weaponGroup.add(sightRing);
+    
+    // Красная точка в центре прицела
+    const sightDotGeo = new THREE.SphereGeometry(0.01, 8, 8);
+    const sightDotMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const sightDot = new THREE.Mesh(sightDotGeo, sightDotMat);
+    sightDot.position.set(0, 0.12, -0.15);
+    weaponGroup.add(sightDot);
     
     // Позиционируем оружие перед камерой
     weaponGroup.position.set(0.3, -0.25, -0.5);
@@ -484,12 +492,39 @@ function createPlayerWeapon() {
 function onKeyDown(event) { keys[event.code] = true; }
 function onKeyUp(event) { keys[event.code] = false; }
 
-// Отслеживание нажатия мыши для стрельбы
+// Отслеживание нажатия мыши для стрельбы и прицеливания
 document.addEventListener('mousedown', (event) => {
     if (event.button === 0) keys['Mouse0'] = true;
+    if (event.button === 2) { // ПКМ - прицеливание
+        keys['Mouse2'] = true;
+        player.isAiming = true;
+        // Уменьшаем FOV для эффекта зума
+        camera.fov = 30;
+        camera.updateProjectionMatrix();
+        // Сдвигаем оружие в центр для ADS
+        if(player.weapon) {
+            player.weapon.position.set(0, -0.15, -0.4);
+        }
+    }
 });
 document.addEventListener('mouseup', (event) => {
     if (event.button === 0) keys['Mouse0'] = false;
+    if (event.button === 2) { // Отпускаем ПКМ - выход из прицеливания
+        keys['Mouse2'] = false;
+        player.isAiming = false;
+        // Возвращаем FOV
+        camera.fov = player.baseFov;
+        camera.updateProjectionMatrix();
+        // Возвращаем оружие в исходное положение
+        if(player.weapon) {
+            player.weapon.position.set(0.3, -0.25, -0.5);
+        }
+    }
+});
+
+// Блокируем контекстное меню от ПКМ
+document.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
 });
 
 function spawnZombie() {
@@ -655,7 +690,8 @@ function updatePhysics(dt) {
         // Player Shooting
         if (keys['Mouse0']) {
             const now = Date.now();
-            if (now - player.lastShot > 150) { // Fire rate
+            const fireRate = player.isAiming ? 120 : 150; // Быстрее стрельба в прицеле
+            if (now - player.lastShot > fireRate) { // Fire rate
                 // Calculate muzzle position (end of barrel)
                 const muzzlePos = new THREE.Vector3();
                 const weaponWorldPos = new THREE.Vector3();
@@ -694,8 +730,9 @@ function updatePhysics(dt) {
                 }
 
                 if (hit) {
-                    createBullet(muzzlePos, hit.point, 25, true);
-                    hit.zombie.hp -= 25;
+                    const damage = player.isAiming ? 35 : 25; // Больше урона в прицеле
+                    createBullet(muzzlePos, hit.point, damage, true);
+                    hit.zombie.hp -= damage;
                     if(hit.zombie.hp <= 0) killZombie(hit.zombie);
                 } else {
                     // Shoot into distance if nothing hit
@@ -703,13 +740,14 @@ function updatePhysics(dt) {
                     createBullet(muzzlePos, target, 0, true);
                 }
                 
-                // Weapon recoil animation
-                player.weapon.position.z += 0.1;
+                // Weapon recoil animation - меньше отдача в прицеле
+                const recoilAmount = player.isAiming ? 0.05 : 0.1;
+                player.weapon.position.z += recoilAmount;
                 setTimeout(() => {
                     if(player.weapon) {
-                        player.weapon.position.z = -0.5;
+                        player.weapon.position.z = player.isAiming ? -0.4 : -0.5;
                     }
-                }, 100);
+                }, 80);
                 
                 player.lastShot = now;
                 elAmmo.innerText = Math.max(0, parseInt(elAmmo.innerText) - 1);
