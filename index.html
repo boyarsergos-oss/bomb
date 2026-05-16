@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Bridge Defense: Strategy to FPS</title>
+    <title>Bridge Defense: Ultimate Tower Defence</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #000; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; }
@@ -11,31 +11,77 @@
         #bottom-bar { text-align: center; padding-bottom: 30px; }
         
         /* Strategy Controls */
-        #strategy-controls { display: flex; gap: 10px; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px; backdrop-filter: blur(5px); }
-        .unit-btn { background: #444; border: 2px solid #666; color: white; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: 0.2s; }
+        #strategy-controls { display: flex; gap: 10px; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 10px; backdrop-filter: blur(5px); flex-wrap: wrap; max-width: 90%; }
+        .unit-btn { background: #444; border: 2px solid #666; color: white; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: 0.2s; display: flex; flex-direction: column; align-items: center; min-width: 100px; }
         .unit-btn:hover { background: #666; transform: scale(1.05); }
         .unit-btn.selected { border-color: #0f0; background: #252; }
         .unit-btn.disabled { opacity: 0.5; cursor: not-allowed; }
+        .unit-btn .cost { font-size: 0.8em; color: #ffd700; margin-top: 5px; }
+        .unit-btn .desc { font-size: 0.7em; color: #aaa; margin-top: 3px; text-align: center; }
 
         /* Action Buttons */
         #action-btn { background: #d32f2f; border: 2px solid #ff5252; font-size: 1.2em; padding: 15px 40px; border-radius: 50px; cursor: pointer; box-shadow: 0 0 15px #d32f2f; animation: pulse 2s infinite; }
         #action-btn:hover { background: #b71c1c; }
+        #upgrade-btn { background: #2196F3; border: 2px solid #64B5F6; font-size: 1em; padding: 10px 25px; border-radius: 50px; cursor: pointer; box-shadow: 0 0 10px #2196F3; margin-left: 10px; }
+        #upgrade-btn:hover { background: #1976D2; }
         @keyframes pulse { 0% { box-shadow: 0 0 10px #d32f2f; } 50% { box-shadow: 0 0 25px #ff5252; } 100% { box-shadow: 0 0 10px #d32f2f; } }
 
         /* FPS HUD */
         #fps-hud { display: none; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; }
-        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #0f0; }
-        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
-        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; transform: translate(-50%, -50%); pointer-events: none; }
+        /* Коллиматорный прицел - красная точка в круге */
+        #crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #ff0000 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px #ff0000;
+        }
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 36px;
+            height: 36px;
+            border: 2px solid rgba(255, 0, 0, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
         
         .stat-box { background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; border-left: 4px solid #fff; }
         .health-bar { width: 200px; height: 20px; background: #333; border: 2px solid #fff; position: relative; }
         .health-fill { width: 100%; height: 100%; background: #0f0; transition: width 0.3s; }
+        
+        /* Abilities bar */
+        #abilities-bar { display: flex; gap: 10px; position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); }
+        .ability-btn { width: 50px; height: 50px; background: rgba(0,0,0,0.7); border: 2px solid #888; border-radius: 8px; cursor: pointer; position: relative; overflow: hidden; }
+        .ability-btn:hover { border-color: #fff; }
+        .ability-btn.on-cooldown { opacity: 0.5; cursor: not-allowed; }
+        .ability-icon { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.5em; }
+        .ability-key { position: absolute; bottom: 2px; right: 4px; font-size: 0.7em; color: #fff; }
+        .ability-cd { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(0,0,0,0.8); transition: height 0.1s; }
 
         #game-over { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: white; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; z-index: 100; }
         h1 { font-size: 4em; margin: 0; color: #ff3333; text-transform: uppercase; letter-spacing: 5px; }
         button.restart { margin-top: 20px; padding: 15px 30px; font-size: 1.5em; cursor: pointer; background: #fff; border: none; }
+        
+        /* Wave notification */
+        #wave-notification { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 3em; color: #ff3333; text-shadow: 0 0 20px #ff0000; opacity: 0; transition: opacity 0.5s; pointer-events: none; text-align: center; }
+        #wave-notification.show { opacity: 1; }
+        
+        /* Upgrade panel */
+        #upgrade-panel { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); padding: 30px; border-radius: 15px; border: 2px solid #ffd700; pointer-events: auto; z-index: 50; }
+        #upgrade-panel h2 { margin-top: 0; color: #ffd700; }
+        .upgrade-option { background: #333; padding: 15px; margin: 10px 0; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .upgrade-option:hover { background: #444; transform: translateX(10px); }
+        .upgrade-option .name { font-weight: bold; color: #0f0; }
+        .upgrade-option .cost { color: #ffd700; }
     </style>
     <!-- Import Three.js -->
     <script type="importmap">
@@ -64,12 +110,40 @@
 
     <div id="strategy-ui" class="hud-panel" style="align-self: center;">
         <div id="strategy-controls">
-            <button class="unit-btn" onclick="selectUnit('turret')">Пулемет ($200)</button>
-            <button class="unit-btn" onclick="selectUnit('sniper')">Снайпер ($400)</button>
-            <button class="unit-btn" onclick="selectUnit('tank')">Танк ($800)</button>
+            <button class="unit-btn" onclick="selectUnit('turret')">
+                🛡️ Пулемет
+                <span class="cost">$200</span>
+                <span class="desc">Средний урон, быстрая стрельба</span>
+            </button>
+            <button class="unit-btn" onclick="selectUnit('sniper')">
+                🎯 Снайпер
+                <span class="cost">$400</span>
+                <span class="desc">Высокий урон, медленно</span>
+            </button>
+            <button class="unit-btn" onclick="selectUnit('tank')">
+                🚛 Танк
+                <span class="cost">$800</span>
+                <span class="desc">Много HP, средний урон</span>
+            </button>
+            <button class="unit-btn" onclick="selectUnit('laser')">
+                ⚡ Лазер
+                <span class="cost">$600</span>
+                <span class="desc">Постоянный луч, высокий DPS</span>
+            </button>
+            <button class="unit-btn" onclick="selectUnit('mortar')">
+                💣 Миномёт
+                <span class="cost">$500</span>
+                <span class="desc">AOE урон по площади</span>
+            </button>
+            <button class="unit-btn" onclick="selectUnit('slow')">
+                ❄️ Заморозка
+                <span class="cost">$350</span>
+                <span class="desc">Замедляет врагов</span>
+            </button>
         </div>
-        <div style="text-align: center; margin-top: 10px;">
+        <div style="text-align: center; margin-top: 15px;">
             <button id="action-btn" onclick="startGame()">ЗАПУСТИТЬ ОБОРОНУ</button>
+            <button id="upgrade-btn" onclick="openUpgradePanel()" style="display:none;">📊 УЛУЧШЕНИЯ</button>
         </div>
         <p style="text-align: center; font-size: 0.9em; opacity: 0.8;">ЛКМ: Построить | ПКМ: Отмена | Колесо: Зум</p>
     </div>
@@ -79,6 +153,57 @@
         <div style="position: absolute; bottom: 20px; left: 20px; font-size: 1.5em; color: #0f0;">PATRON: <span id="ammo">30</span>/∞</div>
         <div style="position: absolute; bottom: 20px; right: 20px; font-size: 1.5em; color: #fff;">HP: <span id="player-hp">100</span></div>
         <div style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: yellow; font-weight: bold;" id="msg-area"></div>
+        
+        <!-- Abilities bar for FPS mode -->
+        <div id="abilities-bar">
+            <div class="ability-btn" id="ability-grenade" onclick="useAbility('grenade')">
+                <div class="ability-icon">💣</div>
+                <span class="ability-key">G</span>
+                <div class="ability-cd" id="cd-grenade"></div>
+            </div>
+            <div class="ability-btn" id="ability-medkit" onclick="useAbility('medkit')">
+                <div class="ability-icon">💉</div>
+                <span class="ability-key">H</span>
+                <div class="ability-cd" id="cd-medkit"></div>
+            </div>
+            <div class="ability-btn" id="ability-nuke" onclick="useAbility('nuke')">
+                <div class="ability-icon">☢️</div>
+                <span class="ability-key">N</span>
+                <div class="ability-cd" id="cd-nuke"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Wave notification -->
+    <div id="wave-notification">
+        <div>ВОЛНА <span id="notif-wave-num">1</span></div>
+        <div style="font-size: 0.5em; color: #fff;">ГОТОВЬТЕСЬ!</div>
+    </div>
+    
+    <!-- Upgrade panel -->
+    <div id="upgrade-panel">
+        <h2>📊 УЛУЧШЕНИЯ</h2>
+        <div class="upgrade-option" onclick="buyUpgrade('damage')">
+            <div class="name">⚔️ Урон оружия</div>
+            <div class="cost">$500</div>
+            <div style="font-size: 0.8em; color: #aaa;">+25% к урону</div>
+        </div>
+        <div class="upgrade-option" onclick="buyUpgrade('health')">
+            <div class="name">❤️ Макс. здоровье</div>
+            <div class="cost">$400</div>
+            <div style="font-size: 0.8em; color: #aaa;">+50 HP</div>
+        </div>
+        <div class="upgrade-option" onclick="buyUpgrade('speed')">
+            <div class="name">👟 Скорость бега</div>
+            <div class="cost">$300</div>
+            <div style="font-size: 0.8em; color: #aaa;">+20% скорости</div>
+        </div>
+        <div class="upgrade-option" onclick="buyUpgrade('firerate')">
+            <div class="name">🔥 Скорострельность</div>
+            <div class="cost">$600</div>
+            <div style="font-size: 0.8em; color: #aaa;">+15% скорострельности</div>
+        </div>
+        <button onclick="closeUpgradePanel()" style="margin-top: 15px; padding: 10px 20px; background: #666; border: none; color: white; cursor: pointer; border-radius: 5px;">ЗАКРЫТЬ</button>
     </div>
 </div>
 
@@ -105,7 +230,7 @@ let particles = [];
 let lastTime = 0;
 
 // Состояние игры
-const STATE = { STRATEGY: 0, FPS: 1, GAMEOVER: 2 };
+const STATE = { STRATEGY: 0, FPS: 1, GAMEOVER: 2, WAVE_BREAK: 3 };
 let gameState = STATE.STRATEGY;
 let selectedUnitType = null;
 let money = 1000;
@@ -114,18 +239,67 @@ let score = 0;
 let wave = 1;
 let zombiesToSpawn = 0;
 let spawnTimer = 0;
+let waveInProgress = false;
+let breakTimer = 0;
+const BREAK_DURATION = 8; // Секунды между волнами - зомби продолжают атаковать!
 
-// Настройки юнитов
-const UNIT_COSTS = { 'turret': 200, 'sniper': 400, 'tank': 800 };
+// Настройки юнитов - УВЕЛИЧЕННЫЕ ХАРАКТЕРИСТИКИ для сложности
+const UNIT_COSTS = { 'turret': 200, 'sniper': 400, 'tank': 800, 'laser': 600, 'mortar': 500, 'slow': 350 };
 const UNIT_STATS = {
-    'turret': { hp: 100, range: 15, damage: 10, rate: 0.2, color: 0x4488ff, scale: 1 },
-    'sniper': { hp: 50, range: 40, damage: 100, rate: 1.5, color: 0x00ff00, scale: 0.8 },
-    'tank': { hp: 500, range: 12, damage: 50, rate: 0.8, color: 0x225522, scale: 1.5 }
+    'turret': { hp: 150, range: 18, damage: 15, rate: 0.15, color: 0x4488ff, scale: 1, type: 'single' },
+    'sniper': { hp: 80, range: 50, damage: 150, rate: 1.2, color: 0x00ff00, scale: 0.8, type: 'single' },
+    'tank': { hp: 800, range: 15, damage: 70, rate: 0.6, color: 0x225522, scale: 1.5, type: 'single' },
+    'laser': { hp: 120, range: 25, damage: 5, rate: 0.03, color: 0xff00ff, scale: 0.9, type: 'continuous' },
+    'mortar': { hp: 200, range: 30, damage: 100, rate: 1.5, color: 0xff8800, scale: 1.2, type: 'aoe', aoeRadius: 10 },
+    'slow': { hp: 100, range: 18, damage: 8, rate: 0.4, color: 0x00ffff, scale: 0.8, type: 'slow', slowFactor: 0.4 }
 };
 
 // Игрок
-const player = { hp: 100, speed: 10, canShoot: true, lastShot: 0 };
+const player = { 
+    hp: 100, 
+    maxHp: 100,
+    speed: 10, 
+    canShoot: true, 
+    lastShot: 0, 
+    weapon: null, 
+    isAiming: false, 
+    baseFov: 60,
+    damageMult: 1.0,
+    fireRateMult: 1.0
+};
+
+// Способности игрока
+const abilities = {
+    grenade: { cooldown: 10, lastUse: -10, damage: 150, radius: 10 },
+    medkit: { cooldown: 30, lastUse: -30, heal: 50 },
+    nuke: { cooldown: 60, lastUse: -60, damage: 500, radius: 50 }
+};
+
+// Уровни улучшений
+let upgrades = {
+    damage: 0,
+    health: 0,
+    speed: 0,
+    firerate: 0
+};
+
+const UPGRADE_COSTS = {
+    damage: 500,
+    health: 400,
+    speed: 300,
+    firerate: 600
+};
 const keys = {};
+
+// Типы зомби - УВЕЛИЧЕННОЕ ЗДОРОВЬЕ и УРОН для сложности
+const ZOMBIE_TYPES = {
+    'normal': { hp: 50, speed: 3.5, damage: 1.0, color: 0x3a5f3a, scale: 1, name: 'Обычный' },
+    'fast': { hp: 35, speed: 8, damage: 0.8, color: 0x2d6b2d, scale: 0.8, name: 'Бегун' },
+    'tank': { hp: 200, speed: 2, damage: 2.0, color: 0x1a3a1a, scale: 1.5, name: 'Танк' },
+    'attacker': { hp: 80, speed: 5, damage: 3.0, color: 0x6b2d2d, scale: 1.1, name: 'Атакующий' },
+    'shooter': { hp: 60, speed: 2.5, damage: 1.5, color: 0x5a2d6b, scale: 1, name: 'Стрелок', range: 15 },
+    'boss': { hp: 500, speed: 1.5, damage: 4.0, color: 0x8b0000, scale: 2, name: 'БОСС' }
+};
 
 // DOM элементы
 const uiStrategy = document.getElementById('strategy-ui');
@@ -328,7 +502,7 @@ function placeUnit(type, position) {
     group.position.copy(position);
     group.position.y = 1.5; // На поверхности моста
 
-    // Визуализация (упрощенная)
+    // Визуализация (разная для каждого типа)
     let mesh;
     if (type === 'tank') {
         const body = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 4), new THREE.MeshStandardMaterial({ color: stats.color }));
@@ -338,6 +512,33 @@ function placeUnit(type, position) {
         body.add(turret);
         body.castShadow = true;
         mesh = body;
+    } else if (type === 'laser') {
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 1.5, 8), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+        const emitter = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 1, 8), new THREE.MeshStandardMaterial({ color: stats.color, emissive: stats.color, emissiveIntensity: 0.5 }));
+        emitter.position.y = 1;
+        base.add(emitter);
+        // Добавляем светящийся элемент
+        const glow = new THREE.PointLight(stats.color, 0.5, 5);
+        glow.position.y = 1;
+        base.add(glow);
+        base.castShadow = true;
+        mesh = base;
+    } else if (type === 'mortar') {
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 1, 8), new THREE.MeshStandardMaterial({ color: 0x555555 }));
+        const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 2, 8), new THREE.MeshStandardMaterial({ color: stats.color }));
+        tube.position.y = 1.2;
+        tube.rotation.x = Math.PI/4;
+        base.add(tube);
+        base.castShadow = true;
+        mesh = base;
+    } else if (type === 'slow') {
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.2, 1, 8), new THREE.MeshStandardMaterial({ color: 0x555555 }));
+        const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.6), new THREE.MeshStandardMaterial({ color: stats.color, transparent: true, opacity: 0.8 }));
+        crystal.position.y = 1;
+        base.add(crystal);
+        // Анимация вращения будет в update
+        base.castShadow = true;
+        mesh = base;
     } else {
         const base = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.2, 1, 8), new THREE.MeshStandardMaterial({ color: 0x555555 }));
         const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1.5), new THREE.MeshStandardMaterial({ color: stats.color }));
@@ -355,7 +556,9 @@ function placeUnit(type, position) {
         mesh: group,
         ...stats,
         lastShot: 0,
-        hp: stats.hp
+        hp: stats.hp,
+        target: null,
+        laserBeam: null // Для лазера
     });
 }
 
@@ -370,8 +573,20 @@ window.startGame = function() {
     
     // Setup FPS Controls
     controls = new PointerLockControls(camera, document.body);
+    
+    controls.addEventListener('lock', () => {
+        console.log("Pointer locked - ready to play");
+    });
+    
+    controls.addEventListener('unlock', () => {
+        console.log("Pointer unlocked");
+        // Можно добавить паузу или меню
+    });
+    
     document.body.addEventListener('click', () => {
-        if(gameState === STATE.FPS) controls.lock();
+        if(gameState === STATE.FPS && !controls.isLocked) {
+            controls.lock();
+        }
     });
     
     controls.lock();
@@ -380,29 +595,191 @@ window.startGame = function() {
     camera.position.set(0, 2, 25); // Start at one end of the bridge
     camera.rotation.set(0, 0, 0);
     
-    zombiesToSpawn = 30 + (wave * 15); // Увеличенная орда
-    showMessage("ОБОРОНА НАЧАЛАСЬ! ЗОМБИ АТАКУЮТ!", "#0f0");
+    // Add camera to scene so weapon attached to it will be visible
+    scene.add(camera);
+    
+    // Create player weapon
+    createPlayerWeapon();
+    
+    startWave();
 };
+
+function startWave() {
+    waveInProgress = true;
+    
+    // Увеличиваем сложность с каждой волной - БОЛЬШЕ зомби!
+    const baseZombies = 25 + Math.floor(wave * 12); // Было 15 + wave*8, теперь гораздо больше
+    zombiesToSpawn = baseZombies;
+    
+    // Показываем уведомление о волне
+    const notif = document.getElementById('wave-notification');
+    document.getElementById('notif-wave-num').textContent = wave;
+    notif.classList.add('show');
+    setTimeout(() => notif.classList.remove('show'), 3000);
+    
+    showMessage(`ВОЛНА ${wave} НАЧАЛАСЬ!`, "#ff0");
+}
+
+function endWave() {
+    waveInProgress = false;
+    gameState = STATE.WAVE_BREAK;
+    breakTimer = BREAK_DURATION;
+    showMessage(`ВОЛНА ${wave} ОТБИТА! Следующая через ${BREAK_DURATION}с...`, "#0f0");
+    
+    // Бонус за волну
+    const bonus = wave * 100;
+    money += bonus;
+    showMessage(`БОНУС: $${bonus}`, "#ff0");
+    updateUI();
+    
+    // Показываем кнопку улучшений между волнами
+    if (wave > 1) {
+        document.getElementById('upgrade-btn').style.display = 'inline-block';
+    }
+}
+
+function startNextWave() {
+    wave++;
+    gameState = STATE.FPS;
+    startWave();
+}
+
+function createPlayerWeapon() {
+    // Создаем модель оружия (автомат)
+    const weaponGroup = new THREE.Group();
+    
+    // Основной корпус оружия
+    const bodyGeo = new THREE.BoxGeometry(0.15, 0.2, 0.6);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.3 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    weaponGroup.add(body);
+    
+    // Ствол
+    const barrelGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8);
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 });
+    const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0.05, -0.4);
+    weaponGroup.add(barrel);
+    
+    // Рукоятка
+    const gripGeo = new THREE.BoxGeometry(0.12, 0.25, 0.15);
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.7 });
+    const grip = new THREE.Mesh(gripGeo, gripMat);
+    grip.position.set(0, -0.15, 0.2);
+    grip.rotation.x = 0.3;
+    weaponGroup.add(grip);
+    
+    // Приклад
+    const stockGeo = new THREE.BoxGeometry(0.1, 0.15, 0.4);
+    const stock = new THREE.Mesh(stockGeo, gripMat);
+    stock.position.set(0, -0.05, 0.4);
+    weaponGroup.add(stock);
+    
+    // Магазин
+    const magGeo = new THREE.BoxGeometry(0.12, 0.3, 0.15);
+    const magMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.5 });
+    const mag = new THREE.Mesh(magGeo, magMat);
+    mag.position.set(0, -0.2, 0.05);
+    mag.rotation.x = -0.2;
+    weaponGroup.add(mag);
+    
+    // Прицел (коллиматор) - красный круг с точкой
+    const sightRingGeo = new THREE.TorusGeometry(0.03, 0.005, 8, 16);
+    const sightRingMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const sightRing = new THREE.Mesh(sightRingGeo, sightRingMat);
+    sightRing.position.set(0, 0.12, -0.15);
+    sightRing.rotation.x = Math.PI / 2;
+    weaponGroup.add(sightRing);
+    
+    // Красная точка в центре прицела
+    const sightDotGeo = new THREE.SphereGeometry(0.01, 8, 8);
+    const sightDotMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const sightDot = new THREE.Mesh(sightDotGeo, sightDotMat);
+    sightDot.position.set(0, 0.12, -0.15);
+    weaponGroup.add(sightDot);
+    
+    // Позиционируем оружие перед камерой
+    weaponGroup.position.set(0.3, -0.25, -0.5);
+    weaponGroup.rotation.y = -0.1;
+    
+    // Добавляем оружие к камере
+    camera.add(weaponGroup);
+    player.weapon = weaponGroup;
+}
 
 // --- Логика Шутера и Игры ---
 
 function onKeyDown(event) { keys[event.code] = true; }
 function onKeyUp(event) { keys[event.code] = false; }
 
+// Отслеживание нажатия мыши для стрельбы и прицеливания
+document.addEventListener('mousedown', (event) => {
+    if (event.button === 0) keys['Mouse0'] = true;
+    if (event.button === 2) { // ПКМ - прицеливание
+        keys['Mouse2'] = true;
+        player.isAiming = true;
+        // Уменьшаем FOV для эффекта зума
+        camera.fov = 30;
+        camera.updateProjectionMatrix();
+        // Сдвигаем оружие в центр для ADS
+        if(player.weapon) {
+            player.weapon.position.set(0, -0.15, -0.4);
+        }
+    }
+});
+document.addEventListener('mouseup', (event) => {
+    if (event.button === 0) keys['Mouse0'] = false;
+    if (event.button === 2) { // Отпускаем ПКМ - выход из прицеливания
+        keys['Mouse2'] = false;
+        player.isAiming = false;
+        // Возвращаем FOV
+        camera.fov = player.baseFov;
+        camera.updateProjectionMatrix();
+        // Возвращаем оружие в исходное положение
+        if(player.weapon) {
+            player.weapon.position.set(0.3, -0.25, -0.5);
+        }
+    }
+});
+
+// Блокируем контекстное меню от ПКМ
+document.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+});
+
 function spawnZombie() {
     if (zombiesToSpawn <= 0) return;
 
     const zPos = new THREE.Vector3((Math.random() - 0.5) * 8, 0, 30); // Spawn far end
     
+    // Выбор типа зомби - БОЛЬШЕ разнообразия и чаще элитные враги
+    let zombieType = 'normal';
+    const rand = Math.random();
+    
+    // Чем выше волна, тем больше шанс элитных зомби
+    if (wave >= 5 && wave % 5 === 0 && zombiesToSpawn === 1) {
+        zombieType = 'boss'; // Босс каждый 5-й волне на последнего зомби
+    } else if (wave >= 3 && rand < 0.15) {
+        zombieType = 'shooter'; // Чаще шутеры
+    } else if (wave >= 2 && rand < 0.20) {
+        zombieType = 'tank'; // Чаще танки
+    } else if (wave >= 2 && rand < 0.35) {
+        zombieType = 'fast'; // Много бегунов
+    } else if (wave >= 3 && rand < 0.30) {
+        zombieType = 'attacker'; // Опасные атакующие
+    }
+    
+    const typeData = ZOMBIE_TYPES[zombieType];
+    
     // Zombie Mesh - более реалистичный
     const group = new THREE.Group();
     group.position.copy(zPos);
+    group.scale.set(typeData.scale, typeData.scale, typeData.scale);
     
-    // Разные цвета для разнообразия зомби
-    const skinColors = [0x3a5f3a, 0x2d4a2d, 0x1f3a1f, 0x4a6b4a];
-    const clothesColors = [0x3d3d3d, 0x4a3d2d, 0x2d3d4a, 0x3d2d3d];
-    const bodyMat = new THREE.MeshStandardMaterial({ color: clothesColors[Math.floor(Math.random() * clothesColors.length)] });
-    const headMat = new THREE.MeshStandardMaterial({ color: skinColors[Math.floor(Math.random() * skinColors.length)] });
+    // Разные цвета для разных типов зомби
+    const bodyMat = new THREE.MeshStandardMaterial({ color: typeData.color });
+    const headMat = new THREE.MeshStandardMaterial({ color: typeData.color });
     const pantsMat = new THREE.MeshStandardMaterial({ color: 0x2d2d4a });
 
     // Тело
@@ -415,23 +792,28 @@ function spawnZombie() {
     head.position.y = 2.2;
     head.castShadow = true;
     
-    // Глаза (красные светящиеся)
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    // Глаза (красные светящиеся) - у атакующих желтые, у шутеров фиолетовые, у босса оранжевые
+    let eyeColor = 0xff0000;
+    if (zombieType === 'attacker') eyeColor = 0xffff00;
+    else if (zombieType === 'shooter') eyeColor = 0xff00ff;
+    else if (zombieType === 'boss') eyeColor = 0xff8800;
+    
+    const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
     const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeMat);
     eyeL.position.set(-0.15, 2.25, 0.25);
     const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeMat);
     eyeR.position.set(0.15, 2.25, 0.25);
     group.add(eyeL, eyeR);
     
-    // Руки (вытянутые вперед как у зомби)
+    // Руки (вытянутые вперед как у зомби) - у атакующих подняты выше
     const armL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.0, 0.25), headMat);
-    armL.position.set(-0.7, 1.3, 0.4);
-    armL.rotation.x = -1.2;
+    armL.position.set(-0.7, 1.3, zombieType === 'attacker' ? 0.6 : 0.4);
+    armL.rotation.x = zombieType === 'attacker' ? -1.5 : -1.2;
     armL.castShadow = true;
     
     const armR = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.0, 0.25), headMat);
-    armR.position.set(0.7, 1.3, 0.4);
-    armR.rotation.x = -1.2;
+    armR.position.set(0.7, 1.3, zombieType === 'attacker' ? 0.6 : 0.4);
+    armR.rotation.x = zombieType === 'attacker' ? -1.5 : -1.2;
     armR.castShadow = true;
     
     // Ноги
@@ -446,40 +828,105 @@ function spawnZombie() {
     group.add(body, head, armL, armR, legL, legR);
     scene.add(group);
 
-    zombies.push({
+    // Добавляем дополнительные свойства для шутеров и боссов
+    const zombie = {
         mesh: group,
-        hp: 30 + (wave * 10),
-        speed: 3 + (Math.random() * 2) + (wave * 0.3),
-        animOffset: Math.random() * 100
-    });
+        hp: typeData.hp + (wave * (zombieType === 'boss' ? 80 : 8)), // Больше HP с волной
+        speed: typeData.speed + (wave * 0.2), // Быстрее с волной
+        damage: typeData.damage + (wave * 0.1), // Урон растет
+        animOffset: Math.random() * 100,
+        type: zombieType,
+        slowed: false,
+        slowTimer: 0,
+        baseSpeed: typeData.speed
+    };
+    
+    if (typeData.range) {
+        zombie.range = typeData.range;
+        zombie.lastShot = 0;
+        zombie.shootRate = 2.0;
+    }
+    
+    zombies.push(zombie);
 
     zombiesToSpawn--;
 }
 
-function createBullet(startPos, targetPos, damage, isPlayer = false) {
+function createBullet(startPos, targetPos, damage, isPlayer = false, isFreeze = false) {
     const direction = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
     
-    // Visual bullet
-    const geo = new THREE.SphereGeometry(0.2);
-    const mat = new THREE.MeshBasicMaterial({ color: isPlayer ? 0xffff00 : 0xff0000 });
+    // Visual bullet - уменьшенный размер для игрока
+    const radius = isPlayer ? 0.05 : (isFreeze ? 0.15 : 0.2);
+    const color = isFreeze ? 0x00ffff : (isPlayer ? 0xffff00 : 0xff0000);
+    const geo = new THREE.SphereGeometry(radius);
+    const mat = new THREE.MeshBasicMaterial({ color: color });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(startPos);
     
-    // Add muzzle flash light
+    // Add muzzle flash - вспышка у дула
     if(isPlayer) {
-        const light = new THREE.PointLight(0xffff00, 1, 5);
+        // Создаем вспышку света
+        const flashGeo = new THREE.SphereGeometry(0.15, 8, 8);
+        const flashMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffaa, 
+            transparent: true, 
+            opacity: 0.9 
+        });
+        const flash = new THREE.Mesh(flashGeo, flashMat);
+        flash.position.copy(startPos);
+        scene.add(flash);
+        
+        // Добавляем свет от выстрела
+        const light = new THREE.PointLight(0xffff00, 2, 8);
         light.position.copy(startPos);
         scene.add(light);
-        setTimeout(() => scene.remove(light), 50);
+        
+        // Быстрое затухание вспышки
+        setTimeout(() => {
+            scene.remove(flash);
+            scene.remove(light);
+            flashGeo.dispose();
+            flashMat.dispose();
+        }, 60);
     }
 
     scene.add(mesh);
     bullets.push({
         mesh: mesh,
-        velocity: direction.multiplyScalar(40), // Speed
+        velocity: direction.multiplyScalar(isFreeze ? 25 : 40), // Slower for freeze
         damage: damage,
         life: 2.0,
-        isPlayer: isPlayer
+        isPlayer: isPlayer,
+        isFreeze: isFreeze
+    });
+}
+
+function createMortarProjectile(startPos, targetPos, damage, aoeRadius) {
+    // Создаем снаряд миномета который летит по дуге
+    const direction = new THREE.Vector3().subVectors(targetPos, startPos);
+    const distance = direction.length();
+    direction.normalize();
+    
+    const geo = new THREE.SphereGeometry(0.4, 8, 8);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xff4400 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(startPos);
+    
+    scene.add(mesh);
+    
+    // Расчет начальной скорости для параболической траектории
+    const upwardVelocity = 15; // Начальная вертикальная скорость
+    const forwardVelocity = distance / 1.5; // Горизонтальная скорость (долетит за ~1.5 сек)
+    
+    bullets.push({
+        mesh: mesh,
+        velocity: direction.multiplyScalar(forwardVelocity),
+        verticalVelocity: upwardVelocity,
+        damage: damage,
+        life: 3.0,
+        isMortar: true,
+        aoeRadius: aoeRadius,
+        targetPos: targetPos.clone()
     });
 }
 
@@ -504,10 +951,21 @@ function createExplosion(pos, color) {
 function updatePhysics(dt) {
     const time = Date.now() * 0.001;
 
-    // 1. Spawning
+    // Обработка перерыва между волнами - зомби ПРОДОЛЖАЮТ атаковать!
+    if (gameState === STATE.WAVE_BREAK) {
+        breakTimer -= dt;
+        showMessage(`СЛЕДУЮЩАЯ ВОЛНА ЧЕРЕЗ ${Math.ceil(breakTimer)}с...`, "#ff0");
+        if (breakTimer <= 0) {
+            startNextWave();
+        }
+        // НЕ возвращаем - зомби продолжают двигаться и атаковать!
+    }
+
+    // 1. Spawning - спавн только во время волны, не во время перерыва
     if (gameState === STATE.FPS && zombiesToSpawn > 0) {
         spawnTimer += dt;
-        if (spawnTimer > 0.5) { // Spawn every 0.5 sec - faster horde
+        const spawnRate = Math.max(0.2, 0.8 - (wave * 0.05)); // Быстрее спавн с каждой волной
+        if (spawnTimer > spawnRate) {
             spawnZombie();
             spawnTimer = 0;
         }
@@ -532,7 +990,20 @@ function updatePhysics(dt) {
         // Player Shooting
         if (keys['Mouse0']) {
             const now = Date.now();
-            if (now - player.lastShot > 150) { // Fire rate
+            const fireRate = player.isAiming ? 120 : 150; // Быстрее стрельба в прицеле
+            if (now - player.lastShot > fireRate) { // Fire rate
+                // Calculate muzzle position (end of barrel)
+                const muzzlePos = new THREE.Vector3();
+                const weaponWorldPos = new THREE.Vector3();
+                
+                // Get world position of weapon
+                player.weapon.getWorldPosition(weaponWorldPos);
+                
+                // Calculate muzzle position based on weapon orientation
+                const forward = new THREE.Vector3(0, 0, -1);
+                forward.applyQuaternion(player.weapon.getWorldQuaternion(new THREE.Quaternion()));
+                muzzlePos.copy(weaponWorldPos).add(forward.multiplyScalar(0.5));
+                
                 // Raycast from center screen
                 const shootRay = new THREE.Raycaster();
                 shootRay.setFromCamera(new THREE.Vector2(0,0), camera);
@@ -559,14 +1030,24 @@ function updatePhysics(dt) {
                 }
 
                 if (hit) {
-                    createBullet(camera.position, hit.point, 25, true);
-                    hit.zombie.hp -= 25;
+                    const damage = player.isAiming ? 35 : 25; // Больше урона в прицеле
+                    createBullet(muzzlePos, hit.point, damage, true);
+                    hit.zombie.hp -= damage;
                     if(hit.zombie.hp <= 0) killZombie(hit.zombie);
                 } else {
                     // Shoot into distance if nothing hit
                     const target = camera.position.clone().add(shootRay.ray.direction.multiplyScalar(50));
-                    createBullet(camera.position, target, 0, true);
+                    createBullet(muzzlePos, target, 0, true);
                 }
+                
+                // Weapon recoil animation - меньше отдача в прицеле
+                const recoilAmount = player.isAiming ? 0.05 : 0.1;
+                player.weapon.position.z += recoilAmount;
+                setTimeout(() => {
+                    if(player.weapon) {
+                        player.weapon.position.z = player.isAiming ? -0.4 : -0.5;
+                    }
+                }, 80);
                 
                 player.lastShot = now;
                 elAmmo.innerText = Math.max(0, parseInt(elAmmo.innerText) - 1);
@@ -578,6 +1059,13 @@ function updatePhysics(dt) {
     // 3. Units Logic (Auto aim)
     units.forEach(unit => {
         unit.lastShot += dt;
+        
+        // Анимация для slow tower (вращение кристалла)
+        if (unit.type === 'slow' && unit.mesh.children[0]) {
+            unit.mesh.children[0].rotation.y += dt * 2;
+            unit.mesh.children[0].rotation.x = Math.sin(time * 3) * 0.2;
+        }
+        
         if (unit.lastShot >= unit.rate) {
             // Find target
             let target = null;
@@ -595,19 +1083,128 @@ function updatePhysics(dt) {
                 unit.lastShot = 0;
                 // Rotate turret
                 unit.mesh.lookAt(target.mesh.position.x, unit.mesh.position.y, target.mesh.position.z);
-                // Shoot
-                const muzzlePos = unit.mesh.position.clone().add(new THREE.Vector3(0, 1, 0).applyMatrix4(unit.mesh.matrixWorld));
-                createBullet(muzzlePos, target.mesh.position, unit.damage, false);
-                target.hp -= unit.damage;
-                if(target.hp <= 0) killZombie(target);
+                
+                // Разная логика для разных типов башен
+                if (unit.type === 'laser') {
+                    // Лазер стреляет постоянно пока есть цель
+                    const muzzlePos = unit.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0).applyMatrix4(unit.mesh.matrixWorld));
+                    
+                    // Создаем луч лазера если еще нет
+                    if (!unit.laserBeam) {
+                        const laserGeo = new THREE.CylinderGeometry(0.1, 0.1, unit.range, 8);
+                        const laserMat = new THREE.MeshBasicMaterial({ color: unit.color, transparent: true, opacity: 0.7 });
+                        unit.laserBeam = new THREE.Mesh(laserGeo, laserMat);
+                        unit.laserBeam.rotation.x = Math.PI/2;
+                        scene.add(unit.laserBeam);
+                    }
+                    
+                    // Позиционируем луч
+                    unit.laserBeam.position.copy(muzzlePos);
+                    unit.laserBeam.lookAt(target.mesh.position);
+                    unit.laserBeam.scale.z = muzzlePos.distanceTo(target.mesh.position) / unit.range;
+                    
+                    // Урон каждую кадровую обработку пока луч активен
+                    target.hp -= unit.damage;
+                    if(target.hp <= 0) killZombie(target);
+                    
+                } else if (unit.type === 'mortar') {
+                    // Миномет стреляет по площади
+                    const muzzlePos = unit.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+                    createMortarProjectile(muzzlePos, target.mesh.position, unit.damage, unit.aoeRadius);
+                    
+                } else if (unit.type === 'slow') {
+                    // Замораживающая башня
+                    const muzzlePos = unit.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0).applyMatrix4(unit.mesh.matrixWorld));
+                    createBullet(muzzlePos, target.mesh.position, unit.damage, false, true); // true = заморозка
+                    target.hp -= unit.damage;
+                    if (target.slowed) {
+                        target.speed *= unit.slowFactor;
+                        target.slowTimer = 3; // 3 секунды заморозки
+                    }
+                    if(target.hp <= 0) killZombie(target);
+                    
+                } else {
+                    // Обычные башни
+                    const muzzlePos = unit.mesh.position.clone().add(new THREE.Vector3(0, 1, 0).applyMatrix4(unit.mesh.matrixWorld));
+                    createBullet(muzzlePos, target.mesh.position, unit.damage, false);
+                    target.hp -= unit.damage;
+                    if(target.hp <= 0) killZombie(target);
+                }
+            } else {
+                // Если нет цели, убираем лазерный луч
+                if (unit.type === 'laser' && unit.laserBeam) {
+                    scene.remove(unit.laserBeam);
+                    unit.laserBeam = null;
+                }
+            }
+        }
+        
+        // Удаляем лазерный луч если цель умерла или вышла из радиуса
+        if (unit.type === 'laser' && unit.laserBeam) {
+            const hasTarget = zombies.some(z => unit.mesh.position.distanceTo(z.mesh.position) < unit.range);
+            if (!hasTarget) {
+                scene.remove(unit.laserBeam);
+                unit.laserBeam = null;
             }
         }
     });
 
-    // 4. Zombies Logic (Move & Attack)
+    // 4. Zombies Logic (Move & Attack) - ЗОМБИ АТАКУЮТ ИГРОКА И РАЗРУШАЮТ СООРУЖЕНИЯ!
     for (let i = zombies.length - 1; i >= 0; i--) {
         const z = zombies[i];
-        const dz = -z.speed * dt; // Move towards -Z
+        
+        // Зомби-стрелки стреляют в игрока
+        if (z.type === 'shooter' && gameState === STATE.FPS) {
+            z.lastShot += dt;
+            const distToPlayer = z.mesh.position.distanceTo(camera.position);
+            if (distToPlayer < z.range && z.lastShot > z.shootRate) {
+                z.lastShot = 0;
+                // Стреляем в игрока
+                const shootDir = new THREE.Vector3().subVectors(camera.position, z.mesh.position).normalize();
+                const bulletStart = z.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+                const bulletEnd = camera.position.clone();
+                
+                // Создаем пулю шутера
+                const bulletGeo = new THREE.SphereGeometry(0.15, 8, 8);
+                const bulletMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+                const bulletMesh = new THREE.Mesh(bulletGeo, bulletMat);
+                bulletMesh.position.copy(bulletStart);
+                scene.add(bulletMesh);
+                
+                bullets.push({
+                    mesh: bulletMesh,
+                    velocity: shootDir.multiplyScalar(15),
+                    damage: z.damage * 10,
+                    life: 3,
+                    isPlayer: false
+                });
+            }
+        }
+        
+        // Зомби-атакующие могут атаковать сооружения
+        if (z.type === 'attacker') {
+            // Проверяем расстояние до башен
+            for (let j = units.length - 1; j >= 0; j--) {
+                const unit = units[j];
+                const distToUnit = z.mesh.position.distanceTo(unit.mesh.position);
+                if (distToUnit < 2.5) {
+                    // Атакуем башню
+                    unit.hp -= z.damage * 2;
+                    if (unit.hp <= 0) {
+                        // Башня разрушена
+                        createExplosion(unit.mesh.position, unit.color);
+                        scene.remove(unit.mesh);
+                        units.splice(j, 1);
+                        showMessage("БАШНЯ РАЗРУШЕНА!", "#f00");
+                    }
+                    // Зомби останавливается чтобы атаковать
+                    continue; 
+                }
+            }
+        }
+        
+        // Движение зомби
+        const dz = -z.speed * dt;
         
         // Анимация зомби - покачивание и движение рук/ног
         z.mesh.position.y = Math.abs(Math.sin(time * 8 + z.animOffset)) * 0.15;
@@ -619,7 +1216,7 @@ function updatePhysics(dt) {
         }
         
         // Rotate arms (анимация рук - индексы могут отличаться из-за добавления глаз)
-        const armLIndex = 2; // После body(0), head(1), eyeL(2), eyeR(3) -> armL(4), armR(5), legL(6), legR(7)
+        const armLIndex = 2;
         const armRIndex = 4;
         const legLIndex = 6;
         const legRIndex = 7;
@@ -640,16 +1237,16 @@ function updatePhysics(dt) {
             z.mesh.children[legRIndex].rotation.x = Math.cos(time * 12 + z.animOffset) * 0.5;
         }
 
-        // Collision with Player
+        // Collision with Player - атакующие зомби наносят больше урона
         if (gameState === STATE.FPS && z.mesh.position.distanceTo(camera.position) < 1.5) {
-            player.hp -= 0.5; // Damage per frame close contact
+            player.hp -= z.damage * 3; // Увеличенный урон при контакте
             elPlayerHp.innerText = Math.floor(player.hp);
             if (player.hp <= 0) endGame(false);
         }
 
-        // Reached End (Bridge Health)
+        // Reached End (Bridge Health) - БОЛЬШЕ урона мосту!
         if (z.mesh.position.z < -25) {
-            bridgeHealth -= 10;
+            bridgeHealth -= 15 + wave; // Больше урона с каждой волной
             updateUI();
             createExplosion(z.mesh.position, 0xff0000);
             scene.remove(z.mesh);
@@ -661,11 +1258,61 @@ function updatePhysics(dt) {
     // 5. Bullets Logic
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
-        b.mesh.position.add(b.velocity.clone().multiplyScalar(dt));
-        b.life -= dt;
-        if (b.life <= 0) {
-            scene.remove(b.mesh);
-            bullets.splice(i, 1);
+        
+        if (b.isMortar) {
+            // Параболическая траектория для миномета
+            b.verticalVelocity -= 20 * dt; // Гравитация
+            b.mesh.position.add(b.velocity.clone().multiplyScalar(dt));
+            b.mesh.position.y += b.verticalVelocity * dt;
+            
+            // Взрыв при достижении цели или земли
+            if (b.mesh.position.y <= 0 || b.life <= 0) {
+                // AOE взрыв
+                createExplosion(b.mesh.position, 0xff4400);
+                
+                // Урон всем зомби в радиусе
+                zombies.forEach(z => {
+                    if (z.mesh.position.distanceTo(b.targetPos) < b.aoeRadius) {
+                        z.hp -= b.damage;
+                        if (z.hp <= 0) killZombie(z);
+                    }
+                });
+                
+                scene.remove(b.mesh);
+                bullets.splice(i, 1);
+            }
+        } else {
+            // Обычные пули
+            b.mesh.position.add(b.velocity.clone().multiplyScalar(dt));
+            b.life -= dt;
+            
+            // Проверка попадания в зомби
+            if (!b.isPlayer) {
+                for (let j = zombies.length - 1; j >= 0; j--) {
+                    const z = zombies[j];
+                    if (b.mesh.position.distanceTo(z.mesh.position) < 1.5) {
+                        // Заморозка если это freeze пуля
+                        if (b.isFreeze) {
+                            z.slowed = true;
+                            z.slowTimer = 2;
+                            z.baseSpeed = z.speed;
+                            z.speed *= 0.5;
+                        }
+                        
+                        z.hp -= b.damage;
+                        if (z.hp <= 0) killZombie(z);
+                        
+                        scene.remove(b.mesh);
+                        bullets.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+            
+            if (b.life <= 0 && bullets[i]) {
+                scene.remove(b.mesh);
+                bullets.splice(i, 1);
+            }
         }
     }
 
@@ -682,10 +1329,9 @@ function updatePhysics(dt) {
         }
     }
 
-    // Win Condition Check
+    // Win Condition Check - конец волны
     if (gameState === STATE.FPS && zombiesToSpawn === 0 && zombies.length === 0) {
-        wave++;
-        endGame(true);
+        endWave();
     }
 }
 
@@ -742,12 +1388,125 @@ function animate() {
     requestAnimationFrame(animate);
     const dt = clock.getDelta();
     updatePhysics(dt);
+    
+    // Обновляем кулдауны способностей в FPS режиме
+    if (gameState === STATE.FPS) {
+        updateAbilityCooldowns();
+    }
+    
     renderer.render(scene, camera);
 }
 
 // Expose functions to window for HTML onclick
 window.selectUnit = selectUnit;
 window.startGame = startGame;
+window.openUpgradePanel = function() {
+    if (gameState === STATE.STRATEGY) {
+        document.getElementById('upgrade-panel').style.display = 'block';
+    }
+};
+window.closeUpgradePanel = function() {
+    document.getElementById('upgrade-panel').style.display = 'none';
+};
+window.buyUpgrade = function(type) {
+    const cost = UPGRADE_COSTS[type];
+    if (money >= cost) {
+        money -= cost;
+        upgrades[type]++;
+        
+        // Применяем улучшение
+        if (type === 'damage') {
+            player.damageMult *= 1.25;
+            showMessage("Урон увеличен!", "#0f0");
+        } else if (type === 'health') {
+            player.maxHp += 50;
+            player.hp = player.maxHp;
+            showMessage("Здоровье увеличено!", "#0f0");
+        } else if (type === 'speed') {
+            player.speed *= 1.2;
+            showMessage("Скорость увеличена!", "#0f0");
+        } else if (type === 'firerate') {
+            player.fireRateMult *= 1.15;
+            showMessage("Скорострельность увеличена!", "#0f0");
+        }
+        
+        // Увеличиваем цену следующего улучшения
+        UPGRADE_COSTS[type] = Math.floor(cost * 1.5);
+        updateUI();
+        
+        // Обновляем отображение цен в панели
+        document.querySelectorAll('.upgrade-option').forEach(el => {
+            const upgradeType = el.getAttribute('onclick').match(/buyUpgrade\('(\w+)'\)/)[1];
+            el.querySelector('.cost').textContent = `$${UPGRADE_COSTS[upgradeType]}`;
+        });
+    } else {
+        showMessage("Недостаточно денег!", "red");
+    }
+};
+window.useAbility = function(abilityName) {
+    if (gameState !== STATE.FPS) return;
+    
+    const ability = abilities[abilityName];
+    const now = clock.getElapsedTime();
+    
+    if (now - ability.lastUse < ability.cooldown) {
+        showMessage("Перезарядка!", "orange");
+        return;
+    }
+    
+    ability.lastUse = now;
+    
+    if (abilityName === 'grenade') {
+        // Бросаем гранату вперед
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        const startPos = camera.position.clone();
+        const targetPos = startPos.clone().add(direction.multiplyScalar(15));
+        createMortarProjectile(startPos, targetPos, ability.damage, ability.radius);
+        showMessage("Граната брошена!", "#ff0");
+    } else if (abilityName === 'medkit') {
+        // Лечим игрока
+        player.hp = Math.min(player.maxHp, player.hp + ability.heal);
+        showMessage(`+${ability.heal} HP`, "#0f0");
+        updateUI();
+    } else if (abilityName === 'nuke') {
+        // Ядерный взрыв - убивает всех зомби рядом
+        zombies.forEach(z => {
+            if (z.mesh.position.distanceTo(camera.position) < ability.radius) {
+                z.hp -= ability.damage;
+                if (z.hp <= 0) killZombie(z);
+            }
+        });
+        // Визуальный эффект
+        const flash = new THREE.PointLight(0x00ff00, 10, ability.radius);
+        flash.position.copy(camera.position);
+        scene.add(flash);
+        setTimeout(() => scene.remove(flash), 500);
+        showMessage("ЯДЕРНЫЙ ВЗРЫВ!", "#f00");
+    }
+    
+    // Обновляем UI способностей
+    updateAbilityCooldowns();
+};
+
+function updateAbilityCooldowns() {
+    const now = clock.getElapsedTime();
+    ['grenade', 'medkit', 'nuke'].forEach(name => {
+        const ability = abilities[name];
+        const cdElement = document.getElementById(`cd-${name}`);
+        const btnElement = document.getElementById(`ability-${name}`);
+        
+        const timeLeft = Math.max(0, ability.cooldown - (now - ability.lastUse));
+        const percent = (timeLeft / ability.cooldown) * 100;
+        
+        cdElement.style.height = `${percent}%`;
+        if (timeLeft > 0) {
+            btnElement.classList.add('on-cooldown');
+        } else {
+            btnElement.classList.remove('on-cooldown');
+        }
+    });
+}
 
 </script>
 </body>
