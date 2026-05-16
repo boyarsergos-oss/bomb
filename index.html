@@ -126,7 +126,7 @@ let particles = [];
 let lastTime = 0;
 
 // Состояние игры
-const STATE = { STRATEGY: 0, FPS: 1, GAMEOVER: 2 };
+const STATE = { STRATEGY: 0, FPS: 1, GAMEOVER: 2, WAVE_BREAK: 3 };
 let gameState = STATE.STRATEGY;
 let selectedUnitType = null;
 let money = 1000;
@@ -135,6 +135,9 @@ let score = 0;
 let wave = 1;
 let zombiesToSpawn = 0;
 let spawnTimer = 0;
+let waveInProgress = false;
+let breakTimer = 0;
+const BREAK_DURATION = 5; // Секунды между волнами
 
 // Настройки юнитов
 const UNIT_COSTS = { 'turret': 200, 'sniper': 400, 'tank': 800 };
@@ -147,6 +150,14 @@ const UNIT_STATS = {
 // Игрок
 const player = { hp: 100, speed: 10, canShoot: true, lastShot: 0, weapon: null, isAiming: false, baseFov: 60 };
 const keys = {};
+
+// Типы зомби
+const ZOMBIE_TYPES = {
+    'normal': { hp: 30, speed: 3, damage: 0.5, color: 0x3a5f3a, scale: 1, name: 'Обычный' },
+    'fast': { hp: 20, speed: 7, damage: 0.3, color: 0x2d6b2d, scale: 0.8, name: 'Бегун' },
+    'tank': { hp: 100, speed: 1.5, damage: 1.0, color: 0x1a3a1a, scale: 1.5, name: 'Танк' },
+    'attacker': { hp: 50, speed: 4, damage: 1.5, color: 0x6b2d2d, scale: 1.1, name: 'Атакующий' }
+};
 
 // DOM элементы
 const uiStrategy = document.getElementById('strategy-ui');
@@ -419,9 +430,33 @@ window.startGame = function() {
     // Create player weapon
     createPlayerWeapon();
     
-    zombiesToSpawn = 30 + (wave * 15); // Увеличенная орда
-    showMessage("ОБОРОНА НАЧАЛАСЬ! ЗОМБИ АТАКУЮТ!", "#0f0");
+    startWave();
 };
+
+function startWave() {
+    waveInProgress = true;
+    zombiesToSpawn = 20 + (wave * 10); // Уменьшено для баланса
+    showMessage(`ВОЛНА ${wave} НАЧАЛАСЬ!`, "#ff0");
+}
+
+function endWave() {
+    waveInProgress = false;
+    gameState = STATE.WAVE_BREAK;
+    breakTimer = BREAK_DURATION;
+    showMessage(`ВОЛНА ${wave} ОТБИТА! Следующая через ${BREAK_DURATION}с...`, "#0f0");
+    
+    // Бонус за волну
+    const bonus = wave * 100;
+    money += bonus;
+    showMessage(`БОНУС: $${bonus}`, "#ff0");
+    updateUI();
+}
+
+function startNextWave() {
+    wave++;
+    gameState = STATE.FPS;
+    startWave();
+}
 
 function createPlayerWeapon() {
     // Создаем модель оружия (автомат)
@@ -532,15 +567,29 @@ function spawnZombie() {
 
     const zPos = new THREE.Vector3((Math.random() - 0.5) * 8, 0, 30); // Spawn far end
     
+    // Выбор типа зомби в зависимости от волны и случайности
+    let zombieType = 'normal';
+    const rand = Math.random();
+    
+    // Чем выше волна, тем больше разнообразие
+    if (wave >= 2 && rand < 0.2) {
+        zombieType = 'fast';
+    } else if (wave >= 3 && rand < 0.15) {
+        zombieType = 'tank';
+    } else if (wave >= 4 && rand < 0.2) {
+        zombieType = 'attacker';
+    }
+    
+    const typeData = ZOMBIE_TYPES[zombieType];
+    
     // Zombie Mesh - более реалистичный
     const group = new THREE.Group();
     group.position.copy(zPos);
+    group.scale.set(typeData.scale, typeData.scale, typeData.scale);
     
-    // Разные цвета для разнообразия зомби
-    const skinColors = [0x3a5f3a, 0x2d4a2d, 0x1f3a1f, 0x4a6b4a];
-    const clothesColors = [0x3d3d3d, 0x4a3d2d, 0x2d3d4a, 0x3d2d3d];
-    const bodyMat = new THREE.MeshStandardMaterial({ color: clothesColors[Math.floor(Math.random() * clothesColors.length)] });
-    const headMat = new THREE.MeshStandardMaterial({ color: skinColors[Math.floor(Math.random() * skinColors.length)] });
+    // Разные цвета для разных типов зомби
+    const bodyMat = new THREE.MeshStandardMaterial({ color: typeData.color });
+    const headMat = new THREE.MeshStandardMaterial({ color: typeData.color });
     const pantsMat = new THREE.MeshStandardMaterial({ color: 0x2d2d4a });
 
     // Тело
@@ -553,23 +602,24 @@ function spawnZombie() {
     head.position.y = 2.2;
     head.castShadow = true;
     
-    // Глаза (красные светящиеся)
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    // Глаза (красные светящиеся) - у атакующих желтые
+    const eyeColor = zombieType === 'attacker' ? 0xffff00 : 0xff0000;
+    const eyeMat = new THREE.MeshBasicMaterial({ color: eyeColor });
     const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeMat);
     eyeL.position.set(-0.15, 2.25, 0.25);
     const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeMat);
     eyeR.position.set(0.15, 2.25, 0.25);
     group.add(eyeL, eyeR);
     
-    // Руки (вытянутые вперед как у зомби)
+    // Руки (вытянутые вперед как у зомби) - у атакующих подняты выше
     const armL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.0, 0.25), headMat);
-    armL.position.set(-0.7, 1.3, 0.4);
-    armL.rotation.x = -1.2;
+    armL.position.set(-0.7, 1.3, zombieType === 'attacker' ? 0.6 : 0.4);
+    armL.rotation.x = zombieType === 'attacker' ? -1.5 : -1.2;
     armL.castShadow = true;
     
     const armR = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.0, 0.25), headMat);
-    armR.position.set(0.7, 1.3, 0.4);
-    armR.rotation.x = -1.2;
+    armR.position.set(0.7, 1.3, zombieType === 'attacker' ? 0.6 : 0.4);
+    armR.rotation.x = zombieType === 'attacker' ? -1.5 : -1.2;
     armR.castShadow = true;
     
     // Ноги
@@ -586,9 +636,11 @@ function spawnZombie() {
 
     zombies.push({
         mesh: group,
-        hp: 30 + (wave * 10),
-        speed: 3 + (Math.random() * 2) + (wave * 0.3),
-        animOffset: Math.random() * 100
+        hp: typeData.hp + (wave * 5),
+        speed: typeData.speed + (wave * 0.2),
+        damage: typeData.damage,
+        animOffset: Math.random() * 100,
+        type: zombieType
     });
 
     zombiesToSpawn--;
@@ -661,6 +713,17 @@ function createExplosion(pos, color) {
 
 function updatePhysics(dt) {
     const time = Date.now() * 0.001;
+
+    // Обработка перерыва между волнами
+    if (gameState === STATE.WAVE_BREAK) {
+        breakTimer -= dt;
+        if (breakTimer <= 0) {
+            startNextWave();
+        } else {
+            showMessage(`СЛЕДУЮЩАЯ ВОЛНА ЧЕРЕЗ ${Math.ceil(breakTimer)}с...`, "#ff0");
+        }
+        return;
+    }
 
     // 1. Spawning
     if (gameState === STATE.FPS && zombiesToSpawn > 0) {
@@ -821,9 +884,9 @@ function updatePhysics(dt) {
             z.mesh.children[legRIndex].rotation.x = Math.cos(time * 12 + z.animOffset) * 0.5;
         }
 
-        // Collision with Player
+        // Collision with Player - атакующие зомби наносят больше урона
         if (gameState === STATE.FPS && z.mesh.position.distanceTo(camera.position) < 1.5) {
-            player.hp -= 0.5; // Damage per frame close contact
+            player.hp -= z.damage; // Damage per frame close contact
             elPlayerHp.innerText = Math.floor(player.hp);
             if (player.hp <= 0) endGame(false);
         }
@@ -863,10 +926,9 @@ function updatePhysics(dt) {
         }
     }
 
-    // Win Condition Check
+    // Win Condition Check - конец волны
     if (gameState === STATE.FPS && zombiesToSpawn === 0 && zombies.length === 0) {
-        wave++;
-        endGame(true);
+        endWave();
     }
 }
 
