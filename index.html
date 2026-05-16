@@ -24,10 +24,31 @@
 
         /* FPS HUD */
         #fps-hud { display: none; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); pointer-events: none; }
-        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #0f0; }
-        #crosshair::before { top: 9px; left: 0; width: 20px; height: 2px; }
-        #crosshair::after { top: 0; left: 9px; width: 2px; height: 20px; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; transform: translate(-50%, -50%); pointer-events: none; }
+        /* Коллиматорный прицел - красная точка в круге */
+        #crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #ff0000 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px #ff0000;
+        }
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 36px;
+            height: 36px;
+            border: 2px solid rgba(255, 0, 0, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
         
         .stat-box { background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; border-left: 4px solid #fff; }
         .health-bar { width: 200px; height: 20px; background: #333; border: 2px solid #fff; position: relative; }
@@ -541,18 +562,38 @@ function spawnZombie() {
 function createBullet(startPos, targetPos, damage, isPlayer = false) {
     const direction = new THREE.Vector3().subVectors(targetPos, startPos).normalize();
     
-    // Visual bullet
-    const geo = new THREE.SphereGeometry(0.2);
+    // Visual bullet - уменьшенный размер для игрока
+    const radius = isPlayer ? 0.05 : 0.2;
+    const geo = new THREE.SphereGeometry(radius);
     const mat = new THREE.MeshBasicMaterial({ color: isPlayer ? 0xffff00 : 0xff0000 });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.copy(startPos);
     
-    // Add muzzle flash light
+    // Add muzzle flash - вспышка у дула
     if(isPlayer) {
-        const light = new THREE.PointLight(0xffff00, 1, 5);
+        // Создаем вспышку света
+        const flashGeo = new THREE.SphereGeometry(0.15, 8, 8);
+        const flashMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffaa, 
+            transparent: true, 
+            opacity: 0.9 
+        });
+        const flash = new THREE.Mesh(flashGeo, flashMat);
+        flash.position.copy(startPos);
+        scene.add(flash);
+        
+        // Добавляем свет от выстрела
+        const light = new THREE.PointLight(0xffff00, 2, 8);
         light.position.copy(startPos);
         scene.add(light);
-        setTimeout(() => scene.remove(light), 50);
+        
+        // Быстрое затухание вспышки
+        setTimeout(() => {
+            scene.remove(flash);
+            scene.remove(light);
+            flashGeo.dispose();
+            flashMat.dispose();
+        }, 60);
     }
 
     scene.add(mesh);
