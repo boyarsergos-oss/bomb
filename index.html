@@ -392,6 +392,9 @@ window.startGame = function() {
     camera.position.set(0, 2, 25); // Start at one end of the bridge
     camera.rotation.set(0, 0, 0);
     
+    // Add camera to scene so weapon attached to it will be visible
+    scene.add(camera);
+    
     // Create player weapon
     createPlayerWeapon();
     
