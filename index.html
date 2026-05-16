@@ -142,8 +142,8 @@ animate();
 function init() {
     // Сцена
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111111);
-    scene.fog = new THREE.FogExp2(0x111111, 0.02);
+    scene.background = new THREE.Color(0x87CEEB); // Sky blue day
+    scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
 
     // Камера (Стратегия)
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -156,22 +156,29 @@ function init() {
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Свет
-    const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
+    // Свет - яркий дневной
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
     dirLight.position.set(20, 50, 20);
     dirLight.castShadow = true;
     dirLight.shadow.camera.left = -50;
     dirLight.shadow.camera.right = 50;
     dirLight.shadow.camera.top = 50;
     dirLight.shadow.camera.bottom = -50;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
     scene.add(dirLight);
+
+    // Additional fill lights
+    const fillLight = new THREE.DirectionalLight(0xffeedd, 0.5);
+    fillLight.position.set(-10, 20, -10);
+    scene.add(fillLight);
 
     // Окружение (Вода)
     const waterGeo = new THREE.PlaneGeometry(200, 200);
-    const waterMat = new THREE.MeshStandardMaterial({ color: 0x001133, roughness: 0.1, metalness: 0.8 });
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x0066cc, roughness: 0.3, metalness: 0.5 });
     const water = new THREE.Mesh(waterGeo, waterMat);
     water.rotation.x = -Math.PI / 2;
     water.position.y = -2;
@@ -191,34 +198,67 @@ function init() {
 }
 
 function createBridge() {
-    // Дорога
+    // Дорога - более красивая текстура
     const geo = new THREE.BoxGeometry(10, 2, 60);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+    const mat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.7 });
     bridgeMesh = new THREE.Mesh(geo, mat);
     bridgeMesh.position.y = 0;
     bridgeMesh.receiveShadow = true;
     scene.add(bridgeMesh);
 
     // Перила
-    const railGeo = new THREE.BoxGeometry(1, 2, 60);
-    const railMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+    const railGeo = new THREE.BoxGeometry(0.8, 1.5, 60);
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, metalness: 0.3 });
     
     const railLeft = new THREE.Mesh(railGeo, railMat);
-    railLeft.position.set(-4.5, 1, 0);
+    railLeft.position.set(-4.5, 0.75, 0);
     railLeft.castShadow = true;
     scene.add(railLeft);
 
     const railRight = new THREE.Mesh(railGeo, railMat);
-    railRight.position.set(4.5, 1, 0);
+    railRight.position.set(4.5, 0.75, 0);
     railRight.castShadow = true;
     scene.add(railRight);
 
+    // Столбы перил
+    for(let x of [-4.5, 4.5]) {
+        for(let z = -28; z <= 28; z+=8) {
+            const postGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
+            const post = new THREE.Mesh(postGeo, railMat);
+            post.position.set(x, 0.75, z);
+            post.castShadow = true;
+            scene.add(post);
+        }
+    }
+
     // Опоры моста
-    for(let z = -20; z <= 20; z+=20) {
-        const supGeo = new THREE.CylinderGeometry(1.5, 1.5, 10, 8);
-        const sup = new THREE.Mesh(supGeo, mat);
-        sup.position.set(0, -5, z);
+    for(let z = -25; z <= 25; z+=25) {
+        const supGeo = new THREE.CylinderGeometry(2, 2, 12, 16);
+        const supMat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.9 });
+        const sup = new THREE.Mesh(supGeo, supMat);
+        sup.position.set(0, -6, z);
+        sup.castShadow = true;
         scene.add(sup);
+    }
+    
+    // Декор - фонари на мосту
+    const lampPostMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+    const lampLightMat = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+    for(let z of [-20, 0, 20]) {
+        const poleGeo = new THREE.CylinderGeometry(0.2, 0.2, 4, 8);
+        const pole = new THREE.Mesh(poleGeo, lampPostMat);
+        pole.position.set(-3.5, 2, z);
+        scene.add(pole);
+        
+        const lampGeo = new THREE.SphereGeometry(0.4, 8, 8);
+        const lamp = new THREE.Mesh(lampGeo, lampLightMat);
+        lamp.position.set(0, 1.5, 0);
+        pole.add(lamp);
+        
+        // Свет от фонаря
+        const lampLight = new THREE.PointLight(0xffffaa, 0.5, 10);
+        lampLight.position.set(0, 1.5, 0);
+        pole.add(lampLight);
     }
 }
 
@@ -340,8 +380,8 @@ window.startGame = function() {
     camera.position.set(0, 2, 25); // Start at one end of the bridge
     camera.rotation.set(0, 0, 0);
     
-    zombiesToSpawn = 10 + (wave * 5);
-    showMessage("ОБОРОНА НАЧАЛАСЬ!", "#0f0");
+    zombiesToSpawn = 30 + (wave * 15); // Увеличенная орда
+    showMessage("ОБОРОНА НАЧАЛАСЬ! ЗОМБИ АТАКУЮТ!", "#0f0");
 };
 
 // --- Логика Шутера и Игры ---
@@ -354,36 +394,62 @@ function spawnZombie() {
 
     const zPos = new THREE.Vector3((Math.random() - 0.5) * 8, 0, 30); // Spawn far end
     
-    // Zombie Mesh (Simple Robot-like Zombie)
+    // Zombie Mesh - более реалистичный
     const group = new THREE.Group();
     group.position.copy(zPos);
     
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57 }); // SeaGreen
-    const headMat = new THREE.MeshStandardMaterial({ color: 0x1a5235 });
+    // Разные цвета для разнообразия зомби
+    const skinColors = [0x3a5f3a, 0x2d4a2d, 0x1f3a1f, 0x4a6b4a];
+    const clothesColors = [0x3d3d3d, 0x4a3d2d, 0x2d3d4a, 0x3d2d3d];
+    const bodyMat = new THREE.MeshStandardMaterial({ color: clothesColors[Math.floor(Math.random() * clothesColors.length)] });
+    const headMat = new THREE.MeshStandardMaterial({ color: skinColors[Math.floor(Math.random() * skinColors.length)] });
+    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x2d2d4a });
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 0.8), bodyMat);
-    body.position.y = 0.9;
+    // Тело
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 0.6), bodyMat);
+    body.position.y = 1.4;
     body.castShadow = true;
     
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), headMat);
-    head.position.y = 2.1;
+    // Голова с глазами
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.5), headMat);
+    head.position.y = 2.2;
+    head.castShadow = true;
     
-    // Arms
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.3), bodyMat);
-    armL.position.set(-0.8, 1.2, 0.5);
-    armL.rotation.x = -1.5; // Reaching forward
+    // Глаза (красные светящиеся)
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeMat);
+    eyeL.position.set(-0.15, 2.25, 0.25);
+    const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), eyeMat);
+    eyeR.position.set(0.15, 2.25, 0.25);
+    group.add(eyeL, eyeR);
     
-    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.2, 0.3), bodyMat);
-    armR.position.set(0.8, 1.2, 0.5);
-    armR.rotation.x = -1.5;
+    // Руки (вытянутые вперед как у зомби)
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.0, 0.25), headMat);
+    armL.position.set(-0.7, 1.3, 0.4);
+    armL.rotation.x = -1.2;
+    armL.castShadow = true;
+    
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.0, 0.25), headMat);
+    armR.position.set(0.7, 1.3, 0.4);
+    armR.rotation.x = -1.2;
+    armR.castShadow = true;
+    
+    // Ноги
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.0, 0.3), pantsMat);
+    legL.position.set(-0.25, 0.5, 0);
+    legL.castShadow = true;
+    
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.0, 0.3), pantsMat);
+    legR.position.set(0.25, 0.5, 0);
+    legR.castShadow = true;
 
-    group.add(body, head, armL, armR);
+    group.add(body, head, armL, armR, legL, legR);
     scene.add(group);
 
     zombies.push({
         mesh: group,
         hp: 30 + (wave * 10),
-        speed: 2 + (Math.random() * 1.5) + (wave * 0.2),
+        speed: 3 + (Math.random() * 2) + (wave * 0.3),
         animOffset: Math.random() * 100
     });
 
@@ -441,7 +507,7 @@ function updatePhysics(dt) {
     // 1. Spawning
     if (gameState === STATE.FPS && zombiesToSpawn > 0) {
         spawnTimer += dt;
-        if (spawnTimer > 1.5) { // Spawn every 1.5 sec
+        if (spawnTimer > 0.5) { // Spawn every 0.5 sec - faster horde
             spawnZombie();
             spawnTimer = 0;
         }
@@ -550,13 +616,36 @@ function updatePhysics(dt) {
         const z = zombies[i];
         const dz = -z.speed * dt; // Move towards -Z
         
-        // Simple animation (bobbing)
-        z.mesh.position.y = Math.abs(Math.sin(time * 10 + z.animOffset)) * 0.2;
+        // Анимация зомби - покачивание и движение рук/ног
+        z.mesh.position.y = Math.abs(Math.sin(time * 8 + z.animOffset)) * 0.15;
         z.mesh.position.z += dz;
         
-        // Rotate arms
-        z.mesh.children[2].rotation.x = -1.5 + Math.sin(time * 15) * 0.5;
-        z.mesh.children[3].rotation.x = -1.5 + Math.cos(time * 15) * 0.5;
+        // Вращение к игроку
+        if (gameState === STATE.FPS) {
+            z.mesh.lookAt(camera.position.x, z.mesh.position.y, camera.position.z);
+        }
+        
+        // Rotate arms (анимация рук - индексы могут отличаться из-за добавления глаз)
+        const armLIndex = 2; // После body(0), head(1), eyeL(2), eyeR(3) -> armL(4), armR(5), legL(6), legR(7)
+        const armRIndex = 4;
+        const legLIndex = 6;
+        const legRIndex = 7;
+        
+        if (z.mesh.children[armLIndex]) {
+            z.mesh.children[armLIndex].rotation.x = -1.2 + Math.sin(time * 10 + z.animOffset) * 0.4;
+            z.mesh.children[armLIndex].rotation.z = Math.sin(time * 8 + z.animOffset) * 0.2;
+        }
+        if (z.mesh.children[armRIndex]) {
+            z.mesh.children[armRIndex].rotation.x = -1.2 + Math.cos(time * 10 + z.animOffset) * 0.4;
+            z.mesh.children[armRIndex].rotation.z = Math.cos(time * 8 + z.animOffset) * 0.2;
+        }
+        // Анимация ног
+        if (z.mesh.children[legLIndex]) {
+            z.mesh.children[legLIndex].rotation.x = Math.sin(time * 12 + z.animOffset) * 0.5;
+        }
+        if (z.mesh.children[legRIndex]) {
+            z.mesh.children[legRIndex].rotation.x = Math.cos(time * 12 + z.animOffset) * 0.5;
+        }
 
         // Collision with Player
         if (gameState === STATE.FPS && z.mesh.position.distanceTo(camera.position) < 1.5) {
