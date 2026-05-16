@@ -370,8 +370,20 @@ window.startGame = function() {
     
     // Setup FPS Controls
     controls = new PointerLockControls(camera, document.body);
+    
+    controls.addEventListener('lock', () => {
+        console.log("Pointer locked - ready to play");
+    });
+    
+    controls.addEventListener('unlock', () => {
+        console.log("Pointer unlocked");
+        // Можно добавить паузу или меню
+    });
+    
     document.body.addEventListener('click', () => {
-        if(gameState === STATE.FPS) controls.lock();
+        if(gameState === STATE.FPS && !controls.isLocked) {
+            controls.lock();
+        }
     });
     
     controls.lock();
@@ -388,6 +400,14 @@ window.startGame = function() {
 
 function onKeyDown(event) { keys[event.code] = true; }
 function onKeyUp(event) { keys[event.code] = false; }
+
+// Отслеживание нажатия мыши для стрельбы
+document.addEventListener('mousedown', (event) => {
+    if (event.button === 0) keys['Mouse0'] = true;
+});
+document.addEventListener('mouseup', (event) => {
+    if (event.button === 0) keys['Mouse0'] = false;
+});
 
 function spawnZombie() {
     if (zombiesToSpawn <= 0) return;
