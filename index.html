@@ -516,28 +516,21 @@ function updatePhysics(dt) {
     // 2. Player Movement (FPS)
     if (gameState === STATE.FPS && controls.isLocked) {
         const speed = player.speed * dt;
-        const direction = new THREE.Vector3();
-        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-        forward.y = 0; forward.normalize();
-        right.y = 0; right.normalize();
-
-        if (keys['KeyW']) direction.add(forward);
-        if (keys['KeyS']) direction.sub(forward);
-        if (keys['KeyA']) direction.sub(right);
-        if (keys['KeyD']) direction.add(right);
-
-        if (direction.length() > 0) {
-            direction.normalize().multiplyScalar(speed);
-            camera.position.add(direction);
-            
-            // Boundary check (stay on bridge roughly)
-            camera.position.x = Math.max(-4, Math.min(4, camera.position.x));
-            camera.position.z = Math.max(-28, Math.min(28, camera.position.z));
-        }
-
+        
+        // FPS Movement using PointerLockControls
+        if (keys['KeyW']) controls.moveForward(speed);
+        if (keys['KeyS']) controls.moveForward(-speed);
+        if (keys['KeyA']) controls.moveRight(-speed);
+        if (keys['KeyD']) controls.moveRight(speed);
+        
+        // Boundary check (stay on bridge roughly)
+        const pos = controls.getObject().position;
+        pos.x = Math.max(-4, Math.min(4, pos.x));
+        pos.z = Math.max(-28, Math.min(28, pos.z));
+        pos.y = 2; // Keep player at fixed height
+        
         // Player Shooting
-        if (keys['Mouse0'] && player.canShoot) {
+        if (keys['Mouse0']) {
             const now = Date.now();
             if (now - player.lastShot > 150) { // Fire rate
                 // Raycast from center screen
